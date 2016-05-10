@@ -28,7 +28,6 @@
 #include <asm/signal32.h>
 #include <linux/uaccess.h>
 #include <asm/unistd.h>
-#include <asm/vdso.h>
 
 struct compat_vfp_sigframe {
 	compat_ulong_t	magic;
