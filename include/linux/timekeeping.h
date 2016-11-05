@@ -255,4 +255,6 @@ static inline struct timespec64 get_monotonic_coarse64(void)
 	return ts;
 }
 
+s64 get_total_sleep_time_nsec(void);
+
 #endif
