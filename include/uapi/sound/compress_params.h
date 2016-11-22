@@ -117,7 +117,7 @@
 #define SND_AUDIOCODEC_TRUEHD                ((__u32) 0x00000024)
 #define SND_AUDIOCODEC_MAT                   ((__u32) 0x00000025)
 #define SND_AUDIOCODEC_THD                   ((__u32) 0x00000026)
-#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_THD
+#define SND_AUDIOCODEC_MAX                   SND_AUDIOCODEC_EAC3
 
 /*
  * Profile and modes are listed with bit masks. This allows for a
