@@ -813,6 +813,8 @@ struct task_struct {
 	unsigned int			policy;
 	int				nr_cpus_allowed;
 	cpumask_t			cpus_allowed;
+const cpumask_t			*cpus_ptr;
+	cpumask_t			cpus_mask;
 	cpumask_t			cpus_requested;
 
 #ifdef CONFIG_PREEMPT_RCU
