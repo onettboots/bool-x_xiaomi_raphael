@@ -735,7 +735,7 @@ int tg_nop(struct task_group *tg, void *data)
 }
 #endif
 
-static void set_load_weight(struct task_struct *p)
+static void set_load_weight(struct task_struct *p, bool update_load)
 {
 	int prio = p->static_prio - MAX_RT_PRIO;
 	struct load_weight *load = &p->se.load;
@@ -749,8 +749,16 @@ static void set_load_weight(struct task_struct *p)
 		return;
 	}
 
-	load->weight = scale_load(sched_prio_to_weight[prio]);
-	load->inv_weight = sched_prio_to_wmult[prio];
+	/*
+	 * SCHED_OTHER tasks have to update their load when changing their
+	 * weight
+	 */
+	if (update_load && p->sched_class == &fair_sched_class) {
+		reweight_task(p, prio);
+	} else {
+		load->weight = scale_load(sched_prio_to_weight[prio]);
+		load->inv_weight = sched_prio_to_wmult[prio];
+	}
 }
 
 #ifdef CONFIG_UCLAMP_TASK
@@ -3476,7 +3484,7 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 			p->static_prio = NICE_TO_PRIO(0);
 
 		p->prio = p->normal_prio = __normal_prio(p);
-		set_load_weight(p);
+		set_load_weight(p, false);
 
 		/*
 		 * We don't need the reset flag anymore after the fork. It has
@@ -5078,7 +5086,7 @@ void set_user_nice(struct task_struct *p, long nice)
 		put_prev_task(rq, p);
 
 	p->static_prio = NICE_TO_PRIO(nice);
-	set_load_weight(p);
+	set_load_weight(p, true);
 	old_prio = p->prio;
 	p->prio = effective_prio(p);
 	delta = p->prio - old_prio;
@@ -5249,14 +5257,14 @@ static void __setscheduler_params(struct task_struct *p,
         else if (fair_policy(policy))
                 p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
-        /*
-         * __sched_setscheduler() ensures attr->sched_priority == 0 when
-         * !rt_policy. Always setting this ensures that things like
-         * getparam()/getattr() don't report silly values for !rt tasks.
-         */
-        p->rt_priority = attr->sched_priority;
-        p->normal_prio = normal_prio(p);
-        set_load_weight(p);
+	/*
+	 * __sched_setscheduler() ensures attr->sched_priority == 0 when
+	 * !rt_policy. Always setting this ensures that things like
+	 * getparam()/getattr() don't report silly values for !rt tasks.
+	 */
+	p->rt_priority = attr->sched_priority;
+	p->normal_prio = normal_prio(p);
+	set_load_weight(p, true);
 }
 
 /* Actually do priority change: must hold pi & rq lock. */
@@ -7720,7 +7728,7 @@ void __init sched_init(void)
 
 	BUG_ON(alloc_related_thread_groups());
 
-	set_load_weight(&init_task);
+	set_load_weight(&init_task, false);
 
 	/*
 	 * The boot idle thread does lazy MMU switching as well:
