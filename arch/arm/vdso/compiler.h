@@ -27,15 +27,9 @@
 #include <asm/processor.h>	/* for cpu_relax()			*/
 #include <asm/unistd.h>
 #include <linux/compiler.h>
-#include <linux/hrtimer.h>	/* for LOW_RES_NSEC and MONOTONIC_RES_NSEC */
-#include <linux/time.h>		/* for NSEC_PER_SEC			*/
 
 #ifndef CONFIG_AEABI
 #error This code depends on AEABI system call conventions
-#endif
-
-#ifdef CONFIG_ARM_ARCH_TIMER
-#define ARCH_PROVIDES_TIMER
 #endif
 
 #define DEFINE_FALLBACK(name, type_arg1, name_arg1, type_arg2, name_arg2) \
