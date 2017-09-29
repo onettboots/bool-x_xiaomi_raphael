@@ -1549,6 +1549,7 @@ int __sched down_read_killable(struct rw_semaphore *sem)
 		return -EINTR;
 	}
 
+	rwsem_set_reader_owned(sem);
 	return 0;
 }
 EXPORT_SYMBOL(down_read_killable);
