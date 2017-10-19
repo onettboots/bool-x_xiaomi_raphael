@@ -19,6 +19,10 @@ extern void xtime_update(unsigned long ticks);
 extern int do_settimeofday64(const struct timespec64 *ts);
 extern int do_sys_settimeofday64(const struct timespec64 *tv,
 				 const struct timezone *tz);
+/*
+ * Kernel time accessors
+ */
+struct timespec64 current_kernel_time64(void);
 
 /*
  * timespec64 based interfaces
@@ -145,12 +149,12 @@ extern u64 ktime_get_boot_fast_ns(void);
 /*
  * timespec64 interfaces utilizing the ktime based ones
  */
-static inline void ktime_get_boottime_ts64(struct timespec64 *ts)
+static inline void get_monotonic_boottime64(struct timespec64 *ts)
 {
 	*ts = ktime_to_timespec64(ktime_get_boottime());
 }
 
-static inline void ktime_get_clocktai_ts64(struct timespec64 *ts)
+static inline void timekeeping_clocktai64(struct timespec64 *ts)
 {
 	*ts = ktime_to_timespec64(ktime_get_clocktai());
 }
