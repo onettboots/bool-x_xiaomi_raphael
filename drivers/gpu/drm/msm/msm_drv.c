@@ -39,6 +39,7 @@
 
 #include <linux/of_address.h>
 #include <linux/kthread.h>
+#include <linux/workqueue.h>
 #include <uapi/linux/sched/types.h>
 #include <drm/drm_of.h>
 #include <soc/qcom/boot_stats.h>
@@ -556,6 +557,8 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 		dev_err(dev, "failed to init sde dbg: %d\n", ret);
 		goto dbg_init_fail;
 	}
+
+	msm_idle_init(ddev);
 
 	/* Bind all our sub-components: */
 	ret = msm_component_bind_all(dev, ddev);
