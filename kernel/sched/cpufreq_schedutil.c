@@ -711,7 +711,7 @@ static int sugov_start(struct cpufreq_policy *policy)
 		memset(sg_cpu, 0, sizeof(*sg_cpu));
 		sg_cpu->cpu = cpu;
 		sg_cpu->sg_policy = sg_policy;
-		sg_cpu->flags = SCHED_CPUFREQ_RT;
+		sg_cpu->flags = 0;
 	}
 
 	for_each_cpu(cpu, policy->cpus) {
