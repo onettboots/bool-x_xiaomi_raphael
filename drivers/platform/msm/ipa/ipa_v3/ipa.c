@@ -290,7 +290,7 @@ static int ipa3_active_clients_panic_notifier(struct notifier_block *this,
 {
 	ipa3_active_clients_log_print_table(active_clients_table_buf,
 			IPA3_ACTIVE_CLIENTS_TABLE_BUF_SIZE);
-	IPAERR("%s\n", active_clients_table_buf);
+	IPAERR("%s", active_clients_table_buf);
 
 	return NOTIFY_DONE;
 }
