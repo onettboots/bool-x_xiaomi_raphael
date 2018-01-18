@@ -514,13 +514,14 @@ out:
 
 static int trie_get_next_key(struct bpf_map *map, void *_key, void *_next_key)
 {
-	struct lpm_trie_node *node, *next_node = NULL, *parent, *search_root;
 	struct lpm_trie *trie = container_of(map, struct lpm_trie, map);
 	struct bpf_lpm_trie_key *key = _key, *next_key = _next_key;
+	struct lpm_trie_node *node, *next_node = NULL, *parent;
 	struct lpm_trie_node **node_stack = NULL;
+	struct lpm_trie_node __rcu **root;
 	int err = 0, stack_ptr = -1;
 	unsigned int next_bit;
-	size_t matchlen = 0;
+	size_t matchlen;
 
 	/* The get_next_key follows postorder. For the 4 node example in
 	 * the top of this file, the trie_get_next_key() returns the following
@@ -534,22 +535,22 @@ static int trie_get_next_key(struct bpf_map *map, void *_key, void *_next_key)
 	 */
 
 	/* Empty trie */
-	search_root = rcu_dereference(trie->root);
-	if (!search_root)
+	if (!rcu_dereference(trie->root))
 		return -ENOENT;
 
 	/* For invalid key, find the leftmost node in the trie */
-	if (!key || key->prefixlen > trie->max_prefixlen)
+	if (!key || key->prefixlen > trie->max_prefixlen) {
+		root = &trie->root;
 		goto find_leftmost;
+	}
 
-	node_stack = kmalloc_array(trie->max_prefixlen + 1,
-				   sizeof(struct lpm_trie_node *),
-				   GFP_ATOMIC | __GFP_NOWARN);
+	node_stack = kmalloc(trie->max_prefixlen * sizeof(struct lpm_trie_node *),
+			     GFP_USER | __GFP_NOWARN);
 	if (!node_stack)
 		return -ENOMEM;
 
 	/* Try to find the exact node for the given key */
-	for (node = search_root; node;) {
+	for (node = rcu_dereference(trie->root); node;) {
 		node_stack[++stack_ptr] = node;
 		matchlen = longest_prefix_match(trie, node, key);
 		if (node->prefixlen != matchlen ||
@@ -559,9 +560,11 @@ static int trie_get_next_key(struct bpf_map *map, void *_key, void *_next_key)
 		next_bit = extract_bit(key->data, node->prefixlen);
 		node = rcu_dereference(node->child[next_bit]);
 	}
-	if (!node || node->prefixlen != matchlen ||
-	    (node->flags & LPM_TREE_NODE_FLAG_IM))
+	if (!node || node->prefixlen != key->prefixlen ||
+	    (node->flags & LPM_TREE_NODE_FLAG_IM)) {
+		root = &trie->root;
 		goto find_leftmost;
+	}
 
 	/* The node with the exactly-matching key has been found,
 	 * find the first node in postorder after the matched node.
@@ -569,10 +572,10 @@ static int trie_get_next_key(struct bpf_map *map, void *_key, void *_next_key)
 	node = node_stack[stack_ptr];
 	while (stack_ptr > 0) {
 		parent = node_stack[stack_ptr - 1];
-		if (rcu_dereference(parent->child[0]) == node) {
-			search_root = rcu_dereference(parent->child[1]);
-			if (search_root)
-				goto find_leftmost;
+		if (rcu_dereference(parent->child[0]) == node &&
+		    rcu_dereference(parent->child[1])) {
+			root = &parent->child[1];
+			goto find_leftmost;
 		}
 		if (!(parent->flags & LPM_TREE_NODE_FLAG_IM)) {
 			next_node = parent;
@@ -591,15 +594,10 @@ find_leftmost:
 	/* Find the leftmost non-intermediate node, all intermediate nodes
 	 * have exact two children, so this function will never return NULL.
 	 */
-	for (node = search_root; node;) {
-		if (node->flags & LPM_TREE_NODE_FLAG_IM) {
-			node = rcu_dereference(node->child[0]);
-		} else {
+	for (node = rcu_dereference(*root); node;) {
+		if (!(node->flags & LPM_TREE_NODE_FLAG_IM))
 			next_node = node;
-			node = rcu_dereference(node->child[0]);
-			if (!node)
-				node = rcu_dereference(next_node->child[1]);
-		}
+		node = rcu_dereference(node->child[0]);
 	}
 do_copy:
 	next_key->prefixlen = next_node->prefixlen;
