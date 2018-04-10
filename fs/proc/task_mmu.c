@@ -332,57 +332,25 @@ static int is_stack(struct vm_area_struct *vma)
 		vma->vm_end >= vma->vm_mm->start_stack;
 }
 
-#define print_vma_hex10(out, val, clz_fn) \
-({									\
-	const typeof(val) __val = val;					\
-	char *const __out = out;					\
-	size_t __len;							\
-									\
-	if (__val) {							\
-		__len = (sizeof(__val) * 8 - clz_fn(__val) + 3) / 4;	\
-		switch (__len) {					\
-		case 10:						\
-			__out[9] = hex_asc[(__val >>  0) & 0xf];	\
-			__out[8] = hex_asc[(__val >>  4) & 0xf];	\
-			__out[7] = hex_asc[(__val >>  8) & 0xf];	\
-			__out[6] = hex_asc[(__val >> 12) & 0xf];	\
-			__out[5] = hex_asc[(__val >> 16) & 0xf];	\
-			__out[4] = hex_asc[(__val >> 20) & 0xf];	\
-			__out[3] = hex_asc[(__val >> 24) & 0xf];	\
-			__out[2] = hex_asc[(__val >> 28) & 0xf];	\
-			__out[1] = hex_asc[(__val >> 32) & 0xf];	\
-			__out[0] = hex_asc[(__val >> 36) & 0xf];	\
-			break;						\
-		case 9:							\
-			__out[8] = hex_asc[(__val >>  0) & 0xf];	\
-			__out[7] = hex_asc[(__val >>  4) & 0xf];	\
-			__out[6] = hex_asc[(__val >>  8) & 0xf];	\
-			__out[5] = hex_asc[(__val >> 12) & 0xf];	\
-			__out[4] = hex_asc[(__val >> 16) & 0xf];	\
-			__out[3] = hex_asc[(__val >> 20) & 0xf];	\
-			__out[2] = hex_asc[(__val >> 24) & 0xf];	\
-			__out[1] = hex_asc[(__val >> 28) & 0xf];	\
-			__out[0] = hex_asc[(__val >> 32) & 0xf];	\
-			break;						\
-		default:						\
-			__out[7] = hex_asc[(__val >>  0) & 0xf];	\
-			__out[6] = hex_asc[(__val >>  4) & 0xf];	\
-			__out[5] = hex_asc[(__val >>  8) & 0xf];	\
-			__out[4] = hex_asc[(__val >> 12) & 0xf];	\
-			__out[3] = hex_asc[(__val >> 16) & 0xf];	\
-			__out[2] = hex_asc[(__val >> 20) & 0xf];	\
-			__out[1] = hex_asc[(__val >> 24) & 0xf];	\
-			__out[0] = hex_asc[(__val >> 28) & 0xf];	\
-			__len = 8;					\
-			break;						\
-		}							\
-	} else {							\
-		*(u64 *)__out = U64_C(0x3030303030303030);		\
-		__len = 8;						\
-	}								\
-									\
-	__len;								\
-})
+static void show_vma_header_prefix(struct seq_file *m,
+				   unsigned long start, unsigned long end,
+				   vm_flags_t flags, unsigned long long pgoff,
+				   dev_t dev, unsigned long ino)
+{
+	seq_setwidth(m, 25 + sizeof(void *) * 6 - 1);
+	seq_put_hex_ll(m, NULL, start, 8);
+	seq_put_hex_ll(m, "-", end, 8);
+	seq_putc(m, ' ');
+	seq_putc(m, flags & VM_READ ? 'r' : '-');
+	seq_putc(m, flags & VM_WRITE ? 'w' : '-');
+	seq_putc(m, flags & VM_EXEC ? 'x' : '-');
+	seq_putc(m, flags & VM_MAYSHARE ? 's' : 'p');
+	seq_put_hex_ll(m, " ", pgoff, 8);
+	seq_put_hex_ll(m, " ", MAJOR(dev), 2);
+	seq_put_hex_ll(m, ":", MINOR(dev), 2);
+	seq_put_decimal_ull(m, " ", ino);
+	seq_putc(m, ' ');
+}
 
 #define print_vma_hex5(out, val, clz_fn) \
 ({									\
