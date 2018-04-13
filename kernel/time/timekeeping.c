@@ -2230,9 +2230,10 @@ unsigned long get_seconds(void)
 }
 EXPORT_SYMBOL(get_seconds);
 
-void ktime_get_coarse_real_ts64(struct timespec64 *ts)
+struct timespec64 current_kernel_time64(void)
 {
 	struct timekeeper *tk = &tk_core.timekeeper;
+	struct timespec64 now;
 	unsigned long seq;
 
 	do {
