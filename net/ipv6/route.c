@@ -2827,6 +2827,7 @@ out:
 }
 
 static struct rt6_info *ip6_route_info_create(struct fib6_config *cfg,
+					      gfp_t gfp_flags,
 					      struct netlink_ext_ack *extack)
 {
 	struct net *net = cfg->fc_nlinfo.nl_net;
@@ -3035,12 +3036,13 @@ out:
 	return ERR_PTR(err);
 }
 
-int ip6_route_add(struct fib6_config *cfg, struct netlink_ext_ack *extack)
+int ip6_route_add(struct fib6_config *cfg, gfp_t gfp_flags,
+		  struct netlink_ext_ack *extack)
 {
 	struct rt6_info *rt;
 	int err;
 
-	rt = ip6_route_info_create(cfg, extack);
+	rt = ip6_route_info_create(cfg, gfp_flags, extack);
 	if (IS_ERR(rt))
 		return PTR_ERR(rt);
 
@@ -3387,7 +3389,7 @@ static struct rt6_info *rt6_add_route_info(struct net *net,
 	if (!prefixlen)
 		cfg.fc_flags |= RTF_DEFAULT;
 
-	ip6_route_add(&cfg, NULL);
+	ip6_route_add(&cfg, GFP_ATOMIC, NULL);
 
 	return rt6_get_route_info(net, prefix, prefixlen, gwaddr, dev);
 }
@@ -3438,7 +3440,7 @@ struct rt6_info *rt6_add_dflt_router(struct net *net,
 
 	cfg.fc_gateway = *gwaddr;
 
-	if (!ip6_route_add(&cfg, NULL)) {
+	if (!ip6_route_add(&cfg, GFP_ATOMIC, NULL)) {
 		struct fib6_table *table;
 
 		table = fib6_get_table(dev_net(dev), cfg.fc_table);
@@ -3505,7 +3507,7 @@ int ipv6_route_ioctl(struct net *net, unsigned int cmd, void __user *arg)
 		rtnl_lock();
 		switch (cmd) {
 		case SIOCADDRT:
-			err = ip6_route_add(&cfg, NULL);
+			err = ip6_route_add(&cfg, GFP_KERNEL, NULL);
 			break;
 		case SIOCDELRT:
 			err = ip6_route_del(&cfg, NULL);
@@ -3577,7 +3579,7 @@ static int ip6_pkt_prohibit_out(struct net *net, struct sock *sk, struct sk_buff
 struct rt6_info *addrconf_dst_alloc(struct net *net,
 				    struct inet6_dev *idev,
 				    const struct in6_addr *addr,
-				    bool anycast)
+				    bool anycast, gfp_t gfp_flags)
 {
 	u32 tb_id;
 	struct net_device *dev = idev->dev;
@@ -4252,7 +4254,7 @@ static int ip6_route_multipath_add(struct fib6_config *cfg,
 				r_cfg.fc_encap_type = nla_get_u16(nla);
 		}
 
-		rt = ip6_route_info_create(&r_cfg, extack);
+		rt = ip6_route_info_create(&r_cfg, GFP_KERNEL, extack);
 		if (IS_ERR(rt)) {
 			err = PTR_ERR(rt);
 			rt = NULL;
@@ -4420,7 +4422,7 @@ static int inet6_rtm_newroute(struct sk_buff *skb, struct nlmsghdr *nlh,
 	if (cfg.fc_mp)
 		return ip6_route_multipath_add(&cfg, extack);
 	else
-		return ip6_route_add(&cfg, extack);
+		return ip6_route_add(&cfg, GFP_KERNEL, extack);
 }
 
 static size_t rt6_nlmsg_size(struct rt6_info *rt)
