@@ -1470,23 +1470,8 @@ static int aio_prep_rw(struct kiocb *req, struct iocb *iocb)
 	req->ki_flags = iocb_flags(req->ki_filp);
 	if (iocb->aio_flags & IOCB_FLAG_RESFD)
 		req->ki_flags |= IOCB_EVENTFD;
-	req->ki_hint = ki_hint_validate(file_write_hint(req->ki_filp));
-	if (iocb->aio_flags & IOCB_FLAG_IOPRIO) {
-		/*
-		 * If the IOCB_FLAG_IOPRIO flag of aio_flags is set, then
-		 * aio_reqprio is interpreted as an I/O scheduling
-		 * class and priority.
-		 */
-		ret = ioprio_check_cap(iocb->aio_reqprio);
-		if (ret) {
-			pr_debug("aio ioprio check cap error\n");
-			return -EINVAL;
-		}
 
-		req->ki_ioprio = iocb->aio_reqprio;
-	} else
-		req->ki_ioprio = IOPRIO_PRIO_VALUE(IOPRIO_CLASS_NONE, 0);
-
+	req->ki_hint = file_write_hint(req->ki_filp);
 	ret = kiocb_set_rw_flags(req, iocb->aio_rw_flags);
 	if (unlikely(ret))
 		fput(req->ki_filp);
@@ -1593,17 +1578,17 @@ static ssize_t aio_write(struct kiocb *req, struct iocb *iocb, bool vectored,
 	if (!ret) {
 		/*
 		 * Open-code file_start_write here to grab freeze protection,
-		 * which will be released by another thread in aio_complete().
-		 * Fool lockdep by telling it the lock got released so that it
-		 * doesn't complain about the held lock when we return to
-		 * userspace.
+		 * which will be released by another thread in
+		 * aio_complete_rw().  Fool lockdep by telling it the lock got
+		 * released so that it doesn't complain about the held lock when
+		 * we return to userspace.
 		 */
 		if (S_ISREG(file_inode(file)->i_mode)) {
 			__sb_start_write(file_inode(file)->i_sb, SB_FREEZE_WRITE, true);
 			__sb_writers_release(file_inode(file)->i_sb, SB_FREEZE_WRITE);
 		}
 		req->ki_flags |= IOCB_WRITE;
-		ret = aio_ret(req, call_write_iter(file, req, &iter));
+		ret = aio_rw_ret(req, call_write_iter(file, req, &iter));
 	}
 	kfree(iovec);
 out_fput:
@@ -1638,16 +1623,6 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
 	if (unlikely(!req))
 		return -EAGAIN;
 
-	req->common.ki_filp = file = fget(iocb->aio_fildes);
-	if (unlikely(!req->common.ki_filp)) {
-		ret = -EBADF;
-		goto out_put_req;
-	}
-	req->common.ki_pos = iocb->aio_offset;
-	req->common.ki_complete = aio_complete;
-	req->common.ki_flags = iocb_flags(req->common.ki_filp);
-	req->common.ki_hint = ki_hint_validate(file_write_hint(file));
-
 	if (iocb->aio_flags & IOCB_FLAG_RESFD) {
 		/*
 		 * If the IOCB_FLAG_RESFD flag of aio_flags is set, get an
@@ -1661,14 +1636,6 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
 			req->ki_eventfd = NULL;
 			goto out_put_req;
 		}
-
-		req->common.ki_flags |= IOCB_EVENTFD;
-	}
-
-	ret = kiocb_set_rw_flags(&req->common, iocb->aio_rw_flags);
-	if (unlikely(ret)) {
-		pr_debug("EINVAL: aio_rw_flags\n");
-		goto out_put_req;
 	}
 
 	ret = put_user(KIOCB_KEY, &user_iocb->aio_key);
