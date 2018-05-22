@@ -1638,6 +1638,16 @@ static int io_submit_one(struct kioctx *ctx, struct iocb __user *user_iocb,
 	if (unlikely(!req))
 		return -EAGAIN;
 
+	req->common.ki_filp = file = fget(iocb->aio_fildes);
+	if (unlikely(!req->common.ki_filp)) {
+		ret = -EBADF;
+		goto out_put_req;
+	}
+	req->common.ki_pos = iocb->aio_offset;
+	req->common.ki_complete = aio_complete;
+	req->common.ki_flags = iocb_flags(req->common.ki_filp);
+	req->common.ki_hint = ki_hint_validate(file_write_hint(file));
+
 	if (iocb->aio_flags & IOCB_FLAG_RESFD) {
 		/*
 		 * If the IOCB_FLAG_RESFD flag of aio_flags is set, get an
