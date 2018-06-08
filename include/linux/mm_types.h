@@ -103,7 +103,7 @@ struct page {
 		struct list_head deferred_list; /* second tail page */
 		struct {	/* Page table pages */
 			unsigned long _pt_pad_2;	/* mapping */
-			unsigned long _pt_pad_3;
+			struct mm_struct *pt_mm;	/* x86 pgds only */
 #if ALLOC_SPLIT_PTLOCKS
 			spinlock_t *ptl;
 #else
