@@ -90,6 +90,7 @@ struct page {
 						 * PAGE_MAPPING_KSM.
 						 */
 		void *s_mem;			/* slab first object */
+		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
 		atomic_t compound_mapcount;	/* first tail page */
 		/* page_deferred_list().next	 -- second tail page */
 	};
@@ -200,7 +201,7 @@ struct page {
 		spinlock_t ptl;
 #endif
 #endif
-		struct kmem_cache *slab_cache;	/* SL[AU]B: Pointer to slab */
+		void *s_mem;			/* slab first object */
 	};
 
 #ifdef CONFIG_MEMCG
