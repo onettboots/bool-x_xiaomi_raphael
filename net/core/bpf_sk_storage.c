@@ -653,8 +653,9 @@ static struct bpf_map *bpf_sk_storage_map_alloc(union bpf_attr *attr)
 		return ERR_PTR(ret);
 	}
 
-	smap->buckets = kvzalloc(sizeof(*smap->buckets) * nbuckets,
-				 GFP_USER | __GFP_NOWARN);
+	smap->buckets = kvcalloc(sizeof(*smap->buckets), nbuckets,
+                                 GFP_USER | __GFP_NOWARN);
+
 	if (!smap->buckets) {
 		bpf_map_charge_finish(&smap->map.memory);
 		kfree(smap);
