@@ -2087,19 +2087,12 @@ static const struct bpf_func_proto bpf_clone_redirect_proto = {
 	.arg3_type      = ARG_ANYTHING,
 };
 
-struct redirect_info {
-	u32 ifindex;
-	u32 flags;
-	struct bpf_map *map;
-	struct bpf_map *map_to_flush;
-	unsigned long   map_owner;
-};
-
-static DEFINE_PER_CPU(struct redirect_info, redirect_info);
+DEFINE_PER_CPU(struct bpf_redirect_info, bpf_redirect_info);
+EXPORT_PER_CPU_SYMBOL_GPL(bpf_redirect_info);
 
 BPF_CALL_2(bpf_redirect, u32, ifindex, u64, flags)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 
 	if (unlikely(flags & ~(BPF_F_INGRESS)))
 		return TC_ACT_SHOT;
@@ -2112,7 +2105,7 @@ BPF_CALL_2(bpf_redirect, u32, ifindex, u64, flags)
 
 int skb_do_redirect(struct sk_buff *skb)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	struct net_device *dev;
 
 	dev = dev_get_by_index_rcu(dev_net(skb->dev), ri->ifindex);
@@ -3205,7 +3198,7 @@ static int __bpf_tx_xdp_map(struct net_device *dev_rx, void *fwd,
 
 void xdp_do_flush_map(void)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	struct bpf_map *map = ri->map_to_flush;
 
 	ri->map_to_flush = NULL;
@@ -3250,7 +3243,7 @@ static inline bool xdp_map_invalid(const struct bpf_prog *xdp_prog,
 static int xdp_do_redirect_map(struct net_device *dev, struct xdp_buff *xdp,
 			       struct bpf_prog *xdp_prog)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	unsigned long map_owner = ri->map_owner;
 	struct bpf_map *map = ri->map;
 	u32 index = ri->ifindex;
@@ -3290,7 +3283,7 @@ err:
 int xdp_do_redirect(struct net_device *dev, struct xdp_buff *xdp,
 		    struct bpf_prog *xdp_prog)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	struct net_device *fwd;
 	u32 index = ri->ifindex;
 	int err;
@@ -3322,7 +3315,7 @@ static int xdp_do_generic_redirect_map(struct net_device *dev,
 				       struct xdp_buff *xdp,
 				       struct bpf_prog *xdp_prog)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	unsigned long map_owner = ri->map_owner;
 	struct bpf_map *map = ri->map;
 	u32 index = ri->ifindex;
@@ -3373,7 +3366,7 @@ err:
 int xdp_do_generic_redirect(struct net_device *dev, struct sk_buff *skb,
 			    struct xdp_buff *xdp, struct bpf_prog *xdp_prog)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 	u32 index = ri->ifindex;
 	struct net_device *fwd;
 	int err = 0;
@@ -3404,7 +3397,7 @@ EXPORT_SYMBOL_GPL(xdp_do_generic_redirect);
 
 BPF_CALL_2(bpf_xdp_redirect, u32, ifindex, u64, flags)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 
 	if (unlikely(flags))
 		return XDP_ABORTED;
@@ -3428,7 +3421,7 @@ static const struct bpf_func_proto bpf_xdp_redirect_proto = {
 BPF_CALL_4(bpf_xdp_redirect_map, struct bpf_map *, map, u32, ifindex, u64, flags,
 	   unsigned long, map_owner)
 {
-	struct redirect_info *ri = this_cpu_ptr(&redirect_info);
+	struct bpf_redirect_info *ri = this_cpu_ptr(&bpf_redirect_info);
 
 	if (unlikely(flags))
 		return XDP_ABORTED;
