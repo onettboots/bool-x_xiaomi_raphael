@@ -67,14 +67,14 @@ int sysctl_tcp_slow_start_after_idle __read_mostly = 1;
  */
 void tcp_mstamp_refresh(struct tcp_sock *tp)
 {
-	u64 val = tcp_clock_ns();
+        u64 val = tcp_clock_ns();
 
-	if (val > tp->tcp_clock_cache)
-		tp->tcp_clock_cache = val;
+        if (val > tp->tcp_clock_cache)
+                tp->tcp_clock_cache = val;
 
-	val = div_u64(val, NSEC_PER_USEC);
-	if (val > tp->tcp_mstamp)
-		tp->tcp_mstamp = val;
+        val = div_u64(val, NSEC_PER_USEC);
+        if (val > tp->tcp_mstamp)
+                tp->tcp_mstamp = val;
 }
 
 static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
