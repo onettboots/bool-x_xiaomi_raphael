@@ -12458,15 +12458,24 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 
 	sd = rcu_dereference(rq->sd);
 	if (sd) {
-		if ((rq->cfs.h_nr_running >= 1) &&
-				check_cpu_capacity(rq, sd)) {
-			kick = true;
+		/*
+		 * If there's a CFS task and the current CPU has reduced
+		 * capacity; kick the ILB to see if there's a better CPU to run
+		 * on.
+		 */
+		if (rq->cfs.h_nr_running >= 1 && check_cpu_capacity(rq, sd)) {
+			flags = NOHZ_KICK_MASK;
 			goto unlock;
 		}
 	}
 
 	sd = rcu_dereference(per_cpu(sd_asym, cpu));
 	if (sd) {
+		/*
+		 * When ASYM_PACKING; see if there's a more preferred CPU
+		 * currently idle; in which case, kick the ILB to move tasks
+		 * around.
+		 */
 		for_each_cpu(i, sched_domain_span(sd)) {
 			if (i == cpu ||
 			    !cpumask_test_cpu(i, &cpumask))
