@@ -12446,19 +12446,6 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 		return rq->misfit_task_load > 0;
 
 	rcu_read_lock();
-	sds = rcu_dereference(per_cpu(sd_llc_shared, cpu));
-	if (sds && !energy_aware()) {
-		/*
-		 * XXX: write a coherent comment on why we do this.
-		 * See also: http://lkml.kernel.org/r/20111202010832.602203411@sbsiddha-desk.sc.intel.com
-		 */
-		nr_busy = atomic_read(&sds->nr_busy_cpus);
-		if (nr_busy > 1) {
-			kick = true;
-			goto unlock;
-		}
-
-	}
 
 	sd = rcu_dereference(rq->sd);
 	if (sd) {
@@ -12473,6 +12460,21 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 		}
 	}
 
+	sd = rcu_dereference(per_cpu(sd_asym_packing, cpu));
+	if (sd) {
+		/*
+		 * When ASYM_PACKING; see if there's a more preferred CPU
+		 * currently idle; in which case, kick the ILB to move tasks
+		 * around.
+		 */
+		for_each_cpu_and(i, sched_domain_span(sd), nohz.idle_cpus_mask) {
+			if (sched_asym_prefer(i, cpu)) {
+				flags = NOHZ_KICK_MASK;
+				goto unlock;
+			}
+		}
+	}
+
 	sd = rcu_dereference(per_cpu(sd_asym_cpucapacity, cpu));
 	if (sd) {
 		/*
@@ -12483,24 +12485,32 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 			flags = NOHZ_KICK_MASK;
 			goto unlock;
 		}
+
+		/*
+		 * For asymmetric systems, we do not want to nicely balance
+		 * cache use, instead we want to embrace asymmetry and only
+		 * ensure tasks have enough CPU capacity.
+		 *
+		 * Skip the LLC logic because it's not relevant in that case.
+		 */
+		goto unlock;
 	}
 
-	sd = rcu_dereference(per_cpu(sd_asym_packing, cpu));
-	if (sd) {
+	sds = rcu_dereference(per_cpu(sd_llc_shared, cpu));
+	if (sds) {
 		/*
-		 * When ASYM_PACKING; see if there's a more preferred CPU
-		 * currently idle; in which case, kick the ILB to move tasks
-		 * around.
+		 * If there is an imbalance between LLC domains (IOW we could
+		 * increase the overall cache use), we need some less-loaded LLC
+		 * domain to pull some load. Likewise, we may need to spread
+		 * load within the current LLC domain (e.g. packed SMT cores but
+		 * other CPUs are idle). We can't really know from here how busy
+		 * the others are - so just get a nohz balance going if it looks
+		 * like this LLC domain has tasks we could move.
 		 */
-		for_each_cpu(i, sched_domain_span(sd)) {
-			if (i == cpu ||
-			    !cpumask_test_cpu(i, &cpumask))
-				continue;
-
-			if (sched_asym_prefer(i, cpu)) {
-				kick = true;
-				goto unlock;
-			}
+		nr_busy = atomic_read(&sds->nr_busy_cpus);
+		if (nr_busy > 1) {
+			flags = NOHZ_KICK_MASK;
+			goto unlock;
 		}
 	}
 unlock:
