@@ -214,6 +214,11 @@ out:
 struct cpu_topology cpu_topology[NR_CPUS];
 EXPORT_SYMBOL_GPL(cpu_topology);
 
+const struct cpumask *cpu_possible_coregroup_mask(int cpu)
+{
+	return &cpu_topology[cpu].core_possible_sibling;
+}
+
 const struct cpumask *cpu_coregroup_mask(int cpu)
 {
 	const cpumask_t *core_mask = &cpu_topology[cpu].core_sibling;
@@ -224,6 +229,24 @@ const struct cpumask *cpu_coregroup_mask(int cpu)
 	}
 
 	return core_mask;
+}
+
+static void update_possible_siblings_masks(unsigned int cpuid)
+{
+	struct cpu_topology *cpu_topo, *cpuid_topo = &cpu_topology[cpuid];
+	int cpu;
+
+	if (cpuid_topo->package_id == -1)
+		return;
+
+	for_each_possible_cpu(cpu) {
+		cpu_topo = &cpu_topology[cpu];
+
+		if (cpuid_topo->package_id != cpu_topo->package_id)
+			continue;
+		cpumask_set_cpu(cpuid, &cpu_topo->core_possible_sibling);
+		cpumask_set_cpu(cpu, &cpuid_topo->core_possible_sibling);
+	}
 }
 
 static void update_siblings_masks(unsigned int cpuid)
@@ -455,6 +478,6 @@ void __init init_cpu_topology(void)
 	} else {
 		set_sched_topology(arm64_topology);
 		for_each_possible_cpu(cpu)
-			update_siblings_masks(cpu);
+			update_possible_siblings_masks(cpu);
 	}
 }
