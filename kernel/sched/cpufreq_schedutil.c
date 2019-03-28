@@ -21,6 +21,8 @@
 
 #define SUGOV_KTHREAD_PRIORITY	50
 
+#define IOWAIT_BOOST_MIN	(SCHED_CAPACITY_SCALE / 8)
+
 struct sugov_tunables {
 	struct gov_attr_set attr_set;
 	unsigned int		up_rate_limit_us;
@@ -276,8 +278,8 @@ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
  *
  * The IO wait boost of a task is disabled after a tick since the last update
  * of a CPU. If a new IO wait boost is requested after more then a tick, then
- * we enable the boost starting from the minimum frequency, which improves
- * energy efficiency by ignoring sporadic wakeups from IO.
+ * we enable the boost starting from IOWAIT_BOOST_MIN, which improves energy
+ * efficiency by ignoring sporadic wakeups from IO.
  */
 static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 			       bool set_iowait_boost)
@@ -288,8 +290,7 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
 	if (delta_ns <= TICK_NSEC)
 		return false;
 
-	sg_cpu->iowait_boost = set_iowait_boost
-		? sg_cpu->sg_policy->policy->min : 0;
+	sg_cpu->iowait_boost = set_iowait_boost ? IOWAIT_BOOST_MIN : 0;
 	sg_cpu->iowait_boost_pending = set_iowait_boost;
 
 	return true;
@@ -303,8 +304,9 @@ static bool sugov_iowait_reset(struct sugov_cpu *sg_cpu, u64 time,
  *
  * Each time a task wakes up after an IO operation, the CPU utilization can be
  * boosted to a certain utilization which doubles at each "frequent and
- * successive" wakeup from IO, ranging from the utilization of the minimum
- * OPP to the utilization of the maximum OPP.
+ * successive" wakeup from IO, ranging from IOWAIT_BOOST_MIN to the utilization
+ * of the maximum OPP.
+ *
  * To keep doubling, an IO boost has to be requested at least once per tick,
  * otherwise we restart from the utilization of the minimum OPP.
  */
@@ -336,7 +338,7 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 	}
 
 	/* First wakeup after IO: start with minimum boost */
-	sg_cpu->iowait_boost = sg_cpu->sg_policy->policy->min;
+	sg_cpu->iowait_boost = IOWAIT_BOOST_MIN;
 }
 
 /**
@@ -383,7 +385,7 @@ static void sugov_iowait_apply(struct sugov_cpu *sg_cpu, u64 time,
 		 * reach the minimum.
 		 */
 		sg_cpu->iowait_boost >>= 1;
-		if (sg_cpu->iowait_boost < sg_cpu->sg_policy->policy->min) {
+		if (sg_cpu->iowait_boost < IOWAIT_BOOST_MIN) {
 			sg_cpu->iowait_boost = 0;
 			return;
 		}
