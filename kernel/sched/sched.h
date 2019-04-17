@@ -934,7 +934,6 @@ struct rq {
 	struct cpumask freq_domain_cpumask;
 	struct walt_sched_stats walt_stats;
 
-	int cstate, wakeup_latency, wakeup_energy;
 	u64 window_start;
 	u32	prev_window_size;
 	unsigned long walt_flags;
@@ -942,7 +941,6 @@ struct rq {
 	u64 cur_irqload;
 	u64 avg_irqload;
 	u64 irqload_ts;
-	unsigned int static_cpu_pwr_cost;
 	struct task_struct *ed_task;
 	u64 task_exec_scale;
 	u64 old_busy_time, old_busy_time_group;
