@@ -7552,7 +7552,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 		!cpu_isolated(prev_cpu) && cpu_online(prev_cpu) &&
 		idle_cpu(prev_cpu)) {
 
-		if (idle_get_state_idx(cpu_rq(prev_cpu)) <= 1) {
+		if (idle_get_state_idx(cpu_rq(prev_cpu)) <=
+			(is_min_capacity_cpu(prev_cpu) ? 1 : 0)) {
 			/*
 			 * Since target_cpu and backup_cpu are both -1s the
 			 * caller will choose prev_cpu and importantly skip
