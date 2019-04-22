@@ -250,7 +250,101 @@ config CPU_FREQ_GOV_INTERACTIVE
 
 	  If in doubt, say N.
 
-comment "CPU frequency scaling drivers"
+if CPU_FREQ_GOV_SCHEDUTIL
+
+config SCHEDUTIL_UP_RATE_LIMIT_LP
+	int "Default up rate-limit for schedutil on LITTLE CPUs"
+	default 80000
+	help
+	  This sets schedutil's default frequency up rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_DOWN_RATE_LIMIT_LP
+	int "Default down rate-limit for schedutil LITTLE CPUs"
+	default 300
+	help
+	  This sets schedutil's default frequency down rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_UP_RATE_LIMIT_PERF
+	int "Default up rate-limit for schedutil BIG CPUs"
+	default 10000
+	help
+	  This sets schedutil's default frequency up rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_DOWN_RATE_LIMIT_PERF
+	int "Default down rate-limit for schedutil BIG CPUs"
+	default 5000
+	help
+	  This sets schedutil's default frequency down rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_UP_RATE_LIMIT_PRIME
+	int "Default up rate-limit for schedutil PRIME CPUs"
+	default 10000
+	help
+	  This sets schedutil's default frequency up rate-limit in
+	  microseconds.
+
+config SCHEDUTIL_DOWN_RATE_LIMIT_PRIME
+	int "Default down rate-limit for schedutil PRIME CPUs"
+	default 5000
+	help
+	  This sets schedutil's default frequency down rate-limit in
+	  microseconds.
+endif
+
+config CPU_INPUT_BOOST
+	bool "CPU Input Boost"
+	help
+	  Boosts the CPU on touchscreen and touchpad input, and allows for
+	  boosting on other custom events, mainly which is intended to be for
+	  boosting when there is a new frame ready to be rendered to the
+	  display. The boost frequencies for this driver should be set so that
+	  frame drops are near-zero at the boosted frequencies and power
+	  consumption is minimized at said frequency combination.
+
+if CPU_INPUT_BOOST
+
+config INPUT_BOOST_DURATION_MS
+	int "Input boost duration"
+	default "100"
+	help
+	  Input boost duration in milliseconds.
+
+config WAKE_BOOST_DURATION_MS
+	int "Wake boost duration"
+	default "1000"
+	help
+	  Wake boost duration in milliseconds.
+
+config INPUT_BOOST_FREQ_LP
+	int "Low-power cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the low-power CPU cluster.
+
+config INPUT_BOOST_FREQ_PERF
+	int "Performance cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the performance CPU cluster.
+
+config MAX_BOOST_FREQ_LP
+	int "Low-power cluster max-boost freq"
+	default "0"
+	help
+	  Max-boost frequency for the low-power CPU cluster.
+
+config MAX_BOOST_FREQ_PERF
+	int "Performance cluster max-boost freq"
+	default "0"
+	help
+	  Max-boost frequency for the performance CPU cluster.
+
+endif
+
 
 config CPUFREQ_DT
 	tristate "Generic DT based cpufreq driver"
