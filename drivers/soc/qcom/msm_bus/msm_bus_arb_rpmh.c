@@ -1401,7 +1401,6 @@ static int update_client_paths(struct msm_bus_client *client, bool log_trns,
 					__func__, ret, pdata->active_only);
 			goto exit_update_client_paths;
 		}
-
 		if (dest == MSM_BUS_SLAVE_IPA_CORE && cur_idx <= 0 && idx > 0) {
 			struct device *dev;
 
