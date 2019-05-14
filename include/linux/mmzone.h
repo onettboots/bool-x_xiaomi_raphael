@@ -1518,6 +1518,7 @@ void sparse_init(void);
 #else
 #define sparse_init()	do {} while (0)
 #define sparse_index_init(_sec, _nid)  do {} while (0)
+#define pfn_present pfn_valid
 #endif /* CONFIG_SPARSEMEM */
 
 /*
