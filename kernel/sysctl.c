@@ -139,8 +139,8 @@ static int two_hundred = 200;
 extern int direct_vm_swappiness;
 #endif /* CONFIG_OPLUS_MM_HACKS */
 static int one_thousand = 1000;
-#ifdef CONFIG_SCHED_WALT
-static int two_million = 2000000;
+#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
+static int max_swappiness = 200;
 #endif
 #ifdef CONFIG_PRINTK
 static int ten_thousand = 10000;
@@ -453,16 +453,6 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one_thousand,
 	},
-	{
-		.procname	= "sched_little_cluster_coloc_fmin_khz",
-		.data		= &sysctl_sched_little_cluster_coloc_fmin_khz,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= sched_little_cluster_coloc_fmin_khz_handler,
-		.extra1		= &zero,
-		.extra2		= &two_million,
-	},
-
 	{
 		.procname       = "sched_asym_cap_sibling_freq_match_pct",
 		.data           = &sysctl_sched_asym_cap_sibling_freq_match_pct,
