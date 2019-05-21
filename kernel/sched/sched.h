@@ -2798,6 +2798,7 @@ struct related_thread_group {
 	struct sched_cluster *preferred_cluster;
 	struct rcu_head rcu;
 	u64 last_update;
+	u64 downmigrate_ts;
 };
 
 extern struct list_head cluster_head;
