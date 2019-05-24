@@ -739,8 +739,11 @@ __SYSCALL(__NR_pidfd_open, sys_pidfd_open)
 #define __NR_process_madvise 440
 __SYSCALL(__NR_process_madvise, sys_process_madvise)
 
+#define __NR_close_range 436
+__SYSCALL(__NR_close_range, sys_close_range)
+
 #undef __NR_syscalls
-#define __NR_syscalls 441
+#define __NR_syscalls 437
 
 /*
  * All syscalls below here should go away really,
