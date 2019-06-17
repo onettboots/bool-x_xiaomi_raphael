@@ -821,8 +821,7 @@ static int _set_pagetable_cpu(struct adreno_ringbuffer *rb,
 static int _set_pagetable_gpu(struct adreno_ringbuffer *rb,
 			struct kgsl_pagetable *new_pt)
 {
-	static unsigned int link[PAGE_SIZE / sizeof(unsigned int)]
-		____cacheline_aligned_in_smp;
+	static unsigned int link[PAGE_SIZE / sizeof(unsigned int)];
 	struct adreno_device *adreno_dev = ADRENO_RB_DEVICE(rb);
 	unsigned int *cmds = link;
 	int result;
