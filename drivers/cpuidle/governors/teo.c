@@ -143,7 +143,7 @@ struct teo_bin {
  * @time_span_ns: Time between idle state selection and post-wakeup update.
  * @sleep_length_ns: Time till the closest timer event (at the selection time).
  * @state_bins: Idle state data bins for this CPU.
- * @total: Grand total of the "intercepts" and "hits" metrics for all bins.
+ * @total: Grand total of the "intercepts" and "hits" mertics for all bins.
  * @next_recent_idx: Index of the next @recent_idx entry to update.
  * @recent_idx: Indices of bins corresponding to recent "intercepts".
  * @tick_hits: Number of "hits" after TICK_NSEC.
@@ -180,7 +180,9 @@ static void teo_update(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 		 */
 		measured_us = UINT_MAX;
 	} else {
-		unsigned int lat = drv->states[dev->last_state_idx].exit_latency;
+		unsigned int lat;
+
+		lat = drv->states[dev->last_state_idx].exit_latency;
 
 		/*
 		 * The computations below are to determine whether or not the
