@@ -2967,7 +2967,7 @@ again:
 			path = path_onstack;
 			memset(path, 0, sizeof(*path) * (depth + 1));
 		} else {
-			path = kzalloc(sizeof(*path) * (depth + 1), GFP_NOFS);
+			path = kcalloc(depth + 1, sizeof(*path), GFP_NOFS);
 			if (path == NULL) {
 				ext4_journal_stop(handle);
 				return -ENOMEM;
