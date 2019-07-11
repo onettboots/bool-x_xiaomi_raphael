@@ -539,6 +539,7 @@ static void __init mm_init(void)
 	pti_init();
 }
 
+void __init init_dma_buf_kmem_pool(void);
 asmlinkage __visible void __init start_kernel(void)
 {
 	char *command_line;
@@ -727,6 +728,7 @@ asmlinkage __visible void __init start_kernel(void)
 	cgroup_init();
 	taskstats_init_early();
 	delayacct_init();
+	init_dma_buf_kmem_pool();
 
 	check_bugs();
 
