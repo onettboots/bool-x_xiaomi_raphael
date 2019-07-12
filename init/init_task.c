@@ -36,4 +36,7 @@ union thread_union init_thread_union __init_task_data = {
 #ifndef CONFIG_THREAD_INFO_IN_TASK
 	INIT_THREAD_INFO(init_task)
 #endif
+#ifdef CONFIG_SCHED_TUNE
+	.stune_idx	= 0,
+#endif
 };
