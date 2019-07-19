@@ -214,11 +214,6 @@ out:
 struct cpu_topology cpu_topology[NR_CPUS];
 EXPORT_SYMBOL_GPL(cpu_topology);
 
-const struct cpumask *cpu_possible_coregroup_mask(int cpu)
-{
-	return &cpu_topology[cpu].core_possible_sibling;
-}
-
 const struct cpumask *cpu_coregroup_mask(int cpu)
 {
 	const cpumask_t *core_mask = &cpu_topology[cpu].core_sibling;
