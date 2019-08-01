@@ -1528,7 +1528,11 @@ TRACE_EVENT(sched_task_util,
 		__entry->is_rtg                 = is_rtg;
 		__entry->rtg_skip_min		= rtg_skip_min;
 		__entry->start_cpu		= start_cpu;
-		__entry->unfilter = p->unfilter;
+#ifdef CONFIG_SCHED_WALT
+		__entry->unfilter		= p->unfilter;
+#else
+		__entry->unfilter		= 0;
+#endif
 	),
 
 	TP_printk("pid=%d comm=%s util=%lu prev_cpu=%d next_cpu=%d backup_cpu=%d target_cpu=%d sync=%d need_idle=%d fastpath=%d placement_boost=%d latency=%llu stune_boosted=%d is_rtg=%d rtg_skip_min=%d start_cpu=%d unfilter=%d",
