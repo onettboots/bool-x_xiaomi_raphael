@@ -7421,6 +7421,7 @@ struct find_best_target_env {
 	bool is_rtg;
 	int placement_boost;
 	bool need_idle;
+	bool boosted;
 	int fastpath;
 	int skip_cpu;
 	int start_cpu;
@@ -8287,6 +8288,7 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		fbt_env.skip_cpu = is_many_wakeup(sibling_count_hint) ?
 				   cpu : -1;
 		fbt_env.start_cpu = start_cpu;
+		fbt_env.boosted = boosted;
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
