@@ -140,6 +140,29 @@ static bool sugov_up_down_rate_limit(struct sugov_policy *sg_policy, u64 time,
 	return false;
 }
 
+static void sugov_update_commit(struct sugov_policy *sg_policy, u64 time,
+				unsigned int next_freq)
+{
+	struct cpufreq_policy *policy = sg_policy->policy;
+	if (sg_policy->next_freq == next_freq)
+		return;
+	if (sugov_up_down_rate_limit(sg_policy, time, next_freq))
+		return;
+	sg_policy->next_freq = next_freq;
+	sg_policy->last_freq_update_time = time;
+	if (policy->fast_switch_enabled) {
+		next_freq = cpufreq_driver_fast_switch(policy, next_freq);
+		if (!next_freq)
+			return;
+		policy->cur = next_freq;
+		trace_cpu_frequency(next_freq, smp_processor_id());
+	} else if (!sg_policy->work_in_progress) {
+		sg_policy->work_in_progress = true;
+		irq_work_queue(&sg_policy->irq_work);
+		sched_irq_work_queue(&sg_policy->irq_work);
+	}
+}
+
 static inline bool use_pelt(void)
 {
 #ifdef CONFIG_SCHED_WALT
@@ -385,6 +408,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sugov_deferred_update(sg_policy, time, next_f);
 		raw_spin_unlock(&sg_policy->update_lock);
 	}
+	sugov_update_commit(sg_policy, time, next_f);
 }
 
 static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
@@ -468,7 +492,7 @@ static void sugov_update_shared(struct update_util_data *hook, u64 time,
 		if (sg_policy->policy->fast_switch_enabled)
 			sugov_fast_switch(sg_policy, time, next_f);
 		else
-			sugov_deferred_update(sg_policy, time, next_f);
+			sugov_update_commit(sg_policy, time, next_f);
 	}
 
 	raw_spin_unlock(&sg_policy->update_lock);
