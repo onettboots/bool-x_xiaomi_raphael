@@ -7425,6 +7425,7 @@ struct find_best_target_env {
 	int fastpath;
 	int skip_cpu;
 	int start_cpu;
+	bool strict_max;
 };
 
 static inline void adjust_cpus_for_packing(struct task_struct *p,
@@ -7517,7 +7518,8 @@ static int get_start_cpu(struct task_struct *p)
 	int start_cpu = rd->min_cap_orig_cpu;
 	int task_boost = per_task_boost(p);
 	bool boosted = schedtune_task_boost(p) > 0 ||
-			task_boost_policy(p) == SCHED_BOOST_ON_BIG;
+			task_boost_policy(p) == SCHED_BOOST_ON_BIG ||
+			task_boost == TASK_BOOST_ON_MID;
 	bool task_skip_min = task_skip_min_cpu(p);
 
 	/*
@@ -7525,12 +7527,12 @@ static int get_start_cpu(struct task_struct *p)
 	 * or just mid will be -1, there never be any other combinations of -1s
 	 * beyond these
 	 */
-	if (task_skip_min || boosted || task_boost == 1) {
+	if (task_skip_min || boosted) {
 		start_cpu = rd->mid_cap_orig_cpu == -1 ?
 			rd->max_cap_orig_cpu : rd->mid_cap_orig_cpu;
 	}
 
-	if (task_boost == 2) {
+	if (task_boost > TASK_BOOST_ON_MID) {
 		start_cpu = rd->max_cap_orig_cpu;
 		return start_cpu;
 	}
@@ -7595,6 +7597,9 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	 */
 	if (prefer_idle && boosted)
 		target_capacity = 0;
+
+	if (fbt_env->strict_max)
+		most_spare_wake_cap = LONG_MIN;
 
 	/* Find start CPU based on boost value */
 	cpu = fbt_env->start_cpu;
@@ -7926,7 +7931,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 		 * accommodated in the higher capacity CPUs.
 		 */
 		if ((prefer_idle && best_idle_cpu != -1) ||
-		    (boosted && (best_idle_cpu != -1 || target_cpu != -1))) {
+		    (boosted && (best_idle_cpu != -1 || target_cpu != -1 ||
+		     (fbt_env->strict_max && most_spare_cap_cpu != -1)))) {
 			if (boosted) {
 				if (!next_group_higher_cap)
 					break;
@@ -8195,11 +8201,12 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 	int placement_boost = task_boost_policy(p);
 	u64 start_t = 0;
 	int next_cpu = -1, backup_cpu = -1;
+	int task_boost = per_task_boost(p);
 #ifdef CONFIG_SCHED_TUNE
 	bool prefer_high_cap = schedtune_prefer_high_cap(p);
-	int boosted = (schedtune_task_boost(p) > 0 || per_task_boost(p) > 0);
+	int boosted = (schedtune_task_boost(p) > 0 || task_boost > 0);
 #elif  CONFIG_UCLAMP_TASK
-	int boosted = (uclamp_boosted(p) > 0 || per_task_boost(p) > 0);
+	int boosted = (uclamp_boosted(p) > 0 || task_boost > 0);
 #endif
     int start_cpu = get_start_cpu(p);
 
@@ -8290,6 +8297,8 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 				   cpu : -1;
 		fbt_env.start_cpu = start_cpu;
 		fbt_env.boosted = boosted;
+		fbt_env.strict_max = is_rtg &&
+			(task_boost == TASK_BOOST_STRICT_MAX);
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
@@ -9205,6 +9214,16 @@ static inline int migrate_degrades_locality(struct task_struct *p,
 }
 #endif
 
+static inline bool can_migrate_boosted_task(struct task_struct *p,
+			int src_cpu, int dst_cpu)
+{
+	if (per_task_boost(p) == TASK_BOOST_STRICT_MAX &&
+		task_in_related_thread_group(p) &&
+		(capacity_orig_of(dst_cpu) < capacity_orig_of(src_cpu)))
+		return false;
+	return true;
+}
+
 /*
  * can_migrate_task - may task p from runqueue rq be migrated to this_cpu?
  */
@@ -9223,6 +9242,12 @@ int can_migrate_task(struct task_struct *p, struct lb_env *env)
 	 * 4) are cache-hot on their current CPU.
 	 */
 	if (throttled_lb_pair(task_group(p), env->src_cpu, env->dst_cpu))
+		return 0;
+
+	/*
+	 * don't allow pull boost task to smaller cores.
+	 */
+	if (!can_migrate_boosted_task(p, env->src_cpu, env->dst_cpu))
 		return 0;
 
 	if (!cpumask_test_cpu(env->dst_cpu, &p->cpus_allowed)) {
@@ -11273,7 +11298,10 @@ no_move:
 			 * if the curr task on busiest cpu can't be
 			 * moved to this_cpu
 			 */
-			if (!cpumask_test_cpu(this_cpu, &busiest->curr->cpus_allowed)) {
+			if (!cpumask_test_cpu(this_cpu,
+						&busiest->curr->cpus_allowed)
+				|| !can_migrate_boosted_task(busiest->curr,
+						cpu_of(busiest), this_cpu)) {
 				raw_spin_unlock_irqrestore(&busiest->lock,
 							    flags);
 				env.flags |= LBF_ALL_PINNED;
