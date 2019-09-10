@@ -2706,6 +2706,7 @@ struct related_thread_group {
 	struct rcu_head rcu;
 	u64 last_update;
 	u64 downmigrate_ts;
+	u64 start_ts;
 };
 
 extern struct list_head cluster_head;
