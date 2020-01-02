@@ -498,6 +498,7 @@ static inline void tracer_hardirqs_on(void)
 	if (delta > sysctl_irqsoff_tracing_threshold_ns)
 		trace_irqs_disable(delta, is->caddr[0], is->caddr[1],
 						is->caddr[2], is->caddr[3]);
+	is->ts = 0;
 #endif /* CONFIG_PREEMPTIRQ_EVENTS */
 
 	if (!preempt_trace() && irq_trace())
