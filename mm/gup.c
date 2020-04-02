@@ -893,9 +893,11 @@ retry:
 
 	if (ret & VM_FAULT_RETRY) {
 		down_read(&mm->mmap_sem);
-		*unlocked = true;
-		fault_flags |= FAULT_FLAG_TRIED;
-		goto retry;
+		if (!(fault_flags & FAULT_FLAG_TRIED)) {
+			*unlocked = true;
+			fault_flags |= FAULT_FLAG_TRIED;
+			goto retry;
+		}
 	}
 
 	if (tsk) {
@@ -978,11 +980,8 @@ retry:
 		 * start trying again otherwise it can loop forever.
 		 */
 
-		if (fatal_signal_pending(current)) {
-			if (!pages_done)
-				pages_done = -EINTR;
+		if (fatal_signal_pending(current))
 			break;
-		}
 
 		*locked = 1;
 		down_read(&mm->mmap_sem);
