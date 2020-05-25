@@ -123,7 +123,7 @@ static void _record_pwrevent(struct kgsl_device *device,
 	}
 }
 
-#ifdef CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON
+#if IS_ENABLED(CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON)
 #include <soc/qcom/devfreq_devbw.h>
 
 /**
@@ -205,7 +205,7 @@ static unsigned int _adjust_pwrlevel(struct kgsl_pwrctrl *pwr, int level,
 	return level;
 }
 
-#ifdef CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON
+#if IS_ENABLED(CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON)
 static void kgsl_pwrctrl_vbif_update(unsigned long ab)
 {
 	/* ask a governor to vote on behalf of us */
@@ -1696,7 +1696,7 @@ static void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
 	}
 }
 
-#ifdef CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON
+#if IS_ENABLED(CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON)
 static void kgsl_pwrctrl_suspend_devbw(struct kgsl_pwrctrl *pwr)
 {
 	if (pwr->devbw)
@@ -1891,7 +1891,7 @@ static void kgsl_thermal_timer(unsigned long data)
 	kgsl_schedule_work(&device->pwrctrl.thermal_cycle_ws);
 }
 
-#ifdef CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON
+#if IS_ENABLED(CONFIG_DEVFREQ_GOV_QCOM_GPUBW_MON)
 static int kgsl_pwrctrl_vbif_init(void)
 {
 	devfreq_vbif_register_callback(kgsl_get_bw);
