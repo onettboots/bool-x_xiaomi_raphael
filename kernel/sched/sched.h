@@ -881,6 +881,9 @@ struct rq {
 	struct cfs_rq cfs;
 	struct rt_rq rt;
 	struct dl_rq dl;
+#ifdef CONFIG_SMP
+	unsigned int		ttwu_pending;
+#endif
 
 #ifdef CONFIG_UCLAMP_TASK
 	/* Utilization clamp values based on CPU's RUNNABLE tasks */
