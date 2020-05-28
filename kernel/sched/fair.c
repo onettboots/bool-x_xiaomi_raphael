@@ -7550,7 +7550,6 @@ enum fastpaths {
 	NONE = 0,
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
-	MANY_WAKEUP,
 };
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
@@ -8204,8 +8203,14 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 #elif  CONFIG_UCLAMP_TASK
 	int boosted = (uclamp_boosted(p) > 0 || task_boost > 0);
 #endif
-    int start_cpu = get_start_cpu(p);
+	int start_cpu;
 
+	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
+			cpumask_test_cpu(prev_cpu, &p->cpus_allowed))
+		return prev_cpu;
+
+	start_cpu = get_start_cpu(p);
+	
 	if (start_cpu < 0)
 		goto eas_not_ready;
 
@@ -8227,12 +8232,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		goto out;
 	}
 
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-				bias_to_this_cpu(p, prev_cpu, start_cpu)) {
-		target_cpu = prev_cpu;
-		fbt_env.fastpath = MANY_WAKEUP;
-		goto out;
-	}
 
 	/* prepopulate energy diff environment */
 	eenv = get_eenv(p, prev_cpu);
