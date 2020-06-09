@@ -2122,181 +2122,6 @@ exit:
 
 }
 
-static ssize_t goodix_lockdown_info_read(struct file *file, char __user *buf,
-				size_t count, loff_t *pos)
-{
-	int cnt = 0, ret = 0;
-	#define TP_INFO_MAX_LENGTH 50
-	char tmp[TP_INFO_MAX_LENGTH];
-
-	if (*pos != 0 || !goodix_core_data)
-		return 0;
-
-	cnt = snprintf(tmp, TP_INFO_MAX_LENGTH,
-			"0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x\n",
-			goodix_core_data->lockdown_info[0], goodix_core_data->lockdown_info[1],
-			goodix_core_data->lockdown_info[2], goodix_core_data->lockdown_info[3],
-			goodix_core_data->lockdown_info[4], goodix_core_data->lockdown_info[5],
-			goodix_core_data->lockdown_info[6], goodix_core_data->lockdown_info[7]);
-	ret = copy_to_user(buf, tmp, cnt);
-	*pos += cnt;
-	if (ret != 0)
-		return 0;
-	else
-		return cnt;
-}
-
-static const struct file_operations goodix_lockdown_info_ops = {
-	.read = goodix_lockdown_info_read,
-};
-
-static ssize_t goodix_panel_color_show(struct device *dev,
-					struct device_attribute *attr, char *buf)
-{
-	if (!goodix_core_data)
-		return 0;
-
-	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[2]);
-}
-
-static ssize_t goodix_panel_vendor_show(struct device *dev,
-					struct device_attribute *attr, char *buf)
-{
-	if (!goodix_core_data)
-		return 0;
-
-	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[6]);
-}
-
-static ssize_t goodix_panel_display_show(struct device *dev,
-					struct device_attribute *attr, char *buf)
-{
-	if (!goodix_core_data)
-		return 0;
-
-	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[1]);
-}
-
-static ssize_t goodix_lockdown_info_show(struct device *dev,
-				      struct device_attribute *attr, char *buf)
-{
-	if (!goodix_core_data)
-		return 0;
-
-	return snprintf(buf, PAGE_SIZE,
-			"0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x\n",
-			goodix_core_data->lockdown_info[0], goodix_core_data->lockdown_info[1],
-			goodix_core_data->lockdown_info[2], goodix_core_data->lockdown_info[3],
-			goodix_core_data->lockdown_info[4], goodix_core_data->lockdown_info[5],
-			goodix_core_data->lockdown_info[6], goodix_core_data->lockdown_info[7]);
-}
-
-static DEVICE_ATTR(lockdown_info, (S_IRUGO), goodix_lockdown_info_show, NULL);
-static DEVICE_ATTR(panel_vendor, (S_IRUGO), goodix_panel_vendor_show, NULL);
-static DEVICE_ATTR(panel_color, (S_IRUGO), goodix_panel_color_show, NULL);
-static DEVICE_ATTR(panel_display, (S_IRUGO), goodix_panel_display_show, NULL);
-
-static struct attribute *goodix_attr_group[] = {
-	&dev_attr_panel_vendor.attr,
-	&dev_attr_panel_color.attr,
-	&dev_attr_panel_display.attr,
-	&dev_attr_lockdown_info.attr,
-	NULL,
-};
-
-static int gtp_i2c_test(void)
-{
-	int ret = 0;
-	u8 read_val = 0;
-	struct goodix_ts_device *ts_device;
-	ts_device = goodix_core_data->ts_dev;
-
-	ret = ts_device->hw_ops->read_trans(ts_device, 0x3100,
-			&read_val, 1);
-	if (!ret) {
-		ts_info("i2c test SUCCESS");
-	} else {
-		ts_err("i2c test FAILED");
-		return GTP_RESULT_FAIL;
-	}
-
-	return GTP_RESULT_PASS;
-}
-
-static ssize_t gtp_selftest_read(struct file *file, char __user * buf,
-				size_t count, loff_t * pos)
-{
-	char tmp[5] = { 0 };
-	int cnt;
-
-	if (*pos != 0 || !goodix_core_data)
-		return 0;
-	cnt =
-		snprintf(tmp, sizeof(goodix_core_data->result_type), "%d\n",
-			goodix_core_data->result_type);
-	if (copy_to_user(buf, tmp, strlen(tmp))) {
-		return -EFAULT;
-	}
-	*pos += cnt;
-	return cnt;
-}
-
-static int gtp_short_open_test(void)
-{
-	int ret = 0;
-
-	ret = goodix_tools_register();
-
-	if (ret) {
-		ts_err("tp_test prepare goodix_tools_register failed");
-		return GTP_RESULT_INVALID;
-	}
-	ts_info("test start!");
-	ret = test_process((void *)(&goodix_core_data->pdev->dev));
-
-	if (ret == 0) {
-		ts_err("test PASS!");
-		return GTP_RESULT_PASS;
-	} else {
-		ts_err("test FAILED. result:%x", ret);
-		return GTP_RESULT_FAIL;
-	}
-	goodix_tools_unregister();
-
-	ts_info("test finish!");
-	return GTP_RESULT_FAIL;
-}
-static ssize_t gtp_selftest_write(struct file *file, const char __user * buf,
-				size_t count, loff_t * pos)
-{
-	int retval = 0;
-	char tmp[6];
-
-	if (copy_from_user(tmp, buf, count)) {
-		retval = -EFAULT;
-		goto out;
-	}
-	if (!goodix_core_data)
-		return GTP_RESULT_INVALID;
-
-	if (!strncmp("short", tmp, 5) || !strncmp("open", tmp, 4)) {
-		retval = gtp_short_open_test();
-	} else if (!strncmp("i2c", tmp, 3))
-		retval = gtp_i2c_test();
-
-	goodix_core_data->result_type = retval;
-out:
-	if (retval >= 0)
-		retval = count;
-
-	return retval;
-}
-
-static const struct file_operations gtp_selftest_ops = {
-	.read = gtp_selftest_read,
-	.write = gtp_selftest_write,
-};
-
 static void gtp_power_supply_work(struct work_struct *work)
 {
 	struct goodix_ts_core *core_data =
@@ -2438,9 +2263,6 @@ static int goodix_ts_probe(struct platform_device *pdev)
 		goto out;
 	}
 
-	core_data->tp_lockdown_info_proc =
-	    proc_create("tp_lockdown_info", 0664, NULL, &goodix_lockdown_info_ops);
-
 	/*unified protocl
 	 * start a thread to parse cfg_bin and init IC*/
 	r = goodix_start_cfg_bin(core_data);
@@ -2465,13 +2287,6 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	core_data->bl_notifier.notifier_call = goodix_bl_state_chg_callback;
 	if (backlight_register_notifier(&core_data->bl_notifier) < 0) {
 		ts_err("ERROR:register bl_notifier failed\n");
-		goto out;
-	}
-	core_data->attrs.attrs = goodix_attr_group;
-	r = sysfs_create_group(&client->dev.kobj, &core_data->attrs);
-	if (r) {
-		ts_err("ERROR: Cannot create sysfs structure!\n");
-		r = -ENODEV;
 		goto out;
 	}
 
