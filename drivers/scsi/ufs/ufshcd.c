@@ -2246,7 +2246,7 @@ start:
 		trace_ufshcd_clk_gating(dev_name(hba->dev),
 					hba->clk_gating.state);
 		if (queue_work(hba->clk_gating.clk_gating_workq,
-			       &hba->clk_gating.ungate_work))
+				&hba->clk_gating.ungate_work))
 			__ufshcd_scsi_block_requests(hba);
 		/*
 		 * fall through to check if we should wait for this
