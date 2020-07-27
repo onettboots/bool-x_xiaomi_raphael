@@ -11524,6 +11524,21 @@ static inline bool min_cap_cluster_has_misfit_task(void)
 }
 #endif
 
+static bool silver_has_big_tasks(void)
+{
+	int cpu;
+
+	for_each_possible_cpu(cpu) {
+		if (!is_min_capacity_cpu(cpu))
+			break;
+
+		if (walt_big_tasks(cpu))
+			return true;
+	}
+
+	return false;
+}
+
 /*
  * idle_balance is called by schedule() if this_cpu is about to become
  * idle. Attempts to pull tasks from other CPUs.
@@ -11537,6 +11552,9 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 	u64 curr_cost = 0;
 	u64 avg_idle = this_rq->avg_idle;
 	bool prefer_spread = prefer_spread_on_idle(this_cpu);
+	bool force_lb = (!is_min_capacity_cpu(this_cpu) &&
+				silver_has_big_tasks() &&
+				(atomic_read(&this_rq->nr_iowait) == 0));
 
 	if (cpu_isolated(this_cpu))
 		return 0;
@@ -11553,7 +11571,7 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 	if (!cpu_active(this_cpu))
 		return 0;
 
-    if (prefer_spread)
+    if (force_lb || prefer_spread)
 		avg_idle = ULLONG_MAX;
 
 	/*
@@ -11564,7 +11582,7 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 	 */
 	rq_unpin_lock(this_rq, rf);
 
-	if ((avg_idle < sysctl_sched_migration_cost ||
+	if (!(min_cap_cluster_has_misfit_task() && force_lb) && (avg_idle < sysctl_sched_migration_cost ||
 	    !READ_ONCE(this_rq->rd->overload))) {
 		rcu_read_lock();
 		sd = rcu_dereference_check_sched_domain(this_rq->sd);
@@ -11590,12 +11608,12 @@ static int idle_balance(struct rq *this_rq, struct rq_flags *rf)
 			continue;
 		}
 
-		if (avg_idle < curr_cost + sd->max_newidle_lb_cost) {
+		if (!(min_cap_cluster_has_misfit_task() && force_lb) && avg_idle < curr_cost + sd->max_newidle_lb_cost) {
 			update_next_balance(sd, &next_balance);
 			break;
 		}
 
-		if (prefer_spread &&
+		if (prefer_spread && !force_lb &&
 			(sd->flags & SD_ASYM_CPUCAPACITY) &&
 			!is_asym_cap_cpu(this_cpu))
 			avg_idle = this_rq->avg_idle;
