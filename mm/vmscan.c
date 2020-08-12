@@ -2230,7 +2230,7 @@ static bool inactive_list_is_low(struct lruvec *lruvec, bool file,
 		if (file && gb)
 			inactive_ratio = min(2UL, int_sqrt(10 * gb));
 #else
-		if (gb)
+		if (gb && is_file_lru(inactive_lru))
 			inactive_ratio = int_sqrt(10 * gb);
 #endif /* CONFIG_OPLUS_MM_HACKS */
 		else
