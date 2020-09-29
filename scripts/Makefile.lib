@@ -384,7 +384,7 @@ cmd_lzo = (cat $(filter-out FORCE,$^) | \
 
 quiet_cmd_lz4 = LZ4     $@
 cmd_lz4 = (cat $(filter-out FORCE,$^) | \
-	lz4 -l -12 --favor-decSpeed stdin stdout || \
+	lz4c -l -c1 stdin stdout || \
 	(rm -f $@ ; false)
 
 # U-Boot mkimage
