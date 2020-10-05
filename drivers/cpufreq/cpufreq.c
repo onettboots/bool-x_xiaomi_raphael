@@ -1905,7 +1905,8 @@ EXPORT_SYMBOL(cpufreq_unregister_notifier);
 unsigned int cpufreq_driver_fast_switch(struct cpufreq_policy *policy,
 					unsigned int target_freq)
 {
-    unsigned int freq;
+	unsigned int freq;
+	int cpu;
 
 	target_freq = clamp_val(target_freq, policy->min, policy->max);
 	freq = cpufreq_driver->fast_switch(policy, target_freq);
@@ -1913,11 +1914,17 @@ unsigned int cpufreq_driver_fast_switch(struct cpufreq_policy *policy,
 	if (!freq)
 		return 0;
 
+	policy->cur = freq;
 	arch_set_freq_scale(policy->related_cpus, freq,
 			    policy->cpuinfo.max_freq);
 
 	cpufreq_times_record_transition(policy, freq);
 	cpufreq_stats_record_transition(policy, freq);
+
+	if (trace_cpu_frequency_enabled()) {
+		for_each_cpu(cpu, policy->cpus)
+			trace_cpu_frequency(freq, cpu);
+	}
 
 	return freq;
 }
