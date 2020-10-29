@@ -102,12 +102,9 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 
 static inline bool use_pelt(void)
 {
-#ifdef CONFIG_SCHED_WALT
-	return (!sysctl_sched_use_walt_cpu_util || walt_disabled);
-#else
-	return true;
-#endif
-}
+	if (sg_policy->next_freq == next_freq &&
+	    !cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS))
+		return false;
 
 	sg_policy->next_freq = next_freq;
 	sg_policy->last_freq_update_time = time;
@@ -174,7 +171,8 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 
 	freq = (freq + (freq >> 2)) * util / max;
 
-	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update)
+	if (freq == sg_policy->cached_raw_freq && !sg_policy->need_freq_update &&
+	    !cpufreq_driver_test_flags(CPUFREQ_NEED_UPDATE_LIMITS))
 		return sg_policy->next_freq;
 
 	sg_policy->need_freq_update = false;
