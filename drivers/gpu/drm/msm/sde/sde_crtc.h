@@ -228,6 +228,7 @@ struct sde_crtc_fps_info {
  * @rp_lock       : serialization lock for resource pool
  * @rp_head       : list of active resource pool
  * @plane_mask_old: keeps track of the planes used in the previous commit
+ * @hist_irq_idx    : hist interrupt irq idx
  */
 struct sde_crtc {
 	struct drm_crtc base;
@@ -307,6 +308,8 @@ struct sde_crtc {
 
 	/* blob for histogram data */
 	struct drm_property_blob *hist_blob;
+
+	int hist_irq_idx;
 };
 
 #define to_sde_crtc(x) container_of(x, struct sde_crtc, base)
