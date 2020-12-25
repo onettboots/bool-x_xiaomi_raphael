@@ -1794,7 +1794,7 @@ thermal_board_sensor_temp_store(struct device *dev,
 static DEVICE_ATTR(board_sensor_temp, 0664,
 		thermal_board_sensor_temp_show, thermal_board_sensor_temp_store);
 
-static int create_thermal_message_node(void)
+static noinline int create_thermal_message_node(void)
 {
 	int ret = 0;
 
