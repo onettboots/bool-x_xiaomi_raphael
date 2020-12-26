@@ -998,21 +998,7 @@ static int parse_options(struct super_block *sb, char *options, bool is_remount)
 			kfree(name);
 			break;
 		case Opt_fsync:
-			name = match_strdup(&args[0]);
-			if (!name)
-				return -ENOMEM;
-			if (!strcmp(name, "posix")) {
-				F2FS_OPTION(sbi).fsync_mode = FSYNC_MODE_POSIX;
-			} else if (!strcmp(name, "strict")) {
-				F2FS_OPTION(sbi).fsync_mode = FSYNC_MODE_STRICT;
-			} else if (!strcmp(name, "nobarrier")) {
-				F2FS_OPTION(sbi).fsync_mode =
-							FSYNC_MODE_NOBARRIER;
-			} else {
-				kfree(name);
-				return -EINVAL;
-			}
-			kfree(name);
+			f2fs_info(sbi, "changing fsync mode not supported");
 			break;
 		case Opt_test_dummy_encryption:
 			ret = f2fs_set_test_dummy_encryption(sb, p, &args[0],
@@ -2059,6 +2045,7 @@ static void default_options(struct f2fs_sb_info *sbi)
 #ifdef CONFIG_FS_ENCRYPTION
 	F2FS_OPTION(sbi).inlinecrypt = false;
 #endif
+	F2FS_OPTION(sbi).fsync_mode = FSYNC_MODE_STRICT;
 	F2FS_OPTION(sbi).s_resuid = make_kuid(&init_user_ns, F2FS_DEF_RESUID);
 	F2FS_OPTION(sbi).s_resgid = make_kgid(&init_user_ns, F2FS_DEF_RESGID);
 	F2FS_OPTION(sbi).compress_algorithm = COMPRESS_LZ4;
