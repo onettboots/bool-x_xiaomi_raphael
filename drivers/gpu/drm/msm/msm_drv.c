@@ -498,6 +498,166 @@ static int msm_power_enable_wrapper(void *handle, void *client, bool enable)
 	return sde_power_resource_enable(handle, client, enable);
 }
 
+static void msm_drm_pm_unreq(struct work_struct *work)
+{
+	struct msm_drm_private *priv = container_of(to_delayed_work(work),
+						    typeof(*priv),
+						    pm_unreq_dwork);
+
+pm_qos_update_request(&priv->pm_irq_req, PM_QOS_DEFAULT_VALUE);
+	atomic_set_release(&priv->pm_req_set, 0);
+}
+
+static ssize_t idle_encoder_mask_store(struct device *device,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct drm_device *ddev = dev_get_drvdata(device);
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+	u32 encoder_mask = 0;
+	int rc;
+	unsigned long flags;
+
+	rc = kstrtouint(buf, 0, &encoder_mask);
+	if (rc)
+		return rc;
+
+	spin_lock_irqsave(&idle->lock, flags);
+	idle->encoder_mask = encoder_mask;
+	idle->active_mask &= encoder_mask;
+	spin_unlock_irqrestore(&idle->lock, flags);
+
+	return count;
+}
+
+static ssize_t idle_encoder_mask_show(struct device *device,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct drm_device *ddev = dev_get_drvdata(device);
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+
+	return snprintf(buf, PAGE_SIZE, "0x%x\n", idle->encoder_mask);
+}
+
+static ssize_t idle_timeout_ms_store(struct device *device,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct drm_device *ddev = dev_get_drvdata(device);
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+	u32 timeout_ms = 0;
+	int rc;
+	unsigned long flags;
+
+	rc = kstrtouint(buf, 10, &timeout_ms);
+	if (rc)
+		return rc;
+
+	spin_lock_irqsave(&idle->lock, flags);
+	idle->timeout_ms = timeout_ms;
+	spin_unlock_irqrestore(&idle->lock, flags);
+
+	return count;
+}
+
+static ssize_t idle_timeout_ms_show(struct device *device,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct drm_device *ddev = dev_get_drvdata(device);
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", idle->timeout_ms);
+}
+
+static ssize_t idle_state_show(struct device *device,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct drm_device *ddev = dev_get_drvdata(device);
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+	const char *state;
+	unsigned long flags;
+
+	spin_lock_irqsave(&idle->lock, flags);
+	if (idle->active_mask) {
+		state = "active";
+		spin_unlock_irqrestore(&idle->lock, flags);
+		return scnprintf(buf, PAGE_SIZE, "%s (0x%x)\n",
+				 state, idle->active_mask);
+	} else if (delayed_work_pending(&idle->work))
+		state = "pending";
+	else
+		state = "idle";
+	spin_unlock_irqrestore(&idle->lock, flags);
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", state);
+}
+
+static DEVICE_ATTR_RW(idle_encoder_mask);
+static DEVICE_ATTR_RW(idle_timeout_ms);
+static DEVICE_ATTR_RO(idle_state);
+
+static const struct attribute *msm_idle_attrs[] = {
+	&dev_attr_idle_encoder_mask.attr,
+	&dev_attr_idle_timeout_ms.attr,
+	&dev_attr_idle_state.attr,
+	NULL
+};
+
+static void msm_idle_work(struct work_struct *work)
+{
+	struct delayed_work *dw = to_delayed_work(work);
+	struct msm_idle *idle = container_of(dw, struct msm_idle, work);
+	struct msm_drm_private *priv = container_of(idle,
+					struct msm_drm_private, idle);
+
+	if (!idle->active_mask)
+		sysfs_notify(&priv->dev->dev->kobj, NULL, "idle_state");
+}
+
+void msm_idle_set_state(struct drm_encoder *encoder, bool active)
+{
+	struct drm_device *ddev = encoder->dev;
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+	unsigned int mask = 1 << drm_encoder_index(encoder);
+	unsigned long flags;
+
+	spin_lock_irqsave(&idle->lock, flags);
+	if (mask & idle->encoder_mask) {
+		if (active)
+			idle->active_mask |= mask;
+		else
+			idle->active_mask &= ~mask;
+
+		if (idle->timeout_ms && !idle->active_mask)
+			mod_delayed_work(system_wq, &idle->work,
+					 msecs_to_jiffies(idle->timeout_ms));
+		else
+			cancel_delayed_work(&idle->work);
+	}
+	spin_unlock_irqrestore(&idle->lock, flags);
+}
+
+static void msm_idle_init(struct drm_device *ddev)
+{
+	struct msm_drm_private *priv = ddev->dev_private;
+	struct msm_idle *idle = &priv->idle;
+
+	if (sysfs_create_files(&ddev->dev->kobj, msm_idle_attrs) < 0)
+		pr_warn("failed to create idle state file");
+
+	INIT_DELAYED_WORK(&idle->work, msm_idle_work);
+	spin_lock_init(&idle->lock);
+}
+
 static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 {
 	struct platform_device *pdev = to_platform_device(dev);
@@ -535,6 +695,9 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 
 	INIT_LIST_HEAD(&priv->client_event_list);
 	INIT_LIST_HEAD(&priv->inactive_list);
+
+	priv->pm_req_set = (atomic_t)ATOMIC_INIT(0);
+	INIT_DELAYED_WORK(&priv->pm_unreq_dwork, msm_drm_pm_unreq);
 
 	ret = sde_power_resource_init(pdev, &priv->phandle);
 	if (ret) {
@@ -1046,9 +1209,14 @@ static void msm_irq_preinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
+	struct sde_kms *sde_kms = to_sde_kms(kms);
 
 	BUG_ON(!kms);
 	kms->funcs->irq_preinstall(kms);
+	priv->pm_irq_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	priv->pm_irq_req.irq = sde_kms->irq_num;
+	pm_qos_add_request(&priv->pm_irq_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
 }
 
 static int msm_irq_postinstall(struct drm_device *dev)
@@ -1067,6 +1235,8 @@ static void msm_irq_uninstall(struct drm_device *dev)
 
 	BUG_ON(!kms);
 	kms->funcs->irq_uninstall(kms);
+	flush_delayed_work(&priv->pm_unreq_dwork);
+	pm_qos_remove_request(&priv->pm_irq_req);
 }
 
 static int msm_enable_vblank(struct drm_device *dev, unsigned int pipe)
