@@ -567,7 +567,7 @@ static inline int schedtune_adj_ta(struct schedtune *st, struct task_struct *p)
 
 	cgroup_name(st->css.cgroup, name_buf, sizeof(name_buf));
 	if (!strncmp(name_buf, "top-app", strlen("top-app"))) {
-		return 10;
+		return 1;
 	}
 
 	return 0;
@@ -784,7 +784,7 @@ static void write_default_values(struct cgroup_subsys_state *css)
 		{ "background",	0, 0 },
 		{ "foreground",	0, 1 },
 		{ "rt",		0, 0 },
-		{ "top-app",	1, 1 },
+		{ "top-app",	0, 1 },
 	};
 	int i;
 
