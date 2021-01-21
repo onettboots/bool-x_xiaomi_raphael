@@ -2904,7 +2904,7 @@ static struct page *__rmqueue_pcplist(struct zone *zone, int migratetype,
 	do {
 		/* First try to get CMA pages */
 		if (migratetype == MIGRATE_MOVABLE &&
-				gfp_flags & __GFP_CMA) {
+				alloc_flags & ALLOC_CMA) {
 			list = get_populated_pcp_list(zone, 0, pcp,
 					get_cma_migrate_type(), cold);
 		}
@@ -2991,7 +2991,7 @@ struct page *rmqueue(struct zone *preferred_zone,
 		}
 
 		if (!page && migratetype == MIGRATE_MOVABLE &&
-				gfp_flags & __GFP_CMA)
+				alloc_flags & ALLOC_CMA)
 			page = __rmqueue_cma(zone, order);
 
 		if (!page)
