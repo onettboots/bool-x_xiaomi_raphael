@@ -119,7 +119,14 @@ obj-$(CONFIG_HAS_IOMEM) += memremap.o
 $(obj)/configs.o: $(obj)/config_data.h
 
 targets += config_data.gz
-$(obj)/config_data.gz: arch/arm64/configs/raphael-vts_defconfig FORCE
+
+ifneq ($(CONFIG_MACH_XIAOMI_CEPHEUS),y)
+$(obj)/config_data.gz: arch/arm64/configs/cepheus_stock_defconfig FORCE
+endif
+
+ifneq ($(CONFIG_MACH_XIAOMI_RAPHAEL),y)
+$(obj)/config_data.gz: arch/arm64/configs/raphael_stock_defconfig FORCE
+endif
 	$(call if_changed,gzip)
 
 filechk_ikconfiggz = \
