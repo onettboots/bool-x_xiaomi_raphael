@@ -18,7 +18,6 @@ void psi_init(void);
 
 void psi_task_change(struct task_struct *task, int clear, int set);
 
-void psi_memstall_tick(struct task_struct *task, int cpu);
 void psi_memstall_enter(unsigned long *flags);
 void psi_memstall_leave(unsigned long *flags);
 
