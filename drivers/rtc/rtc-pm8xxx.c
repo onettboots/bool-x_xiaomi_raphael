@@ -1,13 +1,7 @@
-/* Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (c) 2010-2011, 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.>>>>>>> 3e42ec53db07 (rtc: rtc-pm8xxx: control default alarm wake up capability)
  */
 #include <linux/of.h>
 #include <linux/module.h>
@@ -523,7 +517,10 @@ static int pm8xxx_rtc_probe(struct platform_device *pdev)
 
 	dev_dbg(&pdev->dev, "Probe success !!\n");
 
-	return 0;
+	if (of_property_read_bool(pdev->dev.of_node, "qcom,disable-alarm-wakeup"))
+		device_set_wakeup_capable(&pdev->dev, false);
+
+	return pm8xxx_rtc_init_alarm(rtc_dd);
 }
 
 static int pm8xxx_rtc_restore(struct device *dev)
