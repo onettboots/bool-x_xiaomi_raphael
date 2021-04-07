@@ -480,16 +480,19 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
 		 * program uses newlines in its paths then it can kick rocks.
 		 */
 		if (size > 1) {
+			const int inlen = size - 1;
+			int outlen = inlen;
 			char *p;
 
-			p = d_path(&file->f_path, buf, size);
+			p = d_path_outlen(&file->f_path, buf, &outlen);
 			if (!IS_ERR(p)) {
 				size_t len;
 
-				/* Minus one to exclude the NUL character */
-				len = size - (p - buf) - 1;
-				if (likely(p > buf))
-					memmove(buf, p, len);
+				if (outlen != inlen)
+					len = inlen - outlen - 1;
+				else
+					len = strlen(p);
+				memmove(buf, p, len);
 				buf[len] = '\n';
 				seq_commit(m, len + 1);
 				return;
@@ -1043,8 +1046,50 @@ static int show_smap(struct seq_file *m, void *v, int is_pid)
 
 static int show_pid_smap(struct seq_file *m, void *v)
 {
-	return show_smap(m, v, 1);
-}
+	struct proc_maps_private *priv = m->private;
+	struct mem_size_stats mss;
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	unsigned long last_vma_end = 0;
+	int ret = 0;
+
+	priv->task = get_proc_task(priv->inode);
+	if (!priv->task)
+		return -ESRCH;
+
+	mm = priv->mm;
+	if (!mm || !mmget_not_zero(mm)) {
+		ret = -ESRCH;
+		goto out_put_task;
+	}
+
+	memset(&mss, 0, sizeof(mss));
+
+	ret = down_read_killable(&mm->mmap_sem);
+	if (ret)
+		goto out_put_mm;
+
+	hold_task_mempolicy(priv);
+
+	for (vma = priv->mm->mmap; vma; vma = vma->vm_next) {
+		smap_gather_stats(vma, &mss);
+		last_vma_end = vma->vm_end;
+	}
+
+	show_vma_header_prefix(m, priv->mm->mmap->vm_start,
+			       last_vma_end, 0, 0, 0, 0);
+	seq_puts(m, "[rollup]\n");
+
+	__show_smap(m, &mss);
+
+	release_task_mempolicy(priv);
+	up_read(&mm->mmap_sem);
+
+out_put_mm:
+	mmput(mm);
+out_put_task:
+	put_task_struct(priv->task);
+	priv->task = NULL;
 
 static int show_tid_smap(struct seq_file *m, void *v)
 {
