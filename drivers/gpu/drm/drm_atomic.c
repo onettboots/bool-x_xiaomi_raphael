@@ -34,6 +34,7 @@
 #include <linux/cpu_input_boost.h>
 #include <linux/pm_qos.h>
 #include <linux/sync_file.h>
+#include <linux/sched/sysctl.h>
 
 #include "drm_crtc_internal.h"
 
@@ -2207,7 +2208,6 @@ static void complete_crtc_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
-extern int kp_active_mode(void);
 static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file_priv)
 {
@@ -2251,16 +2251,11 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
 
+	/* Boost CPU and DDR when committing a new frame */
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-	  if (kp_active_mode() == 2) {
-	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
-	    cpu_input_boost_kick_max(50);
-	  } else if ((kp_active_mode() == 3) || (kp_active_mode() == 0)) {
-	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
-	   cpu_input_boost_kick_max(150);
-	  } else {
-	    pr_info("Battery profile detected! Skipping CPU & DDR bus boosts\n");
-	  }
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+		if (sysctl_sched_boost)
+			cpu_input_boost_kick();
 	}
 
 	drm_modeset_acquire_init(&ctx, 0);
