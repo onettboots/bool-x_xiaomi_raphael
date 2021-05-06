@@ -22,6 +22,7 @@
 #include <linux/suspend.h>
 
 #include "smpboot.h"
+#include "sched/features.h"
 
 enum {
 	CSD_FLAG_LOCK		= 0x01,
