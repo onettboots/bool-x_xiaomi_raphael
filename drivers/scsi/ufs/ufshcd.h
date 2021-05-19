@@ -1089,6 +1089,8 @@ struct ufs_hba {
 	void *crypto_DO_NOT_USE[8];
 #endif /* CONFIG_SCSI_UFS_CRYPTO */
 
+	bool wb_enabled;
+
 	struct {
 		struct pm_qos_request req;
 		struct work_struct get_work;
@@ -1098,7 +1100,6 @@ struct ufs_hba {
 		bool active;
 	} pm_qos;
 
-	bool wb_enabled;
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)

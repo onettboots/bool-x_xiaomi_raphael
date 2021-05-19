@@ -147,6 +147,7 @@ struct geni_i2c_dev {
 	struct geni_i2c_ssr i2c_ssr;
 	u32 dbg_num;
 	struct dbg_buf_ctxt *dbg_buf_ptr;
+	bool bus_recovery_enable;
 	bool disable_dma_mode;
 };
 

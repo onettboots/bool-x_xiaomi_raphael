@@ -1,5 +1,4 @@
 /* Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2361,6 +2360,7 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc, bool ignore_p3_state)
 {
 	unsigned long timeout;
 	u32 reg = 0;
+	bool ssphy0_sus = false, ssphy1_sus = false;
 
 	/* Allow SSPHYs to go to P3 for dual port controllers */
 	if (mdwc->dual_port)
