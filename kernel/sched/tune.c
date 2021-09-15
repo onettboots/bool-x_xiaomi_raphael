@@ -559,15 +559,12 @@ static inline int schedtune_adj_ta(struct schedtune *st, struct task_struct *p)
 	char name_buf[NAME_MAX + 1];
 	int adj = p->signal->oom_score_adj;
 
-	if (adj != 0)
-		return 0;
-
 	if (p->flags & PF_KTHREAD)
 		return 0;
 
 	cgroup_name(st->css.cgroup, name_buf, sizeof(name_buf));
 	if (!strncmp(name_buf, "top-app", strlen("top-app"))) {
-		return 1;
+		return adj == 0 ? 10 : 1;
 	}
 
 	return 0;
