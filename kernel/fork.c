@@ -2240,8 +2240,8 @@ long _do_fork(unsigned long clone_flags,
 	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 	  cpu_input_boost_kick_max(50);
 	} else if (task_is_zygote(current) && ((kp_active_mode() == 3) || (kp_active_mode() == 0))) {
-	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
-	  cpu_input_boost_kick_max(100);
+	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 75);
+	  cpu_input_boost_kick_max(75);
 	} else if (task_is_zygote(current) && (kp_active_mode() == 1)) {
 	  pr_info("Battery profile detected! Skipping DDR bus boost...\n");
 	}
