@@ -399,7 +399,7 @@ config MIN_FREQ_PERF
 	  of using a higher than cpuinfo.min_freq (e.g. OnePlus 5/5T/6)
 	  this frequency will be used.
 
-config MIN_FREQ_PRIME
+config MIN_FREQ_PERFP
 	int "Prime cluster return frequency"
 	default "0"
 	help
