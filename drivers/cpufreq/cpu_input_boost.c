@@ -76,6 +76,7 @@ static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 extern int kp_active_mode(void);
 static unsigned int get_min_freq(struct cpufreq_policy *policy)
 {
+	struct boost_drv *b = &boost_drv_g;
 	unsigned int freq;
 
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
