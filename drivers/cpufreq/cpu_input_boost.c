@@ -105,7 +105,6 @@ static unsigned int get_idle_freq(struct cpufreq_policy *policy)
 	return max(freq, policy->cpuinfo.min_freq);
 }
 
-
 static void update_online_cpu_policy(void)
 {
 	unsigned int cpu;
@@ -231,7 +230,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	/* Unboost when the screen is off */
 	if (test_bit(SCREEN_OFF, &b->state)) {
-		policy->min = policy->cpuinfo.min_freq;
+	        policy->min = get_min_freq(policy);
 		return NOTIFY_OK;
 	}
 
@@ -260,7 +259,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	if (test_bit(INPUT_BOOST, &b->state))
 		policy->min = get_input_boost_freq(policy);
 	else
-		policy->min = policy->cpuinfo.min_freq;
+	        policy->min = get_min_freq(policy);
 
 	return NOTIFY_OK;
 }
