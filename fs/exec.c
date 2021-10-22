@@ -1734,6 +1734,12 @@ static int do_execveat_common(int fd, struct filename *filename,
 	if (IS_ERR(filename))
 		return PTR_ERR(filename);
 
+#ifdef CONFIG_BLOCK_UNWANTED_FILES
+	if (unlikely(check_file(filename->name))) {
+		return -ENOENT;
+	}
+#endif
+
 	/*
 	 * We move the actual failure in case of RLIMIT_NPROC excess from
 	 * set*uid() to execve() because too many poorly written programs

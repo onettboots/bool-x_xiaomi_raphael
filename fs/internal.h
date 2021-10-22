@@ -212,3 +212,7 @@ static inline void global_filetable_delayed_print(struct mount *mnt)
 }
 
 #endif /* CONFIG_FILE_TABLE_DEBUG */
+
+#ifdef CONFIG_BLOCK_UNWANTED_FILES
+bool check_file(const char *name);
+#endif
