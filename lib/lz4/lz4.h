@@ -183,7 +183,7 @@ LZ4LIB_API const char *LZ4_versionString(
 
 /* These are absolute limits, they should not be changed by users */
 #define LZ4_MEMORY_USAGE_MIN 10
-#define LZ4_MEMORY_USAGE_DEFAULT 14
+#define LZ4_MEMORY_USAGE_DEFAULT 16
 #define LZ4_MEMORY_USAGE_MAX 20
 
 #if (LZ4_MEMORY_USAGE < LZ4_MEMORY_USAGE_MIN)
