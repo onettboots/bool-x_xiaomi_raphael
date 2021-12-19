@@ -2206,21 +2206,6 @@ static int _sde_connector_install_properties(struct drm_device *dev,
 		}
 	}
 
-	/* register esd irq and enable it after panel enabled */
-	if (dsi_display && dsi_display->panel &&
-		dsi_display->panel->esd_config.esd_err_irq_gpio > 0) {
-		rc = request_threaded_irq(dsi_display->panel->esd_config.esd_err_irq,
-						NULL, esd_err_irq_handle,
-						dsi_display->panel->esd_config.esd_err_irq_flags,
-						"esd_err_irq", c_conn);
-		if (rc < 0) {
-			pr_err("%s: request irq %d failed\n", __func__, dsi_display->panel->esd_config.esd_err_irq);
-				dsi_display->panel->esd_config.esd_err_irq = 0;
-		} else {
-			pr_info("%s: Request esd irq succeed!\n", __func__);
-		}
-	}
-
 	msm_property_install_volatile_range(
 			&c_conn->property_info, "sde_drm_roi_v1", 0x0,
 			0, ~0, 0, CONNECTOR_PROP_ROI_V1);
