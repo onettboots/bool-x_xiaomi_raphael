@@ -28,6 +28,11 @@ thermal_sys-$(CONFIG_CLOCK_THERMAL)	+= clock_cooling.o
 # devfreq cooling
 thermal_sys-$(CONFIG_DEVFREQ_THERMAL) += devfreq_cooling.o
 
+# debugfs support
+ifeq ($(CONFIG_QTI_THERMAL),y)
+thermal_sys-$(CONFIG_DEBUG_FS) += thermal_debugfs.o
+endif
+
 # platform thermal drivers
 obj-y				+= broadcom/
 obj-$(CONFIG_QCOM_SPMI_TEMP_ALARM)	+= qcom-spmi-temp-alarm.o
