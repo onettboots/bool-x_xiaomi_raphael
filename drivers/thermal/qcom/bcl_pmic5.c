@@ -32,6 +32,11 @@
 #define BCL_DRIVER_NAME       "bcl_pmic5"
 #define BCL_MONITOR_EN        0x46
 #define BCL_IRQ_STATUS        0x09
+#ifdef CONFIG_MACH_XIAOMI
+#define BCL_MONITOR_EN_TEMP   0xDA
+#define BCL_IADC_BF_DGL_CTL   0x59
+#define BCL_IADC_BF_DGL_16MS  0x0E
+#endif
 
 #define BCL_IBAT_HIGH         0x4B
 #define BCL_IBAT_TOO_HIGH     0x4C
@@ -110,10 +115,12 @@ static int bcl_read_register(struct bcl_device *bcl_perph, int16_t reg_offset,
 {
 	int ret = 0;
 
+#ifndef CONFIG_MACH_XIAOMI
 	if (!bcl_perph) {
 		pr_err("BCL device not initialized\n");
 		return -EINVAL;
 	}
+#endif
 	ret = regmap_read(bcl_perph->regmap,
 			       (bcl_perph->fg_bcl_addr + reg_offset),
 			       data);
@@ -762,9 +769,65 @@ static void bcl_probe_ibat(struct platform_device *pdev,
 	bcl_ibat_init(pdev, BCL_IBAT_LVL1, bcl_perph);
 }
 
+static void bcl_lvl_init(struct platform_device *pdev,
+	enum bcl_dev_type type, int sts_bit_idx, struct bcl_device *bcl_perph)
+{
+	struct bcl_peripheral_data *lbat = &bcl_perph->param[type];
+
+	mutex_init(&lbat->state_trans_lock);
+	lbat->type = type;
+	lbat->dev = bcl_perph;
+	lbat->status_bit_idx = sts_bit_idx;
+	bcl_fetch_trip(pdev, type, lbat, bcl_handle_irq);
+	if (lbat->irq_num <= 0)
+		return;
+
+	lbat->ops.get_temp = bcl_read_lbat;
+	lbat->ops.set_trips = bcl_set_lbat;
+
+	lbat->tz_dev = thermal_zone_of_sensor_register(&pdev->dev,
+				type, lbat, &lbat->ops);
+	if (IS_ERR(lbat->tz_dev)) {
+		pr_debug("lbat:[%s] register failed. err:%ld\n",
+				bcl_int_names[type],
+				PTR_ERR(lbat->tz_dev));
+		lbat->tz_dev = NULL;
+		return;
+	}
+	thermal_zone_device_update(lbat->tz_dev, THERMAL_DEVICE_UP);
+}
+
+static void bcl_probe_lvls(struct platform_device *pdev,
+					struct bcl_device *bcl_perph)
+{
+	bcl_lvl_init(pdev, BCL_LVL0, BCL_IRQ_L0, bcl_perph);
+	bcl_lvl_init(pdev, BCL_LVL1, BCL_IRQ_L1, bcl_perph);
+	bcl_lvl_init(pdev, BCL_LVL2, BCL_IRQ_L2, bcl_perph);
+}
+
+#ifdef CONFIG_MACH_XIAOMI
+static void bcl_iadc_bf_degl_set(struct bcl_device *bcl_perph, int time)
+{
+	int ret;
+	int data = 0;
+
+	ret = bcl_read_register(bcl_perph, BCL_IADC_BF_DGL_CTL, &data);
+	if (ret)
+		return;
+
+	data = (data & 0xF0) | time;
+	ret = bcl_write_register(bcl_perph, BCL_IADC_BF_DGL_CTL, data);
+	if (ret)
+		return;
+}
+#endif
+
 static void bcl_configure_bcl_peripheral(struct bcl_device *bcl_perph)
 {
 	bcl_write_register(bcl_perph, BCL_MONITOR_EN, BIT(7));
+#ifdef CONFIG_MACH_XIAOMI
+	bcl_iadc_bf_degl_set(bcl_perph, BCL_IADC_BF_DGL_16MS);
+#endif
 }
 
 static int bcl_remove(struct platform_device *pdev)
@@ -826,6 +889,41 @@ static int bcl_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_MACH_XIAOMI
+static void bcl_shutdown(struct platform_device *pdev)
+{
+	int ret;
+	int data = 0;
+	struct bcl_device *bcl_perph =
+					(struct bcl_device *)dev_get_drvdata(&pdev->dev);
+
+	ret = bcl_read_register(bcl_perph, BCL_MONITOR_EN, &data);
+	pr_info("befor set data is %d", data);
+	if (ret)
+		return;
+
+	data = (data & 0x7F);
+
+	ret = bcl_write_register(bcl_perph, BCL_MONITOR_EN, data);
+	pr_info("after set data is %d", data);
+	if (ret)
+		return;
+
+	ret = bcl_read_register(bcl_perph, BCL_MONITOR_EN_TEMP, &data);
+	pr_info("befor set temp_data is %d", data);
+	if (ret)
+		return;
+
+	data = (data & 0x00);
+	data = (data | 0x05);
+
+	ret = bcl_write_register(bcl_perph, BCL_MONITOR_EN_TEMP, data);
+	printk(KERN_ERR "after set temp_data is %d", data);
+	if (ret)
+		return;
+}
+#endif
+
 static const struct of_device_id bcl_match[] = {
 	{
 		.compatible = "qcom,bcl-v5",
@@ -836,11 +934,15 @@ static const struct of_device_id bcl_match[] = {
 static struct platform_driver bcl_driver = {
 	.probe  = bcl_probe,
 	.remove = bcl_remove,
+#ifdef CONFIG_MACH_XIAOMI
+	.shutdown = bcl_shutdown,
+#endif
 	.driver = {
 		.name           = BCL_DRIVER_NAME,
 		.owner          = THIS_MODULE,
 		.of_match_table = bcl_match,
 	},
 };
+module_platform_driver(bcl_driver);
 
-builtin_platform_driver(bcl_driver);
+MODULE_LICENSE("GPL v2");

@@ -112,12 +112,14 @@ struct cpufreq_cooling_device {
 	unsigned int floor_freq;
 	unsigned int max_level;
 	struct freq_table *freq_table;	/* In descending order */
-	struct thermal_cooling_device *cdev;
 	struct cpufreq_policy *policy;
 	struct list_head node;
 	struct time_in_idle *idle_time;
 	get_static_t plat_get_static_power;
 	struct cpu_cooling_ops *plat_ops;
+#ifdef CONFIG_MACH_XIAOMI
+	struct thermal_cooling_device *cdev;
+#endif
 };
 
 static atomic_t in_suspend;
@@ -148,6 +150,32 @@ const struct cpumask *cpu_cooling_get_max_level_cpumask(void)
 {
 	return &cpus_in_max_cooling_level;
 }
+
+#ifdef CONFIG_MACH_XIAOMI
+void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq)
+{
+	struct cpufreq_cooling_device *cpufreq_cdev;
+	struct thermal_cooling_device *cdev;
+	unsigned int cdev_cpu;
+	unsigned int level;
+
+	list_for_each_entry(cpufreq_cdev, &cpufreq_cdev_list, node) {
+		sscanf(cpufreq_cdev->cdev->type, "thermal-cpufreq-%d", &cdev_cpu);
+		if (cdev_cpu == cpu) {
+			for (level = 0; level <= cpufreq_cdev->max_level; level++) {
+				int target_freq = cpufreq_cdev->freq_table[level].frequency;
+				if (max_freq >= target_freq) {
+					cdev = cpufreq_cdev->cdev;
+					if (cdev)
+						cdev->ops->set_cur_state(cdev, level);
+					break;
+				}
+			}
+			break;
+		}
+	}
+}
+#endif
 
 /* Below code defines functions to be used for cpufreq as cooling device */
 
@@ -1080,6 +1108,10 @@ __cpufreq_cooling_register(struct device_node *np,
 		cpufreq_cdev->freq_table[cpufreq_cdev->max_level].frequency;
 	cpufreq_cdev->cpufreq_floor_state = cpufreq_cdev->max_level;
 	cpufreq_cdev->cdev = cdev;
+
+#ifdef CONFIG_MACH_XIAOMI
+	cpufreq_cdev->cdev = cdev;
+#endif
 
 	mutex_lock(&cooling_list_lock);
 	/* Register the notifier for first cpufreq cooling device */

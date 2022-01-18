@@ -501,4 +501,12 @@ config UNIPHIER_THERMAL
 	  Enable this to plug in UniPhier on-chip PVT thermal driver into the
 	  thermal framework. The driver supports CPU thermal zone temperature
 	  reporting and a couple of trip points.
+
+config MI_THERMAL_INTERFACE
+	tristate "xiaomi thermal control interface"
+	depends on THERMAL && QGKI && MACH_XIAOMI
+	default n
+	help
+	  This is xiaomi thermal control interface.
+
 endif

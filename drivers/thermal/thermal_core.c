@@ -27,6 +27,10 @@
 #include <linux/suspend.h>
 #include <linux/kobject.h>
 #include <../base/base.h>
+#ifdef CONFIG_MACH_XIAOMI
+#include <linux/cpu_cooling.h>
+#include <drm/mi_disp_notifier.h>
+#endif
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/thermal.h>
@@ -39,6 +43,9 @@ MODULE_DESCRIPTION("Generic thermal management sysfs support");
 MODULE_LICENSE("GPL v2");
 
 #define THERMAL_MAX_ACTIVE	16
+#ifdef CONFIG_MACH_XIAOMI
+#define CPU_LIMITS_PARAM_NUM	2
+#endif
 
 static DEFINE_IDA(thermal_tz_ida);
 static DEFINE_IDA(thermal_cdev_ida);
@@ -58,11 +65,15 @@ static bool power_off_triggered;
 
 static struct thermal_governor *def_governor;
 
-static struct workqueue_struct *thermal_passive_wq;
-
+#if defined(CONFIG_QTI_THERMAL) && defined(CONFIG_MACH_XIAOMI)
 static atomic_t switch_mode = ATOMIC_INIT(-1);
 static atomic_t temp_state = ATOMIC_INIT(0);
 static char boost_buf[128];
+static char board_sensor_temp[128];
+const char *board_sensor;
+struct device thermal_message_dev;
+EXPORT_SYMBOL_GPL(thermal_message_dev);
+#endif
 
 /*
  * Governor section: set of functions to handle thermal governors
@@ -953,10 +964,16 @@ static void thermal_release(struct device *dev)
 	}
 }
 
-static struct class thermal_class = {
+#ifndef CONFIG_MACH_XIAOMI
+static 
+#endif
+struct class thermal_class = {
 	.name = "thermal",
 	.dev_release = thermal_release,
 };
+#ifdef CONFIG_MACH_XIAOMI
+EXPORT_SYMBOL_GPL(thermal_class);
+#endif
 
 static struct device thermal_message_dev;
 
@@ -1731,6 +1748,23 @@ static struct notifier_block thermal_pm_nb = {
 	.notifier_call = thermal_pm_notify,
 };
 
+#if defined(CONFIG_QTI_THERMAL) && defined(CONFIG_MACH_XIAOMI)
+static int of_parse_thermal_message(void)
+{
+	struct device_node *np;
+
+	np = of_find_node_by_name(NULL, "thermal-message");
+	if (!np)
+		return -EINVAL;
+
+	if (of_property_read_string(np, "board-sensor", &board_sensor))
+		return -EINVAL;
+
+	pr_info("%s board sensor: %s\n", __func__, board_sensor);
+
+	return 0;
+}
+
 static ssize_t
 thermal_sconfig_show(struct device *dev,
 				      struct device_attribute *attr, char *buf)
@@ -1742,12 +1776,11 @@ static ssize_t
 thermal_sconfig_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int ret, val = -1;
+	int val = -1;
 
-	ret = kstrtoint(buf, 10, &val);
+	val = simple_strtol(buf, NULL, 10);
+
 	atomic_set(&switch_mode, val);
-	if (ret)
-		return ret;
 
 	return len;
 }
@@ -1767,7 +1800,7 @@ thermal_boost_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
 	int ret;
-	ret = snprintf(boost_buf, 128, buf);
+	ret = snprintf(boost_buf, PAGE_SIZE, buf);
 	return len;
 }
 
@@ -1785,12 +1818,11 @@ static ssize_t
 thermal_temp_state_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	int ret, val = -1;
+	int val = -1;
 
-	ret = kstrtoint(buf, 10, &val);
+	val = simple_strtol(buf, NULL, 10);
+
 	atomic_set(&temp_state, val);
-	if (ret)
-		return ret;
 
 	return len;
 }
@@ -1809,12 +1841,15 @@ static ssize_t
 cpu_limits_store(struct device *dev,
 				      struct device_attribute *attr, const char *buf, size_t len)
 {
-	unsigned int cpu, max;
+	unsigned int cpu;
+	unsigned int max;
 
-	if (sscanf(buf, "cpu%u %u", &cpu, &max) != 2) {
+	if (sscanf(buf, "cpu%u %u", &cpu, &max) != CPU_LIMITS_PARAM_NUM) {
 		pr_err("input param error, can not prase param\n");
 		return -EINVAL;
 	}
+
+	cpu_limits_set_level(cpu, max);
 
 	return len;
 }
@@ -1822,7 +1857,39 @@ cpu_limits_store(struct device *dev,
 static DEVICE_ATTR(cpu_limits, 0664,
 		   cpu_limits_show, cpu_limits_store);
 
-static int create_thermal_message_node(void)
+static ssize_t
+thermal_board_sensor_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	if (!board_sensor)
+		board_sensor = "invalid";
+
+	return snprintf(buf, PAGE_SIZE, "%s", board_sensor);
+}
+
+static DEVICE_ATTR(board_sensor, 0664,
+		thermal_board_sensor_show, NULL);
+
+static ssize_t
+thermal_board_sensor_temp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, board_sensor_temp);
+}
+
+static ssize_t
+thermal_board_sensor_temp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t len)
+{
+	snprintf(board_sensor_temp, PAGE_SIZE, buf);
+
+	return len;
+}
+
+static DEVICE_ATTR(board_sensor_temp, 0664,
+		thermal_board_sensor_temp_show, thermal_board_sensor_temp_store);
+
+int create_thermal_message_node(void)
 {
 	int ret = 0;
 
@@ -1846,20 +1913,31 @@ static int create_thermal_message_node(void)
 		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_cpu_limits.attr);
 		if (ret < 0)
 			pr_warn("Thermal: create cpu limits node failed\n");
-	}
 
+		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_board_sensor.attr);
+		if (ret < 0)
+			pr_warn("Thermal: create board sensor node failed\n");
+
+		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
+		if (ret < 0)
+			pr_warn("Thermal: create board sensor temp node failed\n");
+	}
 	return ret;
 }
 
 static void destroy_thermal_message_node(void)
 {
+	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
+	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_board_sensor.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_cpu_limits.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_boost.attr);
 	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
 	device_unregister(&thermal_message_dev);
 }
+#endif
 
+#ifdef CONFIG_QTI_THERMAL
 static int __init thermal_init(void)
 {
 	int result;
@@ -1895,6 +1973,18 @@ static int __init thermal_init(void)
 		pr_warn("Thermal: create thermal message node failed, return %d\n",
 			result);
 
+#ifdef CONFIG_MACH_XIAOMI
+	result = of_parse_thermal_message();
+	if (result)
+		pr_warn("Thermal: Can not parse thermal message node, return %d\n",
+			result);
+
+	result = create_thermal_message_node();
+	if (result)
+		pr_warn("Thermal: create thermal message node failed, return %d\n",
+			result);
+#endif
+
 	return 0;
 
 exit_zone_parse:
@@ -1918,7 +2008,9 @@ static void thermal_exit(void)
 	of_thermal_destroy_zones();
 	destroy_workqueue(thermal_passive_wq);
 	genetlink_exit();
+#ifdef CONFIG_MACH_XIAOMI
 	destroy_thermal_message_node();
+#endif
 	class_unregister(&thermal_class);
 	thermal_unregister_governors();
 	ida_destroy(&thermal_tz_ida);
