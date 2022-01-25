@@ -760,6 +760,9 @@ ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= -mllvm -polly-run-dce
 endif
 endif
+ifdef CONFIG_MINIMAL_TRACING_FOR_IORAP
+KBUILD_CFLAGS   += -DNOTRACE
+endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
