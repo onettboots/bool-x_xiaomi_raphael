@@ -3812,6 +3812,7 @@ static int tfa98xx_i2c_probe(struct i2c_client *i2c,
 			return ret;
 	}
 
+
 	/* Power up! */
 	tfa98xx_ext_reset(tfa98xx);
 
