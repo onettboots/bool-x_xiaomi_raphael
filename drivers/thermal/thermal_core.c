@@ -1722,8 +1722,9 @@ thermal_sconfig_store(struct device *dev,
 	int ret, val = -1;
 
 	ret = kstrtoint(buf, 10, &val);
-
 	atomic_set(&switch_mode, val);
+	if (ret)
+		return ret;
 
 	if (ret)
 		return ret;
@@ -1766,8 +1767,9 @@ thermal_temp_state_store(struct device *dev,
 	int ret, val = -1;
 
 	ret = kstrtoint(buf, 10, &val);
-
 	atomic_set(&temp_state, val);
+	if (ret)
+		return ret;
 
 	if (ret)
 		return ret;
