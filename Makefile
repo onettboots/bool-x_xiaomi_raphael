@@ -760,8 +760,8 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 endif
 
 ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=3100
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=2400
+KBUILD_CFLAGS	+= -mllvm -inline-threshold=4000
+KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=3000
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
