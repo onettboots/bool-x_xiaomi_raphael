@@ -331,7 +331,7 @@ config INPUT_BOOST_FREQ_PERF
 	help
 	  Input boost frequency for the performance CPU cluster.
 
-config INPUT_BOOST_FREQ_PERFP
+config INPUT_BOOST_FREQ_PRIME
 	int "Prime cluster boost freq"
 	default "0"
 	help
@@ -349,7 +349,7 @@ config MAX_BOOST_FREQ_PERF
 	help
 	  Max-boost frequency for the performance CPU cluster.
 
-config MAX_BOOST_FREQ_PERFP
+config MAX_BOOST_FREQ_PRIME
 	int "Prime cluster max-boost freq"
 	default "0"
 	help
@@ -371,7 +371,7 @@ config IDLE_MIN_FREQ_PERF
 	  The cluster will revert to this frequency when the display is
 	  turned off.
 
-config IDLE_MIN_FREQ_PERFP
+config IDLE_MIN_FREQ_PRIME
 	int "Prime cluster idle frequency"
 	default "0"
 	help
@@ -399,7 +399,7 @@ config MIN_FREQ_PERF
 	  of using a higher than cpuinfo.min_freq (e.g. OnePlus 5/5T/6)
 	  this frequency will be used.
 
-config MIN_FREQ_PERFP
+config MIN_FREQ_PRIME
 	int "Prime cluster return frequency"
 	default "0"
 	help

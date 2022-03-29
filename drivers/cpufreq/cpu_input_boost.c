@@ -56,7 +56,7 @@ static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = CONFIG_INPUT_BOOST_FREQ_PERF;
 	else
-		freq = CONFIG_INPUT_BOOST_FREQ_PERFP;
+		freq = CONFIG_INPUT_BOOST_FREQ_PRIME;
 	return min(freq, policy->max);
 }
 
@@ -69,7 +69,7 @@ static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
 		freq = CONFIG_MAX_BOOST_FREQ_PERF;
 	else
-		freq = CONFIG_MAX_BOOST_FREQ_PERFP;
+		freq = CONFIG_MAX_BOOST_FREQ_PRIME;
 	return min(freq, policy->max);
 }
 
@@ -116,7 +116,7 @@ static void update_online_cpu_policy(void)
 	cpufreq_update_policy(cpu);
 	cpu = cpumask_first_and(cpu_perf_mask, cpu_online_mask);
 	cpufreq_update_policy(cpu);
-	cpu = cpumask_first_and(cpu_perfp_mask, cpu_online_mask);
+	cpu = cpumask_first_and(cpu_prime_mask, cpu_online_mask);
 	cpufreq_update_policy(cpu);
 	put_online_cpus();
 }
@@ -249,7 +249,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	}
 	else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask) &&
 		        test_bit(SCREEN_OFF, &b->state)) {
-	        policy->min = CONFIG_IDLE_MIN_FREQ_PERFP;
+	        policy->min = CONFIG_IDLE_MIN_FREQ_PRIME;
 		return NOTIFY_OK;
 	}
 
