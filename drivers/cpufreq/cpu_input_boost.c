@@ -83,7 +83,7 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
   else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
     freq = CONFIG_MIN_FREQ_PERF;
   else
-    freq = CONFIG_MIN_FREQ_PERFP;
+    freq = CONFIG_MIN_FREQ_PRIME;
   return max(freq, policy->cpuinfo.min_freq);
 }
 
@@ -227,7 +227,7 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 	}
 	else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask) &&
 		        test_bit(SCREEN_OFF, &b->state)) {
-	        policy->min = CONFIG_IDLE_MIN_FREQ_PERFP;
+	        policy->min = CONFIG_IDLE_MIN_FREQ_PRIME;
 		return NOTIFY_OK;
 	}
 
