@@ -315,6 +315,16 @@ void mem_cgroup_cancel_charge(struct page *page, struct mem_cgroup *memcg,
 void mem_cgroup_uncharge(struct page *page);
 void mem_cgroup_uncharge_list(struct list_head *page_list);
 
+int __mem_cgroup_charge(struct page *page, struct mm_struct *mm,
+			gfp_t gfp_mask);
+static inline int mem_cgroup_charge(struct page *page, struct mm_struct *mm,
+				    gfp_t gfp_mask)
+{
+	if (mem_cgroup_disabled())
+		return 0;
+	return __mem_cgroup_charge(page, mm, gfp_mask);
+}
+
 void mem_cgroup_migrate(struct page *oldpage, struct page *newpage);
 
 static struct mem_cgroup_per_node *
@@ -814,10 +824,22 @@ static inline void mem_cgroup_commit_charge(struct page *page,
 {
 }
 
+static inline int mem_cgroup_charge(struct page *page, struct mm_struct *mm,
+				    gfp_t gfp_mask)
+{
+	return 0;
+}
+
 static inline void mem_cgroup_cancel_charge(struct page *page,
 					    struct mem_cgroup *memcg,
 					    bool compound)
 {
+}
+
+static inline int mem_cgroup_charge(struct page *page, struct mm_struct *mm,
+				    gfp_t gfp_mask)
+{
+	return 0;
 }
 
 static inline void mem_cgroup_uncharge(struct page *page)
