@@ -7883,7 +7883,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	} while (sg = sg->next, sg != sd->groups);
 
 	adjust_cpus_for_packing(p, &target_cpu, &best_idle_cpu,
-				active_cpus_count, shallowest_idle_cstate,
+				active_cpus_count, best_idle_cstate,
 				fbt_env, boosted);
 
 	/*
