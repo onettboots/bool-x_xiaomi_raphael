@@ -17,6 +17,7 @@ struct address_space;
 
 struct pagevec {
 	unsigned long nr;
+	bool cold;
 	bool drained;
 	struct page *pages[PAGEVEC_SIZE];
 };
@@ -50,9 +51,10 @@ static inline unsigned pagevec_lookup_tag(struct pagevec *pvec,
 	return pagevec_lookup_range_tag(pvec, mapping, index, (pgoff_t)-1, tag);
 }
 
-static inline void pagevec_init(struct pagevec *pvec)
+static inline void pagevec_init(struct pagevec *pvec, int cold)
 {
 	pvec->nr = 0;
+	pvec->cold = cold;
 	pvec->drained = false;
 }
 
