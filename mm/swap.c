@@ -833,10 +833,7 @@ EXPORT_SYMBOL(release_pages);
  */
 void __pagevec_release(struct pagevec *pvec)
 {
-	if (!pvec->drained) {
-		lru_add_drain();
-		pvec->drained = true;
-	}
+	lru_add_drain();
 	release_pages(pvec->pages, pagevec_count(pvec), pvec->cold);
 	pagevec_reinit(pvec);
 }
