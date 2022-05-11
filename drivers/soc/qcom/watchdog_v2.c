@@ -590,17 +590,18 @@ static void print_wdog_data(struct msm_watchdog_data *wdog_dd)
 	/* Check if pet task is running */
 	wdog_task = wdog_dd->watchdog_task;
 	if (wdog_task) {
-		if (wdog_task->on_cpu) {
+		if (wdog_task->state == TASK_UNINTERRUPTIBLE) {
+			unsigned long dead_mask;
+
 			dev_info(wdog_dd->dev, "Pet task is running on CPU%d\n",
 					task_cpu(wdog_task));
-			for_each_cpu(cpu, cpu_present_mask) {
-				if (wdog_dd->ping_start[cpu] != 0 &&
-						wdog_dd->ping_end[cpu] == 0) {
-					dev_info(wdog_dd->dev, "CPU%d did not "
-							"respond to IPI ping\n",
-							cpu);
-					break;
-				}
+
+			dead_mask = atomic_read(&wdog_dd->alive_mask) ^
+				    atomic_read(&wdog_dd->pinged_mask);
+			for_each_cpu(cpu, to_cpumask(&dead_mask)) {
+				dev_info(wdog_dd->dev,
+					 "CPU%d did not respond to IPI ping\n",
+					 cpu);
 			}
 		} else if (wdog_task->state == TASK_RUNNING) {
 			dev_info(wdog_dd->dev, "Pet task is waiting on CPU%d\n",
