@@ -117,7 +117,7 @@ struct cpufreq_cooling_device {
 	struct time_in_idle *idle_time;
 	get_static_t plat_get_static_power;
 	struct cpu_cooling_ops *plat_ops;
-#ifdef CONFIG_MACH_XIAOMI
+#ifdef CONFIG_MI_THERMAL_CPU_THROTTLE
 	struct thermal_cooling_device *cdev;
 #endif
 };
@@ -151,7 +151,7 @@ const struct cpumask *cpu_cooling_get_max_level_cpumask(void)
 	return &cpus_in_max_cooling_level;
 }
 
-#ifdef CONFIG_MACH_XIAOMI
+#ifdef CONFIG_MI_THERMAL_CPU_THROTTLE
 void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq)
 {
 	struct cpufreq_cooling_device *cpufreq_cdev;
@@ -1109,7 +1109,7 @@ __cpufreq_cooling_register(struct device_node *np,
 	cpufreq_cdev->cpufreq_floor_state = cpufreq_cdev->max_level;
 	cpufreq_cdev->cdev = cdev;
 
-#ifdef CONFIG_MACH_XIAOMI
+#ifdef CONFIG_MI_THERMAL_CPU_THROTTLE
 	cpufreq_cdev->cdev = cdev;
 #endif
 

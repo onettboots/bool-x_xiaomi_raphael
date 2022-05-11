@@ -37,7 +37,7 @@ typedef int (*plat_mitig_t)(int cpu, u32 clip_freq);
 struct cpu_cooling_ops {
 	plat_mitig_t ceil_limit, floor_limit;
 };
-#ifdef CONFIG_MACH_XIAOMI
+#ifdef CONFIG_MI_THERMAL_CPU_THROTTLE
 void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq);
 #endif
 
