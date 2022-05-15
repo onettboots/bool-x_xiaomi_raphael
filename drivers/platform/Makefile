@@ -9,3 +9,5 @@ obj-$(CONFIG_OLPC)		+= olpc/
 obj-$(CONFIG_GOLDFISH)		+= goldfish/
 obj-$(CONFIG_CHROME_PLATFORMS)	+= chrome/
 obj-$(CONFIG_ARCH_QCOM)		+= msm/
+
+subdir-ccflags-y := $(call cc-disable-warning, enum-conversion)
