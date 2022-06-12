@@ -551,6 +551,7 @@
 
 	chosen {
 		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket noirqdebug";
+		rng-seed = <0x12345678>;
 	};
 
 	soc: soc { };
