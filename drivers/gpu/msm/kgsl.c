@@ -1379,7 +1379,7 @@ kgsl_sharedmem_find(struct kgsl_process_private *private, uint64_t gpuaddr)
 
 	if (!kgsl_mmu_gpuaddr_in_range(private->pagetable, gpuaddr, 0) &&
 		!kgsl_mmu_gpuaddr_in_range(
-			private->pagetable->mmu->securepagetable, gpuaddr, 0))
+			private->pagetable->mmu->securepagetable, gpuaddr))
 		return NULL;
 
 	spin_lock(&private->mem_lock);
