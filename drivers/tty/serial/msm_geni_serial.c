@@ -511,12 +511,12 @@ static void wait_for_transfers_inflight(struct uart_port *uport)
 		}
 	}
 	if (check_transfers_inflight(uport)) {
-		u32 geni_status = geni_read_reg_nolog(uport->membase,
+		u32 __maybe_unused geni_status = geni_read_reg_nolog(uport->membase,
 								SE_GENI_STATUS);
-		u32 geni_ios = geni_read_reg_nolog(uport->membase, SE_GENI_IOS);
-		u32 rx_fifo_status = geni_read_reg_nolog(uport->membase,
+		u32 __maybe_unused geni_ios = geni_read_reg_nolog(uport->membase, SE_GENI_IOS);
+		u32 __maybe_unused rx_fifo_status = geni_read_reg_nolog(uport->membase,
 							SE_GENI_RX_FIFO_STATUS);
-		u32 rx_dma =
+		u32 __maybe_unused rx_dma =
 			geni_read_reg_nolog(uport->membase, SE_DMA_RX_LEN_IN);
 
 		IPC_LOG_MSG(port->ipc_log_misc,
@@ -613,7 +613,7 @@ static int msm_geni_serial_ioctl(struct uart_port *uport, unsigned int cmd,
 
 static void msm_geni_serial_break_ctl(struct uart_port *uport, int ctl)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
 		IPC_LOG_MSG(port->ipc_log_misc,
@@ -778,7 +778,7 @@ static int msm_geni_serial_power_on(struct uart_port *uport)
 
 static void msm_geni_serial_power_off(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 	int usage_count = atomic_read(&uport->dev->power.usage_count);
 
 	if (!usage_count) {
@@ -1396,7 +1396,7 @@ static void stop_tx_sequencer(struct uart_port *uport)
 
 static void msm_geni_serial_stop_tx(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
 		dev_err(uport->dev, "%s.Device is suspended.\n", __func__);
@@ -1667,7 +1667,7 @@ exit_rx_seq:
 
 static void msm_geni_serial_stop_rx(struct uart_port *uport)
 {
-	struct msm_geni_serial_port *port = GET_DEV_PORT(uport);
+	struct msm_geni_serial_port __maybe_unused *port = GET_DEV_PORT(uport);
 	int ret;
 
 	if (!uart_console(uport) && device_pending_suspend(uport)) {
