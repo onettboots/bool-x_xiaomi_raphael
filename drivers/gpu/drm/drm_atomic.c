@@ -2252,9 +2252,9 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
 	  if (kp_active_mode() == 2) {
-	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 	  } else if ((kp_active_mode() == 3) || (kp_active_mode() == 0)) {
-	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
+	    devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
 	  } else {
 	    pr_info("Battery profile detected! Skipping CPU & DDR bus boosts\n");
 	  }
