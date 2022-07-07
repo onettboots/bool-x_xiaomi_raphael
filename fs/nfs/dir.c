@@ -1251,12 +1251,12 @@ __nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags,
 	int ret;
 
 	if (flags & LOOKUP_RCU) {
-		parent = READ_ONCE(dentry->d_parent);
+		parent = ACCESS_ONCE(dentry->d_parent);
 		dir = d_inode_rcu(parent);
 		if (!dir)
 			return -ECHILD;
 		ret = reval(dir, dentry, flags);
-		if (parent != READ_ONCE(dentry->d_parent))
+		if (parent != ACCESS_ONCE(dentry->d_parent))
 			return -ECHILD;
 	} else {
 		parent = dget_parent(dentry);
