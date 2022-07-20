@@ -125,9 +125,12 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
+	if (kp_active_mode() == 3)
+		multi = 4;
+
 	set_bit(INPUT_BOOST, &b->state);
-	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-			      msecs_to_jiffies(CONFIG_INPUT_BOOST_DURATION_MS)))
+        if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
+                              msecs_to_jiffies(CONFIG_INPUT_BOOST_DURATION_MS * multi)))
 		wake_up(&b->boost_waitq);
 }
 
