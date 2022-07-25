@@ -168,12 +168,12 @@ struct scan_control {
 /*
  * From 0 .. 200.  Higher means more swappy.
  */
-int vm_swappiness = 160;
+int vm_swappiness = 100;
 #ifdef CONFIG_OPLUS_MM_HACKS
 /*
- * Direct reclaim swappiness, values range from 0 .. 200. Higher means more swappy.
+ * Direct reclaim swappiness, values range from 0 .. 60. Higher means more swappy.
  */
-int direct_vm_swappiness = 80;
+int direct_vm_swappiness = 60;
 #endif /* CONFIG_OPLUS_MM_HACKS */
 
 /*
