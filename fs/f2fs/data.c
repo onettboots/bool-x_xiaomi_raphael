@@ -954,7 +954,10 @@ int f2fs_merge_page_bio(struct f2fs_io_info *fio)
 alloc_new:
 	if (!bio) {
 		bio = __bio_alloc(fio, BIO_MAX_PAGES);
-
+		f2fs_set_bio_crypt_ctx(bio, fio->page->mapping->host,
+				       fio->page->index, fio,
+				       GFP_NOIO);
+		bio_set_op_attrs(bio, fio->op, fio->op_flags);
 		add_bio_entry(fio->sbi, bio, page, fio->temp);
 	} else {
 		if (add_ipu_page(fio, &bio, page))
@@ -1073,8 +1076,10 @@ static struct bio *f2fs_grab_read_bio(struct inode *inode, block_t blkaddr,
 	bio->bi_iter.bi_sector = sector;
 	bio->bi_end_io = f2fs_read_end_io;
 
-	if (f2fs_encrypted_file(inode))
-		post_read_steps |= STEP_DECRYPT;
+	if (fscrypt_inode_uses_fs_layer_crypto(inode))
+		post_read_steps |= 1 << STEP_DECRYPT;
+	if (f2fs_need_verity(inode, first_idx))
+		post_read_steps |= 1 << STEP_VERITY;
 
 	if (f2fs_need_verity(inode, first_idx))
 		post_read_steps |= STEP_VERITY;

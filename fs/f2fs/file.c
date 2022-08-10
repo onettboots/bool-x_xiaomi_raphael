@@ -30,6 +30,7 @@
 #include "gc.h"
 #include "iostat.h"
 #include <trace/events/f2fs.h>
+#include <trace/events/android_fs.h>
 #include <uapi/linux/f2fs.h>
 
 static int f2fs_filemap_fault(struct vm_fault *vmf)
@@ -264,6 +265,15 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
 		return 0;
 
 	trace_f2fs_sync_file_enter(inode);
+
+	if (trace_android_fs_fsync_start_enabled()) {
+		char *path, pathbuf[MAX_TRACE_PATHBUF_LEN];
+
+		path = android_fstrace_get_pathname(pathbuf,
+				MAX_TRACE_PATHBUF_LEN, inode);
+		trace_android_fs_fsync_start(inode,
+				current->pid, path, current->comm);
+	}
 
 	if (S_ISDIR(inode->i_mode))
 		goto go_write;
@@ -4041,6 +4051,11 @@ static int f2fs_ioc_decompress_file(struct file *filp, unsigned long arg)
 		goto out;
 	}
 
+	if (is_inode_flag_set(inode, FI_COMPRESS_RELEASED)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 	ret = filemap_write_and_wait_range(inode->i_mapping, 0, LLONG_MAX);
 	if (ret)
 		goto out;
@@ -4105,6 +4120,11 @@ static int f2fs_ioc_compress_file(struct file *filp, unsigned long arg)
 
 	if (!f2fs_is_compress_backend_ready(inode)) {
 		ret = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (is_inode_flag_set(inode, FI_COMPRESS_RELEASED)) {
+		ret = -EINVAL;
 		goto out;
 	}
 

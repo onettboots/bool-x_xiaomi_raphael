@@ -1790,7 +1790,6 @@ static int f2fs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	buf->f_namelen = F2FS_NAME_LEN;
 	buf->f_fsid.val[0] = (u32)id;
 	buf->f_fsid.val[1] = (u32)(id >> 32);
-
 #ifdef CONFIG_QUOTA
 	if (is_inode_flag_set(dentry->d_inode, FI_PROJ_INHERIT) &&
 			sb_has_quota_limits_enabled(sb, PRJQUOTA)) {
@@ -4485,7 +4484,6 @@ free_bio_info:
 
 #ifdef CONFIG_UNICODE
 	utf8_unload(sb->s_encoding);
-	sb->s_encoding = NULL;
 #endif
  free_options:
 #ifdef CONFIG_QUOTA
