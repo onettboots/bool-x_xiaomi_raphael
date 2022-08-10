@@ -5391,8 +5391,8 @@ recheck:
 	 * Changing the policy of the stop threads its a very bad idea:
 	 */
 	if (p == rq->stop) {
-		retval = -EINVAL;
-		goto unlock;
+		task_rq_unlock(rq, p, &rf);
+		return -EINVAL;
 	}
 
 	/*
@@ -5410,8 +5410,8 @@ recheck:
 			goto change;
 
 		p->sched_reset_on_fork = reset_on_fork;
-		retval = 0;
-		goto unlock;
+		task_rq_unlock(rq, p, &rf);
+		return 0;
 	}
 change:
 
@@ -5424,8 +5424,8 @@ change:
 		if (rt_bandwidth_enabled() && rt_policy(policy) &&
 				task_group(p)->rt_bandwidth.rt_runtime == 0 &&
 				!task_group_is_autogroup(task_group(p))) {
-			retval = -EPERM;
-			goto unlock;
+			task_rq_unlock(rq, p, &rf);
+			return -EPERM;
 		}
 #endif
 #ifdef CONFIG_SMP
@@ -5439,8 +5439,8 @@ change:
 			 */
 			if (!cpumask_subset(span, p->cpus_ptr) ||
 			    rq->rd->dl_bw.bw == 0) {
-				retval = -EPERM;
-				goto unlock;
+				task_rq_unlock(rq, p, &rf);
+				return -EPERM;
 			}
 		}
 #endif
@@ -5459,8 +5459,8 @@ change:
 	 * is available.
 	 */
 	if ((dl_policy(policy) || dl_task(p)) && sched_dl_overflow(p, policy, attr)) {
-		retval = -EBUSY;
-		goto unlock;
+		task_rq_unlock(rq, p, &rf);
+		return -EBUSY;
 	}
 
 	p->sched_reset_on_fork = reset_on_fork;
@@ -5519,10 +5519,6 @@ change:
 	preempt_enable();
 
 	return 0;
-
-unlock:
-	task_rq_unlock(rq, p, &rf);
-	return retval;
 }
 
 static int _sched_setscheduler(struct task_struct *p, int policy,
