@@ -1008,7 +1008,7 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	struct zswap_entry *entry, *dupentry;
 	struct crypto_comp *tfm;
 	int ret;
-	unsigned int hlen, dlen = PAGE_SIZE;
+	unsigned int dlen = PAGE_SIZE, len;
 	unsigned long handle, value;
 	char *buf;
 	u8 *src, *dst;
@@ -1087,8 +1087,8 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 
 	/* store */
 	len = dlen + sizeof(struct zswap_header);
-	ret = zpool_malloc(entry->pool->zpool, len,
-			   gfp, &handle);
+	ret = zpool_malloc(entry->pool->zpool, len, gfp,
+			   &handle);
 	if (ret == -ENOSPC) {
 		zswap_reject_compress_poor++;
 		goto put_dstmem;
