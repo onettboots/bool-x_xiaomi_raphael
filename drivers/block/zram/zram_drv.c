@@ -1040,7 +1040,7 @@ void zram_compact(void)
 		return;
 	}
 
-	zs_compact(zram0->mem_pool);
+	zpool_compact(zram0->mem_pool);
 	up_read(&zram0->init_lock);
 }
 
