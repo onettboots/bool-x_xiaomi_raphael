@@ -599,6 +599,33 @@ out:
 	return dentry;
 }
 
+static int binder_features_show(struct seq_file *m, void *unused)
+{
+	bool *feature = m->private;
+
+	seq_printf(m, "%d\n", *feature);
+
+	return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(binder_features);
+
+static int init_binder_features(struct super_block *sb)
+{
+	struct dentry *dentry, *dir;
+
+	dir = binderfs_create_dir(sb->s_root, "features");
+	if (IS_ERR(dir))
+		return PTR_ERR(dir);
+
+	dentry = binderfs_create_file(dir, "oneway_spam_detection",
+				      &binder_features_fops,
+				      &binder_features.oneway_spam_detection);
+	if (IS_ERR(dentry))
+		return PTR_ERR(dentry);
+
+	return 0;
+}
+
 static int init_binder_logs(struct super_block *sb)
 {
 	struct dentry *binder_logs_root_dir, *dentry, *proc_log_dir;
@@ -668,36 +695,6 @@ static inline int init_binder_logs(struct super_block *sb)
 	return 0;
 }
 #endif
-
-static int binder_features_show(struct seq_file *m, void *unused)
-{
-        bool *feature = m->private;
-
-        seq_printf(m, "%d\n", *feature);
-
-        return 0;
-}
-DEFINE_SHOW_ATTRIBUTE(binder_features);
-
-static int init_binder_features(struct super_block *sb)
-{
-        struct dentry *dentry, *dir;
-
-#ifdef CONFIG_ANDROID_BINDER_LOGS
-        dir = binderfs_create_dir(sb->s_root, "features");
-#endif
-
-        if (IS_ERR(dir))
-                return PTR_ERR(dir);
-
-        dentry = binderfs_create_file(dir, "oneway_spam_detection",
-                                      &binder_features_fops,
-                                      &binder_features.oneway_spam_detection);
-        if (IS_ERR(dentry))
-                return PTR_ERR(dentry);
-
-        return 0;
-}
 
 static int binderfs_fill_super(struct super_block *sb, void *data, int silent)
 {
