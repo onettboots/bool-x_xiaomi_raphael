@@ -40,6 +40,7 @@ enum mq_rq_state {
 	MQ_RQ_GEN_INC		= 1 << MQ_RQ_STATE_BITS,
 };
 
+void blk_mq_freeze_queue(struct request_queue *q);
 void blk_mq_free_queue(struct request_queue *q);
 int blk_mq_update_nr_requests(struct request_queue *q, unsigned int nr);
 void blk_mq_wake_waiters(struct request_queue *q);
