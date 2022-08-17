@@ -3982,6 +3982,7 @@ static const struct clk_ops clk_nodrv_ops = {
 	.set_parent	= clk_nodrv_set_parent,
 };
 
+#ifdef CONFIG_DEBUGFS
 static void clk_core_evict_parent_cache_subtree(struct clk_core *root,
 						struct clk_core *target)
 {
@@ -4009,7 +4010,7 @@ static void clk_core_evict_parent_cache(struct clk_core *core)
 			clk_core_evict_parent_cache_subtree(root, core);
 
 }
-
+#endif
 /**
  * clk_unregister - unregister a currently registered clock
  * @clk: clock to unregister
@@ -4047,9 +4048,9 @@ void clk_unregister(struct clk *clk)
 					  child_node)
 			clk_core_set_parent(child, NULL);
 	}
-
+#ifdef CONFIG_DEBUGFS
 	clk_core_evict_parent_cache(clk->core);
-
+#endif
 	hlist_del_init(&clk->core->child_node);
 
 	if (clk->core->prepare_count)
@@ -4060,7 +4061,6 @@ unlock:
 	clk_prepare_unlock();
 }
 EXPORT_SYMBOL_GPL(clk_unregister);
-
 /**
  * clk_hw_unregister - unregister a currently registered clk_hw
  * @hw: hardware-specific clock data to unregister
