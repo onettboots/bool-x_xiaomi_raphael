@@ -39,6 +39,7 @@
 #include <linux/sched.h>
 #include <linux/jiffies.h>
 #include <trace/events/cma.h>
+#include <linux/sched/signal.h>
 
 #include "cma.h"
 
