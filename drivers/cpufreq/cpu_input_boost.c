@@ -428,7 +428,7 @@ static int __init cpu_input_boost_init(void)
 		goto unregister_handler;
 	}
 
-	thread = kthread_run_perf_critical(cpu_prime_mask, cpu_boost_thread, b, "cpu_boostd");
+	thread = kthread_run_perf_critical(cpu_hp_mask, cpu_boost_thread, b, "cpu_boostd");
 	if (IS_ERR(thread)) {
 		ret = PTR_ERR(thread);
 		pr_debug("Failed to start CPU boost thread, err: %d\n", ret);
