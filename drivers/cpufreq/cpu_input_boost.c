@@ -114,16 +114,20 @@ static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 	return min(freq, policy->max);
 }
 
+extern int kp_active_mode(void);
 static unsigned int get_min_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
 
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_min_little;
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = cpu_freq_min_big;
-	else
-		freq = cpu_freq_min_prime;
+	if (kp_active_mode() == 3) {
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = cpu_freq_min_little;
+
+		if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+			freq = cpu_freq_min_big;
+		else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
+			freq = cpu_freq_min_prime;
+	}
 
 	return max(freq, policy->cpuinfo.min_freq);
 }
@@ -158,20 +162,23 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
+extern int kp_active_mode(void);
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
+	unsigned int multi = 1;
+
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
 	if (!input_boost_duration)
 		return;
 
-	if (!input_boost_duration)
-		return;
+	if (kp_active_mode() == 3)
+		multi = 4;
 
 	set_bit(INPUT_BOOST, &b->state);
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
-			      msecs_to_jiffies(input_boost_duration)))
+			      msecs_to_jiffies(input_boost_duration * multi)))
 		wake_up(&b->boost_waitq);
 }
 
@@ -189,6 +196,9 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	unsigned long curr_expires, new_expires;
 
 	if (test_bit(SCREEN_OFF, &b->state))
+		return;
+
+	if (kp_active_mode() == 1)
 		return;
 
 	do {
