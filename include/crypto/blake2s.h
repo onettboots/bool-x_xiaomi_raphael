@@ -11,7 +11,6 @@
 #include <linux/string.h>
 
 #include <asm/bug.h>
-
 enum blake2s_lengths {
 	BLAKE2S_BLOCK_SIZE = 64,
 	BLAKE2S_HASH_SIZE = 32,
