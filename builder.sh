@@ -16,12 +16,13 @@ export ARCH="arm64"
 TARGET_IMAGE="Image.gz-dtb"
 
 # Toolchains
-CLANG_VERSION="azure-clang"
-CLANG="$HOME/workfolder/${CLANG_VERSION}/bin:$PATH"
+CLANG_VERSION="aosp-clang-15"
+CLANG_LOC="/home/pwnrazr/dev-stuff/${CLANG_VERSION}"
+CLANG="${CLANG_LOC}/bin:$PATH"
 CT_BIN="${CLANG}/bin/"
 CT="${CT_BIN}/clang"
 objdir="${kernel_dir}/out"
-export THINLTO_CACHE=${PWD}/../thinlto_cache
+#export THINLTO_CACHE=${PWD}/../thinlto_cache
 
 # Colors
 NC='\033[0m'
@@ -53,10 +54,10 @@ function parse_parameters()
 {
 	PARAMS="${*}"
 	# Build settings
-	BUILD_CASEFOLDING=false
+	BUILD_CASEFOLDING=true
 	BUILD_CLEAN=false
-	BUILD_LTO=true
-	BUILD_FULL_LTO=false
+	BUILD_LTO=false
+	BUILD_FULL_LTO=true
 	# Use verbose for bug fixing
 	VERBOSE=true
 	RELEASE=false
@@ -101,19 +102,19 @@ function format_time()
 function make_wrapper() {
 		PATH=${CT_BIN}:${PATH} \
 		make -s -j${cpus} \
-	    AR="llvm-ar" \
+	    	AR="llvm-ar" \
 		AS="llvm-as" \
-	    NM="llvm-nm" \
-	    STRIP="llvm-strip" \
-    	OBJCOPY="llvm-objcopy" \
-    	OBJDUMP="llvm-objdump" \
+	    	NM="llvm-nm" \
+	    	STRIP="llvm-strip" \
+    		OBJCOPY="llvm-objcopy" \
+    		OBJDUMP="llvm-objdump" \
 		OBJSIZE="llvm-size" \
 		READELF="llvm-readelf" \
-    	LD="ld.lld" \
+    		LD="ld.lld" \
 		LDLLD="ld.lld" \
 		HOSTCC="clang" \
 		HOSTCXX="clang++" \
-    	CC="clang" \
+    		CC="clang" \
 		CXX="clang++" \
 		CROSS_COMPILE="aarch64-linux-gnu-" \
 		CROSS_COMPILE_COMPAT="arm-linux-gnueabi-" \
@@ -149,7 +150,7 @@ function make_image()
 			for i in THINLTO LTO_CLANG LD_LLD CONFIG_UNICODE; do
 				./scripts/config --file ${objdir}/.config -e $i
 			done
-			for i in LTO_NONE LTO_CLANG_FULL LD_GOLD LD_BFD CONFIG_SDCARD_FS; do
+			for i in LTO_NONE LD_GOLD LD_BFD CONFIG_SDCARD_FS; do
 				./scripts/config --file ${objdir}/.config -d $i
 			done
 			# Regen defconfig with all our changes (again)
@@ -167,7 +168,7 @@ function make_image()
 			for i in THINLTO LTO_CLANG LD_LLD; do
 				./scripts/config --file ${objdir}/.config -e $i
 			done
-			for i in LTO_NONE LTO_CLANG_FULL LD_GOLD LD_BFD; do
+			for i in LTO_NONE LD_GOLD LD_BFD; do
 				./scripts/config --file ${objdir}/.config -d $i
 			done
 			# Regen defconfig with all our changes (again)
@@ -175,26 +176,49 @@ function make_image()
 		else
 			print ${RED} "ThinLTO support not present"
 		fi
+
+	else if [[ ${BUILD_FULL_LTO} == true && ${BUILD_CASEFOLDING} == true ]]; then
+		print ${LGR} "Enabling Full LTO + Casefolding"
+		# Check if Full LTO + Casefolding support is present in defconfig
+		SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
+		if [[ ${SUPPORTS_CLANG} ]]; then
+			# Enable Full LTO + Casefolding
+			for i in LTO_CLANG LD_LLD CONFIG_UNICODE; do
+				./scripts/config --file ${objdir}/.config -e $i
+			done
+			for i in LTO_NONE THINLTO LD_GOLD LD_BFD CONFIG_SDCARD_FS; do
+				./scripts/config --file ${objdir}/.config -d $i
+			done
+			# Regen defconfig with all our changes (again)
+			make_wrapper olddefconfig
+		else
+			print ${RED} "Full LTO + Casefolding support not present"
+		fi
+
+        else if [ ${BUILD_FULL_LTO} == true ]; then
+                print ${LGR} "Enabling Full LTO"
+                # Check if Full LTO support is present in defconfig
+                SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
+                if [[ ${SUPPORTS_CLANG} ]]; then
+                        # Enable Full LTO
+                        for i in LTO_CLANG LD_LLD; do
+                                ./scripts/config --file ${objdir}/.config -e $i
+                        done
+                        for i in LTO_NONE THINLTO LD_GOLD LD_BFD; do
+                                ./scripts/config --file ${objdir}/.config -d $i
+                        done
+                        # Regen defconfig with all our changes (again)
+                        make_wrapper olddefconfig
+                else
+                        print ${RED} "Full LTO support not present"
+                fi
 	fi
-	
-#	else if [ ${BUILD_FULL_LTO} == true ]; then
-#		print ${LGR} "Enabling FULL LTO"
-#			# Enable LTO and
-#			for i in LTO_CLANG LD_DEAD_CODE_DATA_ELIMINATION LD_LLD; do
-#				./scripts/config --file ${objdir}/.config -e $i
-#			done
-#			for i in LTO_NONE THINLTO LD_GOLD LD_BFD; do
-#				./scripts/config --file ${objdir}/.config -d $i
-#			done
-#			# Regen defconfig with all our changes (again)
-#			make_wrapper olddefconfig
-#		else
-#			print ${RED} "ThinLTO support not present"
-#		fi
+	fi
+	fi
 	fi
 
 	# Clang versioning
-	VERSION=$($HOME/workfolder/${CLANG_VERSION}/bin/clang --version | grep -wom 1 "[0-99][0-99].[0-99].[0-99]")
+	VERSION=$(${CLANG_LOC}/bin/clang --version | grep -wom 1 "[0-99][0-99].[0-99].[0-99]")
 	COMPILER_NAME="Clang-${VERSION}"
 	if [ ${BUILD_LTO} == true ]; then
 		COMPILER_NAME+="+LTO"
@@ -221,6 +245,14 @@ function completion()
 		print ${LGR} "Build completed in ${TIME}!"
 		SIZE=$(ls -s ${builddir}/main/${TARGET_IMAGE} | sed 's/ .*//')
 		cd ..
+
+                # Zip up
+                mv ${builddir}/main/${TARGET_IMAGE} $builddir/anykernel/
+                cd ${builddir}/anykernel
+                zip -r -q "INFINITY${kVersion}.zip" .
+                rm ${builddir}/anykernel/${TARGET_IMAGE}
+                mv ${builddir}/anykernel/INFINITY${kVersion}.zip ${builddir}/main/
+
 		cd $builddir/main
   		make &>/dev/null
   		make sign &>/dev/null
@@ -241,6 +273,14 @@ function completion()
 			print ${LGR} "Build completed in ${TIME}!"
 			SIZE=$(ls -s ${builddir}/casefolding/${TARGET_IMAGE} | sed 's/ .*//')
 			cd ..
+
+			# Zip up
+			mv ${builddir}/casefolding/${TARGET_IMAGE} $builddir/anykernel/
+			cd ${builddir}/anykernel
+			zip -r -q "INFINITY-CASEFOLDING${kVersion}.zip" .
+			rm ${builddir}/anykernel/${TARGET_IMAGE}
+			mv ${builddir}/anykernel/INFINITY-CASEFOLDING${kVersion}.zip ${builddir}/casefolding/
+
 			cd $builddir/casefolding
   			make &>/dev/null
   			make sign &>/dev/null
