@@ -73,7 +73,8 @@ function parse_parameters()
 			"-v"|"--verbose")
 				VERBOSE=true ;;
 			"-l"|"--lto")
-				BUILD_LTO=true ;;
+				BUILD_LTO=true
+				BUILD_FULL_LTO=false ;;
 			"-r")
 				RELEASE=true ;;
             *) screen "Invalid parameter specified!" ;;
@@ -141,81 +142,56 @@ function make_image()
 	print ${LGR} "Generating Defconfig "
 	make_wrapper ${CONFIG_FILE}
 
-    if [[ ${BUILD_LTO} == true && ${BUILD_CASEFOLDING} == true ]]; then
-		print ${LGR} "Enabling ThinLTO + Casefolding"
-		# Check if ThinLTO + Casefolding support is present in defconfig
-		SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_THINLTO ${objdir}/.config)
-		if [[ ${SUPPORTS_CLANG} ]]; then
-			# Enable LTO and ThinLTO + Casefolding
-			for i in THINLTO LTO_CLANG LD_LLD CONFIG_UNICODE; do
-				./scripts/config --file ${objdir}/.config -e $i
-			done
-			for i in LTO_NONE LD_GOLD LD_BFD CONFIG_SDCARD_FS; do
-				./scripts/config --file ${objdir}/.config -d $i
-			done
-			# Regen defconfig with all our changes (again)
-			make_wrapper olddefconfig
-		else
-			print ${RED} "ThinLTO + Casefolding support not present"
-		fi
+	SUPPORTS_THINLTO_CLANG=$(grep CONFIG_ARCH_SUPPORTS_THINLTO ${objdir}/.config)
+	SUPPORTS_FULL_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
 
-	else if [ ${BUILD_LTO} == true ]; then
-		print ${LGR} "Enabling ThinLTO"
-		# Check if ThinLTO support is present in defconfig
-		SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_THINLTO ${objdir}/.config)
-		if [[ ${SUPPORTS_CLANG} ]]; then
-			# Enable LTO and ThinLTO
-			for i in THINLTO LTO_CLANG LD_LLD; do
-				./scripts/config --file ${objdir}/.config -e $i
-			done
-			for i in LTO_NONE LD_GOLD LD_BFD; do
-				./scripts/config --file ${objdir}/.config -d $i
-			done
-			# Regen defconfig with all our changes (again)
-			make_wrapper olddefconfig
-		else
-			print ${RED} "ThinLTO support not present"
-		fi
+	if [[ ${BUILD_LTO} == true && ${BUILD_FULL_LTO} == true  ||  ${BUILD_LTO} == false && ${BUILD_FULL_LTO} == false ]]; then
+		print ${RED} "Both LTO and FULL_LTO is true/false!"
 
-	else if [[ ${BUILD_FULL_LTO} == true && ${BUILD_CASEFOLDING} == true ]]; then
-		print ${LGR} "Enabling Full LTO + Casefolding"
-		# Check if Full LTO + Casefolding support is present in defconfig
-		SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
-		if [[ ${SUPPORTS_CLANG} ]]; then
-			# Enable Full LTO + Casefolding
-			for i in LTO_CLANG LD_LLD CONFIG_UNICODE; do
-				./scripts/config --file ${objdir}/.config -e $i
-			done
-			for i in LTO_NONE THINLTO LD_GOLD LD_BFD CONFIG_SDCARD_FS; do
-				./scripts/config --file ${objdir}/.config -d $i
-			done
-			# Regen defconfig with all our changes (again)
-			make_wrapper olddefconfig
-		else
-			print ${RED} "Full LTO + Casefolding support not present"
-		fi
+	else
+		ENABLE_CONF="LTO_CLANG LD_LLD"
+		DISABLE_CONF="LTO_NONE LD_GOLD LD_BFD"
 
-        else if [ ${BUILD_FULL_LTO} == true ]; then
-                print ${LGR} "Enabling Full LTO"
-                # Check if Full LTO support is present in defconfig
-                SUPPORTS_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
-                if [[ ${SUPPORTS_CLANG} ]]; then
-                        # Enable Full LTO
-                        for i in LTO_CLANG LD_LLD; do
-                                ./scripts/config --file ${objdir}/.config -e $i
-                        done
-                        for i in LTO_NONE THINLTO LD_GOLD LD_BFD; do
-                                ./scripts/config --file ${objdir}/.config -d $i
-                        done
-                        # Regen defconfig with all our changes (again)
-                        make_wrapper olddefconfig
-                else
-                        print ${RED} "Full LTO support not present"
-                fi
+		if [ ${BUILD_FULL_LTO} == true ]; then
+			if [ ${SUPPORTS_FULL_CLANG} == CONFIG_ARCH_SUPPORTS_LTO_CLANG=y ]; then
+				print ${LGR} "Enabling Full LTO"
+				ENABLE_CONF="${ENABLE_CONF}"
+				DISABLE_CONF="${DISABLE_CONF} THINLTO"
+			else
+				print ${RED} "Full LTO Unsupported"
+			fi
+
+		else if [ ${BUILD_LTO} == true ]; then
+			if [ ${SUPPORTS_THINLTO_CLANG} == CONFIG_ARCH_SUPPORTS_THINLTO=y ]; then
+				print ${LGR} "Enabling ThinLTO"
+				ENABLE_CONF="${ENABLE_CONF} THINLTO"
+				DISABLE_CONF="${DISABLE_CONF}"
+			else
+				print ${RED} "ThinLTO Unsupported"
+			fi
+		fi
 	fi
 	fi
+
+	if [ ${BUILD_CASEFOLDING} == true ]; then
+		print ${LGR} "Enabling Casefolding"
+		ENABLE_CONF="${ENABLE_CONF} CONFIG_UNICODE"
+		DISABLE_CONF="${DISABLE_CONF} CONFIG_SDCARD_FS"
+
+	else
+		print ${LGR} "Disabling Casefolding"
+		ENABLE_CONF="${ENABLE_CONF} CONFIG_SDCARD_FS"
+		DISABLE_CONF="${DISABLE_CONF} CONFIG_UNICODE"
 	fi
-	fi
+
+	# enable/disable stuff
+	for i in ${ENABLE_CONF}; do
+		./scripts/config --file ${objdir}/.config -e $i
+	done
+	for i in ${DISABLE_CONF}; do
+		./scripts/config --file ${objdir}/.config -d $i
+	done
+	make_wrapper olddefconfig
 
 	# Clang versioning
 	VERSION=$(${CLANG_LOC}/bin/clang --version | grep -wom 1 "[0-99][0-99].[0-99].[0-99]")
