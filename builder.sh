@@ -252,6 +252,7 @@ function completion()
                 zip -r -q "INFINITY${kVersion}.zip" .
                 rm ${builddir}/anykernel/${TARGET_IMAGE}
                 mv ${builddir}/anykernel/INFINITY${kVersion}.zip ${builddir}/main/
+		cp ${builddir}/main/INFINITY${kVersion}.zip /mnt/phone_share/
 
 		cd $builddir/main
   		make &>/dev/null
@@ -280,6 +281,7 @@ function completion()
 			zip -r -q "INFINITY-CASEFOLDING${kVersion}.zip" .
 			rm ${builddir}/anykernel/${TARGET_IMAGE}
 			mv ${builddir}/anykernel/INFINITY-CASEFOLDING${kVersion}.zip ${builddir}/casefolding/
+			cp ${builddir}/casefolding/INFINITY-CASEFOLDING${kVersion}.zip /mnt/phone_share/
 
 			cd $builddir/casefolding
   			make &>/dev/null

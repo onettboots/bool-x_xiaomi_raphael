@@ -140,3 +140,5 @@ c.sh
 Buildlog-CLANG.txt
 build.sh
 qcacld-3.0.sh
+Zip-out/main/*.zip
+Zip-out/casefolding/*.zip
