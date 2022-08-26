@@ -497,21 +497,17 @@ DECLARE_EVENT_CLASS(sched_cpu_load,
 		__entry->idle			= idle;
 		__entry->nr_running		= rq->nr_running;
 		__entry->nr_big_tasks		= rq->walt_stats.nr_big_tasks;
-		__entry->load_scale_factor	= cpu_load_scale_factor(rq->cpu);
-		__entry->capacity		= cpu_capacity(rq->cpu);
 		__entry->cumulative_runnable_avg = rq->walt_stats.cumulative_runnable_avg_scaled;
 		__entry->irqload		= irqload;
 		__entry->max_freq		= cpu_max_freq(rq->cpu);
 		__entry->power_cost		= power_cost;
-		__entry->cstate			= rq->cstate;
 		__entry->dstate			= rq->cluster->dstate;
 	),
 
 	TP_printk("cpu %u idle %d nr_run %u nr_big %u lsf %u capacity %u cr_avg %llu irqload %llu fmax %u power_cost %u cstate %d dstate %d",
 	__entry->cpu, __entry->idle, __entry->nr_running, __entry->nr_big_tasks,
-	__entry->load_scale_factor, __entry->capacity,
 	__entry->cumulative_runnable_avg, __entry->irqload,
-	__entry->max_freq, __entry->power_cost, __entry->cstate,
+	__entry->max_freq, __entry->power_cost,
 	__entry->dstate)
 );
 
