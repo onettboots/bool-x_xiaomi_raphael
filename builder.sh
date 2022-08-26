@@ -30,6 +30,7 @@ RED='\033[0;31m'
 LRD='\033[1;31m'
 LGR='\033[1;32m'
 YEL='\033[1;33m'
+CYN='\033[1;36m'
 
 # CPUs
 cpus=`expr $(nproc --all)`
@@ -77,6 +78,9 @@ function parse_parameters()
 				BUILD_FULL_LTO=false ;;
 			"-r")
 				RELEASE=true ;;
+			"-n")
+				print $YEL "Input kernel name:";
+				read CUSTOM_NAME; CUSTOM_NAME="-$CUSTOM_NAME";;
             *) screen "Invalid parameter specified!" ;;
 		esac
 
@@ -98,8 +102,7 @@ function format_time()
 }
 
 # Everything in here needs to be set for clang compilation,
-# clang triple currently not use since i'm using proton-clang
-# based toolchains.
+
 function make_wrapper() {
 		PATH=${CT_BIN}:${PATH} \
 		make -s -j${cpus} \
@@ -121,6 +124,7 @@ function make_wrapper() {
 		CROSS_COMPILE_COMPAT="arm-linux-gnueabi-" \
 		CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
 		KBUILD_COMPILER_STRING="${COMPILER_NAME}" \
+		CLANG_TRIPLE=aarch64-linux-gnu- \
 		O="${objdir}" ${1}
 }
 
@@ -154,7 +158,7 @@ function make_image()
 
 		if [ ${BUILD_FULL_LTO} == true ]; then
 			if [ ${SUPPORTS_FULL_CLANG} == CONFIG_ARCH_SUPPORTS_LTO_CLANG=y ]; then
-				print ${LGR} "Enabling Full LTO"
+				print ${LGR} "${CYN}Enabling ${YEL}Full LTO"
 				ENABLE_CONF="${ENABLE_CONF}"
 				DISABLE_CONF="${DISABLE_CONF} THINLTO"
 			else
@@ -163,7 +167,7 @@ function make_image()
 
 		else if [ ${BUILD_LTO} == true ]; then
 			if [ ${SUPPORTS_THINLTO_CLANG} == CONFIG_ARCH_SUPPORTS_THINLTO=y ]; then
-				print ${LGR} "Enabling ThinLTO"
+				print ${LGR} "${CYN}Enabling ${YEL}ThinLTO"
 				ENABLE_CONF="${ENABLE_CONF} THINLTO"
 				DISABLE_CONF="${DISABLE_CONF}"
 			else
@@ -174,12 +178,12 @@ function make_image()
 	fi
 
 	if [ ${BUILD_CASEFOLDING} == true ]; then
-		print ${LGR} "Enabling Casefolding"
+		print ${LGR} "${CYN}Enabling ${YEL}Casefolding"
 		ENABLE_CONF="${ENABLE_CONF} CONFIG_UNICODE"
 		DISABLE_CONF="${DISABLE_CONF} CONFIG_SDCARD_FS"
 
 	else
-		print ${LGR} "Disabling Casefolding"
+		print ${LGR} "${LRD}Disabling ${YEL}Casefolding"
 		ENABLE_CONF="${ENABLE_CONF} CONFIG_SDCARD_FS"
 		DISABLE_CONF="${DISABLE_CONF} CONFIG_UNICODE"
 	fi
@@ -208,75 +212,42 @@ function make_image()
 
 function completion()
 {
-	cd ${objdir}
-	COMPILED_IMAGE=arch/arm64/boot/${TARGET_IMAGE}
+	COMPILED_IMAGE=${objdir}/arch/arm64/boot/${TARGET_IMAGE}
 	TIME=$(format_time "${1}" "${2}")
-	if [[ -f ${COMPILED_IMAGE} && ${BUILD_CASEFOLDING} == false ]]; then
-		cd ..
-		cd $builddir/main
-		make clean &>/dev/null
-		cd ..
-		cd ${objdir}
-		mv -f ${COMPILED_IMAGE} ${builddir}/main/${TARGET_IMAGE}
+
+	if [[ -f ${COMPILED_IMAGE} ]]; then
+
+		if [[ ${BUILD_CASEFOLDING} == true ]]; then
+			ZIP_NAME="INFINITY${kVersion}-CASEFOLDING${CUSTOM_NAME}"
+		else
+			ZIP_NAME="INFINITY${kVersion}${CUSTOM_NAME}"
+		fi
+
+		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		print ${LGR} "Build completed in ${TIME}!"
-		SIZE=$(ls -s ${builddir}/main/${TARGET_IMAGE} | sed 's/ .*//')
-		cd ..
+		SIZE=$(ls -s ${builddir}/anykernel/${TARGET_IMAGE} | sed 's/ .*//')
 
                 # Zip up
-                mv ${builddir}/main/${TARGET_IMAGE} $builddir/anykernel/
                 cd ${builddir}/anykernel
-                zip -r -q "INFINITY${kVersion}.zip" .
+                zip -r -q "${ZIP_NAME}.zip" .
                 rm ${builddir}/anykernel/${TARGET_IMAGE}
-                mv ${builddir}/anykernel/INFINITY${kVersion}.zip ${builddir}/main/
-		cp ${builddir}/main/INFINITY${kVersion}.zip /mnt/phone_share/
+                mv ${builddir}/anykernel/"${ZIP_NAME}.zip" ${builddir}/
+		cp ${builddir}/"${ZIP_NAME}.zip" /mnt/phone_share/
 
-		cd $builddir/main
-  		make &>/dev/null
-  		make sign &>/dev/null
-  		cd ..
-  		print ${LGR} "(i)Flashable zip generated under $builddir/main"
+		print ${LGR} "(i)Flashable zip generated under $builddir"
 		if [ ${VERBOSE} == true ]; then
-			print ${LGR} "Build: ${YEL}INFINITY${kVersion}"
+			print ${LGR} "Build: ${YEL}${ZIP_NAME}"
 			print ${LGR} "Img size: ${YEL}${SIZE}K"
 		fi
 		print ${LGR} ${SEP}
-	else if [[ -f ${COMPILED_IMAGE} && ${BUILD_CASEFOLDING} == true ]]; then
-			cd ..
-			cd $builddir/casefolding
-			make clean &>/dev/null
-			cd ..
-			cd ${objdir}
-			mv -f ${COMPILED_IMAGE} ${builddir}/casefolding/${TARGET_IMAGE}
-			print ${LGR} "Build completed in ${TIME}!"
-			SIZE=$(ls -s ${builddir}/casefolding/${TARGET_IMAGE} | sed 's/ .*//')
-			cd ..
 
-			# Zip up
-			mv ${builddir}/casefolding/${TARGET_IMAGE} $builddir/anykernel/
-			cd ${builddir}/anykernel
-			zip -r -q "INFINITY-CASEFOLDING${kVersion}.zip" .
-			rm ${builddir}/anykernel/${TARGET_IMAGE}
-			mv ${builddir}/anykernel/INFINITY-CASEFOLDING${kVersion}.zip ${builddir}/casefolding/
-			cp ${builddir}/casefolding/INFINITY-CASEFOLDING${kVersion}.zip /mnt/phone_share/
-
-			cd $builddir/casefolding
-  			make &>/dev/null
-  			make sign &>/dev/null
-  			cd ..
-  			print ${LGR} "(i)Flashable zip generated under $builddir/casefolding"
-			if [ ${VERBOSE} == true ]; then
-				print ${LGR} "Build: ${YEL}INFINITY-CASEFOLDING${kVersion}"
-				print ${LGR} "Img size: ${YEL}${SIZE}K"
-			fi
-			print ${LGR} ${SEP}
-		else
-			print ${RED} ${SEP}
-			print ${RED} "Something went wrong"
-			print ${RED} ${SEP}
-		fi
+	else
+		print ${RED} ${SEP}
+		print ${RED} "Something went wrong"
+		print ${RED} ${SEP}
 	fi
-
 }
+
 parse_parameters "${@}"
 make_image
 cd ${kernel_dir}
