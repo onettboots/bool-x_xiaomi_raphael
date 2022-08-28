@@ -185,17 +185,14 @@ static inline int __down_read_killable(struct rw_semaphore *sem)
 
 static inline int __down_read_trylock(struct rw_semaphore *sem)
 {
-	/*
-	 * Optimize for the case when the rwsem is not locked at all.
-	 */
-	long tmp = RWSEM_UNLOCKED_VALUE;
+	long tmp;
 
-	do {
-		if (atomic_long_try_cmpxchg_acquire(&sem->count, &tmp,
-					tmp + RWSEM_ACTIVE_READ_BIAS)) {
+	while ((tmp = atomic_long_read(&sem->count)) >= 0) {
+		if (tmp == atomic_long_cmpxchg_acquire(&sem->count, tmp,
+				   tmp + RWSEM_ACTIVE_READ_BIAS)) {
 			return 1;
 		}
-	} while (tmp >= 0);
+	}
 	return 0;
 }
 
