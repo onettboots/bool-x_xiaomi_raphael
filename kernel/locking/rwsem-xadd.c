@@ -173,7 +173,7 @@ static void __rwsem_mark_wake(struct rw_semaphore *sem,
 		 * but it gives the spinners an early indication that the
 		 * readers now have the lock.
 		 */
-		__rwsem_set_reader_owned(sem, waiter->task);
+		rwsem_set_reader_owned(sem);
 	}
 
 	/*
