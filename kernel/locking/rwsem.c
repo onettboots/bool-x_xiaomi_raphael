@@ -368,16 +368,9 @@ static inline void rwsem_set_nonspinnable(struct rw_semaphore *sem)
 static inline bool rwsem_read_trylock(struct rw_semaphore *sem)
 {
 	long cnt = atomic_long_add_return_acquire(RWSEM_READER_BIAS, &sem->count);
-
 	if (WARN_ON_ONCE(cnt < 0))
 		rwsem_set_nonspinnable(sem);
-
-	if (!(cnt & RWSEM_READ_FAILED_MASK)) {
-		rwsem_set_reader_owned(sem);
-		return true;
-	}
-
-	return false;
+	return !(cnt & RWSEM_READ_FAILED_MASK);
 }
 
 /*
@@ -1418,6 +1411,8 @@ inline void __down_read(struct rw_semaphore *sem)
 	if (!rwsem_read_trylock(sem)) {
 		rwsem_down_read_slowpath(sem, TASK_UNINTERRUPTIBLE);
 		DEBUG_RWSEMS_WARN_ON(!is_rwsem_reader_owned(sem), sem);
+	} else {
+		rwsem_set_reader_owned(sem);
 	}
 }
 
@@ -1427,6 +1422,8 @@ static inline int __down_read_killable(struct rw_semaphore *sem)
 		if (IS_ERR(rwsem_down_read_slowpath(sem, TASK_KILLABLE)))
 			return -EINTR;
 		DEBUG_RWSEMS_WARN_ON(!is_rwsem_reader_owned(sem), sem);
+	} else {
+		rwsem_set_reader_owned(sem);
 	}
 	return 0;
 }
