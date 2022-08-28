@@ -36,11 +36,10 @@ struct rw_semaphore {
 	atomic_long_t count;
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
 	/*
-	 * Write owner or one of the read owners as well flags regarding
-	 * the current state of the rwsem. Can be used as a speculative
-	 * check to see if the write owner is running on the cpu.
+	 * Write owner. Used as a speculative check to see
+	 * if the owner is running on the cpu.
 	 */
-	atomic_long_t owner;
+	struct task_struct *owner;
 	struct optimistic_spin_queue osq; /* spinner MCS lock */
 #endif
 	raw_spinlock_t wait_lock;
@@ -58,7 +57,7 @@ struct rw_semaphore {
  * Setting all bits of the owner field except bit 0 will indicate
  * that the rwsem is writer-owned with an unknown owner.
  */
-#define RWSEM_OWNER_UNKNOWN	(-2L)
+#define RWSEM_OWNER_UNKNOWN	((struct task_struct *)-2L)
 
 /* In all implementations count != 0 means locked */
 static inline int rwsem_is_locked(struct rw_semaphore *sem)
@@ -78,7 +77,7 @@ static inline int rwsem_is_locked(struct rw_semaphore *sem)
 #endif
 
 #ifdef CONFIG_RWSEM_SPIN_ON_OWNER
-#define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = ATOMIC_LONG_INIT(0)
+#define __RWSEM_OPT_INIT(lockname) , .osq = OSQ_LOCK_UNLOCKED, .owner = NULL
 #else
 #define __RWSEM_OPT_INIT(lockname)
 #endif
