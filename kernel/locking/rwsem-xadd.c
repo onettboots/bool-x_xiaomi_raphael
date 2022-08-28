@@ -269,16 +269,21 @@ static inline bool rwsem_try_write_lock(long count, struct rw_semaphore *sem)
  */
 static inline bool rwsem_try_write_lock_unqueued(struct rw_semaphore *sem)
 {
-	long count = atomic_long_read(&sem->count);
+	long old, count = atomic_long_read(&sem->count);
 
-	while (!count || count == RWSEM_WAITING_BIAS) {
-		if (atomic_long_try_cmpxchg_acquire(&sem->count, &count,
-					count + RWSEM_ACTIVE_WRITE_BIAS)) {
+	while (true) {
+		if (!(count == 0 || count == RWSEM_WAITING_BIAS))
+			return false;
+
+		old = atomic_long_cmpxchg_acquire(&sem->count, count,
+				      count + RWSEM_ACTIVE_WRITE_BIAS);
+		if (old == count) {
 			rwsem_set_owner(sem);
 			return true;
 		}
+
+		count = old;
 	}
-	return false;
 }
 
 static inline bool owner_on_cpu(struct task_struct *owner)
