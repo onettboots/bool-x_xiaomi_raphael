@@ -500,7 +500,6 @@ void tick_freeze(void)
 	if (tick_frozen_mask == *cpumask_bits(cpu_online_mask)) {
 		trace_suspend_resume(TPS("timekeeping_freeze"),
 				     smp_processor_id(), true);
-		system_state = SYSTEM_SUSPEND;
 		sched_clock_suspend();
 		timekeeping_suspend();
 	} else {
@@ -528,7 +527,6 @@ void tick_unfreeze(void)
 	if (tick_frozen_mask == *cpumask_bits(cpu_online_mask)) {
 		timekeeping_resume();
 		sched_clock_resume();
-		system_state = SYSTEM_RUNNING;
 		trace_suspend_resume(TPS("timekeeping_freeze"),
 				     smp_processor_id(), false);
 	} else {

@@ -201,6 +201,8 @@ struct timer_base {
 	unsigned long		clk;
 	unsigned long		next_expiry;
 	unsigned int		cpu;
+	bool			migration_enabled;
+	bool			nohz_active;
 	bool			is_idle;
 	bool			must_forward_clk;
 	DECLARE_BITMAP(pending_map, WHEEL_SIZE);
@@ -211,66 +213,48 @@ static DEFINE_PER_CPU(struct timer_base, timer_bases[NR_BASES]);
 struct timer_base timer_base_deferrable;
 static atomic_t deferrable_pending;
 
-#ifdef CONFIG_NO_HZ_COMMON
-
-static DEFINE_STATIC_KEY_FALSE(timers_nohz_active);
-static DEFINE_MUTEX(timer_keys_mutex);
-
-static void timer_update_keys(struct work_struct *work);
-static DECLARE_WORK(timer_update_work, timer_update_keys);
-
-#ifdef CONFIG_SMP
+#if defined(CONFIG_SMP) && defined(CONFIG_NO_HZ_COMMON)
 unsigned int sysctl_timer_migration = 1;
 
-DEFINE_STATIC_KEY_FALSE(timers_migration_enabled);
-
-static void timers_update_migration(void)
+void timers_update_migration(bool update_nohz)
 {
 	bool on = sysctl_timer_migration && tick_nohz_active;
+	unsigned int cpu;
 
-	if (on)
-		static_branch_enable(&timers_migration_enabled);
-	else
-		static_branch_disable(&timers_migration_enabled);
-}
-#else
-static inline void timers_update_migration(void) { }
-#endif /* !CONFIG_SMP */
+	/* Avoid the loop, if nothing to update */
+	if (this_cpu_read(timer_bases[BASE_STD].migration_enabled) == on)
+		return;
 
-static void timer_update_keys(struct work_struct *work)
-{
-	mutex_lock(&timer_keys_mutex);
-	timers_update_migration();
-	static_branch_enable(&timers_nohz_active);
-	mutex_unlock(&timer_keys_mutex);
-}
+	for_each_possible_cpu(cpu) {
+		per_cpu(timer_bases[BASE_STD].migration_enabled, cpu) = on;
+		per_cpu(timer_bases[BASE_DEF].migration_enabled, cpu) = on;
+		per_cpu(hrtimer_bases.migration_enabled, cpu) = on;
+		if (!update_nohz)
+			continue;
+		per_cpu(timer_bases[BASE_STD].nohz_active, cpu) = true;
+		per_cpu(timer_bases[BASE_DEF].nohz_active, cpu) = true;
+		per_cpu(hrtimer_bases.nohz_active, cpu) = true;
+	}
 
-void timers_update_nohz(void)
-{
-	schedule_work(&timer_update_work);
+	timer_base_deferrable.migration_enabled = on;
+	timer_base_deferrable.nohz_active = true;
 }
 
 int timer_migration_handler(struct ctl_table *table, int write,
 			    void __user *buffer, size_t *lenp,
 			    loff_t *ppos)
 {
+	static DEFINE_MUTEX(mutex);
 	int ret;
 
-	mutex_lock(&timer_keys_mutex);
+	mutex_lock(&mutex);
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 	if (!ret && write)
-		timers_update_migration();
-	mutex_unlock(&timer_keys_mutex);
+		timers_update_migration(false);
+	mutex_unlock(&mutex);
 	return ret;
 }
-
-static inline bool is_timers_nohz_active(void)
-{
-	return static_branch_unlikely(&timers_nohz_active);
-}
-#else
-static inline bool is_timers_nohz_active(void) { return false; }
-#endif /* NO_HZ_COMMON */
+#endif
 
 static unsigned long round_jiffies_common(unsigned long j, int cpu,
 		bool force_up)
@@ -565,7 +549,7 @@ __internal_add_timer(struct timer_base *base, struct timer_list *timer)
 static void
 trigger_dyntick_cpu(struct timer_base *base, struct timer_list *timer)
 {
-	if (!is_timers_nohz_active())
+	if (!IS_ENABLED(CONFIG_NO_HZ_COMMON) || !base->nohz_active)
 		return;
 
 	/*
@@ -877,20 +861,21 @@ static inline struct timer_base *get_timer_base(u32 tflags)
 	return get_timer_cpu_base(tflags, tflags & TIMER_CPUMASK);
 }
 
+#ifdef CONFIG_NO_HZ_COMMON
 static inline struct timer_base *
 get_target_base(struct timer_base *base, unsigned tflags)
 {
-#if defined(CONFIG_SMP) && defined(CONFIG_NO_HZ_COMMON)
-	if (static_branch_unlikely(&timers_migration_enabled) &&
-	    !(tflags & TIMER_PINNED))
-		return get_timer_cpu_base(tflags, get_nohz_timer_target());
-#endif
+#ifdef CONFIG_SMP
+	if ((tflags & TIMER_PINNED) || !base->migration_enabled)
+		return get_timer_this_cpu_base(tflags);
+	return get_timer_cpu_base(tflags, get_nohz_timer_target());
+#else
 	return get_timer_this_cpu_base(tflags);
+#endif
 }
 
 static inline void forward_timer_base(struct timer_base *base)
 {
-#ifdef CONFIG_NO_HZ_COMMON
 	unsigned long jnow;
 
 	/*
@@ -914,8 +899,16 @@ static inline void forward_timer_base(struct timer_base *base)
 		base->clk = jnow;
 	else
 		base->clk = base->next_expiry;
-#endif
 }
+#else
+static inline struct timer_base *
+get_target_base(struct timer_base *base, unsigned tflags)
+{
+	return get_timer_this_cpu_base(tflags);
+}
+
+static inline void forward_timer_base(struct timer_base *base) { }
+#endif
 
 
 /*
@@ -2052,32 +2045,6 @@ unsigned long msleep_interruptible(unsigned int msecs)
 EXPORT_SYMBOL(msleep_interruptible);
 
 /**
- * usleep_range_state - Sleep for an approximate time in a given state
- * @min:	Minimum time in usecs to sleep
- * @max:	Maximum time in usecs to sleep
- * @state:	State of the current task that will be while sleeping
- *
- * In non-atomic context where the exact wakeup time is flexible, use
- * usleep_range_state() instead of udelay().  The sleep improves responsiveness
- * by avoiding the CPU-hogging busy-wait of udelay(), and the range reduces
- * power usage by allowing hrtimers to take advantage of an already-
- * scheduled interrupt instead of scheduling a new one just for this sleep.
- */
-void __sched usleep_range_state(unsigned long min, unsigned long max,
-				unsigned int state)
-{
-	ktime_t exp = ktime_add_us(ktime_get(), min);
-	u64 delta = (u64)(max - min) * NSEC_PER_USEC;
-
-	for (;;) {
-		__set_current_state(state);
-		/* Do not return before the requested sleep time has elapsed */
-		if (!schedule_hrtimeout_range(&exp, delta, HRTIMER_MODE_ABS))
-			break;
-	}
-}
-
-/**
  * usleep_range - Sleep for an approximate time
  * @min: Minimum time in usecs to sleep
  * @max: Maximum time in usecs to sleep
@@ -2090,6 +2057,14 @@ void __sched usleep_range_state(unsigned long min, unsigned long max,
  */
 void __sched usleep_range(unsigned long min, unsigned long max)
 {
-	usleep_range_state(min, max, TASK_UNINTERRUPTIBLE);
+	ktime_t exp = ktime_add_us(ktime_get(), min);
+	u64 delta = (u64)(max - min) * NSEC_PER_USEC;
+
+	for (;;) {
+		__set_current_state(TASK_UNINTERRUPTIBLE);
+		/* Do not return before the requested sleep time has elapsed */
+		if (!schedule_hrtimeout_range(&exp, delta, HRTIMER_MODE_ABS))
+			break;
+	}
 }
 EXPORT_SYMBOL(usleep_range);
