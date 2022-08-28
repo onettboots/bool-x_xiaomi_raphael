@@ -139,9 +139,8 @@ static inline bool __mutex_trylock(struct mutex *lock)
 static __always_inline bool __mutex_trylock_fast(struct mutex *lock)
 {
 	unsigned long curr = (unsigned long)current;
-	unsigned long zero = 0UL;
 
-	if (atomic_long_try_cmpxchg_acquire(&lock->owner, &zero, curr))
+	if (!atomic_long_cmpxchg_acquire(&lock->owner, 0UL, curr))
 		return true;
 
 	return false;
