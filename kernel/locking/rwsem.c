@@ -1075,7 +1075,6 @@ rwsem_down_read_slowpath(struct rw_semaphore *sem, int state)
 	atomic_long_add(-RWSEM_READER_BIAS, &sem->count);
 	adjustment = 0;
 	if (rwsem_optimistic_spin(sem, false)) {
-		/* rwsem_optimistic_spin() implies ACQUIRE on success */
 		/*
 		 * Wake up other readers in the wait list if the front
 		 * waiter is a reader.
@@ -1090,7 +1089,6 @@ rwsem_down_read_slowpath(struct rw_semaphore *sem, int state)
 		}
 		return sem;
 	} else if (rwsem_reader_phase_trylock(sem, waiter.last_rowner)) {
-		/* rwsem_reader_phase_trylock() implies ACQUIRE on success */
 		return sem;
 	}
 
@@ -1145,10 +1143,10 @@ queue:
 	wake_up_q(&wake_q);
 
 	/* wait to be given the lock */
-	for (;;) {
+	while (true) {
 		set_current_state(state);
 		if (!smp_load_acquire(&waiter.task)) {
-			/* Matches rwsem_mark_wake()'s smp_store_release(). */
+			/* Orders against rwsem_mark_wake()'s smp_store_release() */
 			break;
 		}
 		if (signal_pending_state(state, current)) {
@@ -1156,7 +1154,6 @@ queue:
 			if (waiter.task)
 				goto out_nolock;
 			raw_spin_unlock_irq(&sem->wait_lock);
-			/* Ordered by sem->wait_lock against rwsem_mark_wake(). */
 			break;
 		}
 		schedule();
@@ -1164,7 +1161,6 @@ queue:
 
 	__set_current_state(TASK_RUNNING);
 	return sem;
-
 out_nolock:
 	list_del(&waiter.list);
 	if (list_empty(&sem->wait_list)) {
@@ -1203,10 +1199,8 @@ rwsem_down_write_slowpath(struct rw_semaphore *sem, int state)
 
 	/* do optimistic spinning and steal lock if possible */
 	if (rwsem_can_spin_on_owner(sem, RWSEM_WR_NONSPINNABLE) &&
-	    rwsem_optimistic_spin(sem, true)) {
-		/* rwsem_optimistic_spin() implies ACQUIRE on success */
+	    rwsem_optimistic_spin(sem, true))
 		return sem;
-	}
 
 	/*
 	 * Disable reader optimistic spinning for this rwsem after
@@ -1270,11 +1264,9 @@ rwsem_down_write_slowpath(struct rw_semaphore *sem, int state)
 wait:
 	/* wait until we successfully acquire the lock */
 	set_current_state(state);
-	for (;;) {
-		if (rwsem_try_write_lock(sem, wstate)) {
-			/* rwsem_try_write_lock() implies ACQUIRE on success */
+	while (true) {
+		if (rwsem_try_write_lock(sem, wstate))
 			break;
-		}
 
 		raw_spin_unlock_irq(&sem->wait_lock);
 
