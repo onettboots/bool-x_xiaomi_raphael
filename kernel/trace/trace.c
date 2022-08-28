@@ -1695,7 +1695,7 @@ void tracing_reset(struct trace_buffer *buf, int cpu)
 	ring_buffer_record_disable(buffer);
 
 	/* Make sure all commits have finished */
-	synchronize_rcu();
+	synchronize_sched();
 	ring_buffer_reset_cpu(buffer, cpu);
 
 	ring_buffer_record_enable(buffer);
@@ -1712,7 +1712,7 @@ void tracing_reset_online_cpus(struct trace_buffer *buf)
 	ring_buffer_record_disable(buffer);
 
 	/* Make sure all commits have finished */
-	synchronize_rcu();
+	synchronize_sched();
 
 	buf->time_start = buffer_ftrace_now(buf, buf->cpu);
 
@@ -2271,7 +2271,7 @@ void trace_buffered_event_disable(void)
 	preempt_enable();
 
 	/* Wait for all current users to finish */
-	synchronize_rcu();
+	synchronize_sched();
 
 	for_each_tracing_cpu(cpu) {
 		free_page((unsigned long)per_cpu(trace_buffered_event, cpu));
@@ -2716,6 +2716,17 @@ void __trace_stack(struct trace_array *tr, unsigned long flags, int skip,
 	 * not be called from NMI.
 	 */
 	if (unlikely(in_nmi()))
+		return;
+
+	/*
+	 * It is possible that a function is being traced in a
+	 * location that RCU is not watching. A call to
+	 * rcu_irq_enter() will make sure that it is, but there's
+	 * a few internal rcu functions that could be traced
+	 * where that wont work either. In those cases, we just
+	 * do nothing.
+	 */
+	if (unlikely(rcu_irq_enter_disabled()))
 		return;
 
 	rcu_irq_enter_irqson();
@@ -5440,7 +5451,7 @@ static int tracing_set_tracer(struct trace_array *tr, const char *buf)
 	if (tr->current_trace->reset)
 		tr->current_trace->reset(tr);
 
-	/* Current trace needs to be nop_trace before synchronize_rcu */
+	/* Current trace needs to be nop_trace before synchronize_sched */
 	tr->current_trace = &nop_trace;
 
 #ifdef CONFIG_TRACER_MAX_TRACE
@@ -5454,7 +5465,7 @@ static int tracing_set_tracer(struct trace_array *tr, const char *buf)
 		 * The update_max_tr is called from interrupts disabled
 		 * so a synchronized_sched() is sufficient.
 		 */
-		synchronize_rcu();
+		synchronize_sched();
 		free_snapshot(tr);
 	}
 #endif
