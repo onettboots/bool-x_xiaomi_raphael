@@ -83,7 +83,7 @@ static inline struct task_struct *__mutex_trylock_or_owner(struct mutex *lock)
 
 	owner = atomic_long_read(&lock->owner);
 	for (;;) { /* must loop, can race against a flag */
-		unsigned long flags = __owner_flags(owner);
+		unsigned long old, flags = __owner_flags(owner);
 		unsigned long task = owner & ~MUTEX_FLAGS;
 
 		if (task) {
@@ -107,8 +107,11 @@ static inline struct task_struct *__mutex_trylock_or_owner(struct mutex *lock)
 		 */
 		flags &= ~MUTEX_FLAG_HANDOFF;
 
-		if (atomic_long_try_cmpxchg_acquire(&lock->owner, &owner, curr | flags))
+		old = atomic_long_cmpxchg_acquire(&lock->owner, owner, curr | flags);
+		if (old == owner)
 			return NULL;
+
+		owner = old;
 	}
 
 	return __owner_task(owner);
@@ -148,7 +151,10 @@ static __always_inline bool __mutex_unlock_fast(struct mutex *lock)
 {
 	unsigned long curr = (unsigned long)current;
 
-	return atomic_long_try_cmpxchg_release(&lock->owner, &curr, 0UL);
+	if (atomic_long_cmpxchg_release(&lock->owner, curr, 0UL) == curr)
+		return true;
+
+	return false;
 }
 #endif
 
@@ -203,7 +209,7 @@ static void __mutex_handoff(struct mutex *lock, struct task_struct *task)
 	unsigned long owner = atomic_long_read(&lock->owner);
 
 	for (;;) {
-		unsigned long new;
+		unsigned long old, new;
 
 #ifdef CONFIG_DEBUG_MUTEXES
 		DEBUG_LOCKS_WARN_ON(__owner_task(owner) != current);
@@ -215,8 +221,11 @@ static void __mutex_handoff(struct mutex *lock, struct task_struct *task)
 		if (task)
 			new |= MUTEX_FLAG_PICKUP;
 
-		if (atomic_long_try_cmpxchg_release(&lock->owner, &owner, new))
+		old = atomic_long_cmpxchg_release(&lock->owner, owner, new);
+		if (old == owner)
 			break;
+
+		owner = old;
 	}
 }
 
@@ -1220,6 +1229,8 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
 	 */
 	owner = atomic_long_read(&lock->owner);
 	for (;;) {
+		unsigned long old;
+
 #ifdef CONFIG_DEBUG_MUTEXES
 		DEBUG_LOCKS_WARN_ON(__owner_task(owner) != current);
 		DEBUG_LOCKS_WARN_ON(owner & MUTEX_FLAG_PICKUP);
@@ -1228,12 +1239,16 @@ static noinline void __sched __mutex_unlock_slowpath(struct mutex *lock, unsigne
 		if (owner & MUTEX_FLAG_HANDOFF)
 			break;
 
-		if (atomic_long_try_cmpxchg_release(&lock->owner, &owner, __owner_flags(owner))) {
+		old = atomic_long_cmpxchg_release(&lock->owner, owner,
+						  __owner_flags(owner));
+		if (old == owner) {
 			if (owner & MUTEX_FLAG_WAITERS)
 				break;
 
 			return;
 		}
+
+		owner = old;
 	}
 
 	spin_lock(&lock->wait_lock);
