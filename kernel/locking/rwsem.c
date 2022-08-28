@@ -24,6 +24,7 @@ void __sched down_read(struct rw_semaphore *sem)
 	rwsem_acquire_read(&sem->dep_map, 0, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
+	rwsem_set_reader_owned(sem);
 }
 
 EXPORT_SYMBOL(down_read);
@@ -38,6 +39,7 @@ int __sched down_read_killable(struct rw_semaphore *sem)
 		return -EINTR;
 	}
 
+	rwsem_set_reader_owned(sem);
 	return 0;
 }
 
@@ -50,8 +52,10 @@ int down_read_trylock(struct rw_semaphore *sem)
 {
 	int ret = __down_read_trylock(sem);
 
-	if (ret == 1)
+	if (ret == 1) {
 		rwsem_acquire_read(&sem->dep_map, 0, 1, _RET_IP_);
+		rwsem_set_reader_owned(sem);
+	}
 	return ret;
 }
 
@@ -66,6 +70,7 @@ void __sched down_write(struct rw_semaphore *sem)
 	rwsem_acquire(&sem->dep_map, 0, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+	rwsem_set_owner(sem);
 }
 
 EXPORT_SYMBOL(down_write);
@@ -83,6 +88,7 @@ int __sched down_write_killable(struct rw_semaphore *sem)
 		return -EINTR;
 	}
 
+	rwsem_set_owner(sem);
 	return 0;
 }
 
@@ -95,8 +101,10 @@ int down_write_trylock(struct rw_semaphore *sem)
 {
 	int ret = __down_write_trylock(sem);
 
-	if (ret == 1)
+	if (ret == 1) {
 		rwsem_acquire(&sem->dep_map, 0, 1, _RET_IP_);
+		rwsem_set_owner(sem);
+	}
 
 	return ret;
 }
@@ -111,6 +119,7 @@ void up_read(struct rw_semaphore *sem)
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 	DEBUG_RWSEMS_WARN_ON(!((unsigned long)sem->owner & RWSEM_READER_OWNED));
 
+	rwsem_clear_reader_owned(sem);
 	__up_read(sem);
 }
 
@@ -124,6 +133,7 @@ void up_write(struct rw_semaphore *sem)
 	rwsem_release(&sem->dep_map, 1, _RET_IP_);
 	DEBUG_RWSEMS_WARN_ON(sem->owner != current);
 
+	rwsem_clear_owner(sem);
 	__up_write(sem);
 }
 
@@ -137,6 +147,7 @@ void downgrade_write(struct rw_semaphore *sem)
 	lock_downgrade(&sem->dep_map, _RET_IP_);
 	DEBUG_RWSEMS_WARN_ON(sem->owner != current);
 
+	rwsem_set_reader_owned(sem);
 	__downgrade_write(sem);
 }
 
@@ -150,6 +161,7 @@ void down_read_nested(struct rw_semaphore *sem, int subclass)
 	rwsem_acquire_read(&sem->dep_map, subclass, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_read_trylock, __down_read);
+	rwsem_set_reader_owned(sem);
 }
 
 EXPORT_SYMBOL(down_read_nested);
@@ -160,6 +172,7 @@ void _down_write_nest_lock(struct rw_semaphore *sem, struct lockdep_map *nest)
 	rwsem_acquire_nest(&sem->dep_map, 0, 0, nest, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+	rwsem_set_owner(sem);
 }
 
 EXPORT_SYMBOL(_down_write_nest_lock);
@@ -180,6 +193,7 @@ void down_write_nested(struct rw_semaphore *sem, int subclass)
 	rwsem_acquire(&sem->dep_map, subclass, 0, _RET_IP_);
 
 	LOCK_CONTENDED(sem, __down_write_trylock, __down_write);
+	rwsem_set_owner(sem);
 }
 
 EXPORT_SYMBOL(down_write_nested);
@@ -194,6 +208,7 @@ int __sched down_write_killable_nested(struct rw_semaphore *sem, int subclass)
 		return -EINTR;
 	}
 
+	rwsem_set_owner(sem);
 	return 0;
 }
 
