@@ -495,54 +495,17 @@ static inline bool rwsem_can_spin_on_owner(struct rw_semaphore *sem)
 }
 
 /*
- * The rwsem_spin_on_owner() function returns the folowing 4 values
- * depending on the lock owner state.
- *   OWNER_NULL  : owner is currently NULL
- *   OWNER_WRITER: when owner changes and is a writer
- *   OWNER_READER: when owner changes and the new owner may be a reader.
- *   OWNER_NONSPINNABLE:
- *		   when optimistic spinning has to stop because either the
- *		   owner stops running, is unknown, or its timeslice has
- *		   been used up.
+ * Return true only if we can still spin on the owner field of the rwsem.
  */
-enum owner_state {
-	OWNER_NULL		= 1 << 0,
-	OWNER_WRITER		= 1 << 1,
-	OWNER_READER		= 1 << 2,
-	OWNER_NONSPINNABLE	= 1 << 3,
-};
-#define OWNER_SPINNABLE		(OWNER_NULL | OWNER_WRITER)
-
-static inline enum owner_state rwsem_owner_state(unsigned long owner)
+static noinline bool rwsem_spin_on_owner(struct rw_semaphore *sem)
 {
-	if (!owner)
-		return OWNER_NULL;
+	struct task_struct *owner = READ_ONCE(sem->owner);
 
-	if (owner & RWSEM_ANONYMOUSLY_OWNED)
-		return OWNER_NONSPINNABLE;
-
-	if (owner & RWSEM_READER_OWNED)
-		return OWNER_READER;
-
-	return OWNER_WRITER;
-}
-
-static noinline enum owner_state rwsem_spin_on_owner(struct rw_semaphore *sem)
-{
-	struct task_struct *tmp, *owner = READ_ONCE(sem->owner);
-	enum owner_state state = rwsem_owner_state((unsigned long)owner);
-
-	if (state != OWNER_WRITER)
-		return state;
+	if (!is_rwsem_owner_spinnable(owner))
+		return false;
 
 	rcu_read_lock();
-	for (;;) {
-		tmp = READ_ONCE(sem->owner);
-		if (tmp != owner) {
-			state = rwsem_owner_state((unsigned long)tmp);
-			break;
-		}
-
+	while (owner && (READ_ONCE(sem->owner) == owner)) {
 		/*
 		 * Ensure we emit the owner->on_cpu, dereference _after_
 		 * checking sem->owner still matches owner, if that fails,
@@ -551,16 +514,24 @@ static noinline enum owner_state rwsem_spin_on_owner(struct rw_semaphore *sem)
 		 */
 		barrier();
 
+		/*
+		 * abort spinning when need_resched or owner is not running or
+		 * owner's cpu is preempted.
+		 */
 		if (need_resched() || !owner_on_cpu(owner)) {
-			state = OWNER_NONSPINNABLE;
-			break;
+			rcu_read_unlock();
+			return false;
 		}
 
 		cpu_relax();
 	}
 	rcu_read_unlock();
 
-	return state;
+	/*
+	 * If there is a new owner or the owner is not set, we continue
+	 * spinning.
+	 */
+	return is_rwsem_owner_spinnable(READ_ONCE(sem->owner));
 }
 
 static bool rwsem_optimistic_spin(struct rw_semaphore *sem)
@@ -583,7 +554,7 @@ static bool rwsem_optimistic_spin(struct rw_semaphore *sem)
 	 *  2) readers own the lock as we can't determine if they are
 	 *     actively running or not.
 	 */
-	while (rwsem_spin_on_owner(sem) & OWNER_SPINNABLE) {
+	while (rwsem_spin_on_owner(sem)) {
 		/*
 		 * Try to acquire the lock
 		 */
