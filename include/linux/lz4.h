@@ -230,7 +230,7 @@ int LZ4_decompress_fast(const char *source, char *dest, int originalSize);
  * @compressedSize: is the precise full size of the compressed block
  * @maxDecompressedSize: is the size of 'dest' buffer
  *
- * Decompresses data fom 'source' into 'dest'.
+ * Decompresses data from 'source' into 'dest'.
  * If the source stream is detected malformed, the function will
  * stop decoding and return a negative result.
  * This function is protected against buffer overflow exploits,
@@ -269,7 +269,7 @@ int LZ4_decompress_safe(const char *source, char *dest, int compressedSize,
  *	or a negative result in case of error
  *
  */
-static int LZ4_decompress_safe_partial(const char *source, char *dest,
+int LZ4_decompress_safe_partial(const char *source, char *dest,
 	int compressedSize, int targetOutputSize, int maxDecompressedSize);
 
 /*-************************************************************************
