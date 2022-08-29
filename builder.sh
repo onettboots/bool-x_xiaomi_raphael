@@ -10,6 +10,7 @@ kernel_dir="${PWD}"
 builddir="${kernel_dir}/Zip-out"
 last_commit=$(git rev-parse --verify --short=10 HEAD)
 kVersion="-${last_commit}"
+CUSTOM_ZIP_OUT_LOC="/mnt/phone_share/" # Unset if don't want to copy output zip to anywhere else
 
 # Arch and target image
 export ARCH="arm64"
@@ -159,8 +160,7 @@ function make_image()
 		if [ ${BUILD_FULL_LTO} == true ]; then
 			if [[ ${SUPPORTS_FULL_CLANG} == CONFIG_ARCH_SUPPORTS_LTO_CLANG=y ]]; then
 				print ${LGR} "${CYN}Enabling ${YEL}Full LTO"
-				ENABLE_CONF="${ENABLE_CONF}"
-				DISABLE_CONF="${DISABLE_CONF} THINLTO"
+				DISABLE_CONF+=" THINLTO"
 			else
 				print ${RED} "Full LTO Unsupported"
 			fi
@@ -168,8 +168,7 @@ function make_image()
 		else if [ ${BUILD_LTO} == true ]; then
 			if [[ ${SUPPORTS_THINLTO_CLANG} == CONFIG_ARCH_SUPPORTS_THINLTO=y ]]; then
 				print ${LGR} "${CYN}Enabling ${YEL}ThinLTO"
-				ENABLE_CONF="${ENABLE_CONF} THINLTO"
-				DISABLE_CONF="${DISABLE_CONF}"
+				ENABLE_CONF+=" THINLTO"
 			else
 				print ${RED} "ThinLTO Unsupported"
 			fi
@@ -179,13 +178,13 @@ function make_image()
 
 	if [ ${BUILD_CASEFOLDING} == true ]; then
 		print ${LGR} "${CYN}Enabling ${YEL}Casefolding"
-		ENABLE_CONF="${ENABLE_CONF} CONFIG_UNICODE"
-		DISABLE_CONF="${DISABLE_CONF} CONFIG_SDCARD_FS"
+		ENABLE_CONF+=" CONFIG_UNICODE"
+		DISABLE_CONF+=" CONFIG_SDCARD_FS"
 
 	else
 		print ${LGR} "${LRD}Disabling ${YEL}Casefolding"
-		ENABLE_CONF="${ENABLE_CONF} CONFIG_SDCARD_FS"
-		DISABLE_CONF="${DISABLE_CONF} CONFIG_UNICODE"
+		ENABLE_CONF+=" CONFIG_SDCARD_FS"
+		DISABLE_CONF+=" CONFIG_UNICODE"
 	fi
 
 	if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
@@ -243,7 +242,6 @@ function completion()
 		else
 			ZIP_NAME+="-${DATE_TIME}${kVersion}${CUSTOM_NAME}"
 		fi
-		#ZIP_NAME+="${CUSTOM_NAME}"
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		print ${LGR} "Build completed in ${TIME}!"
@@ -254,7 +252,10 @@ function completion()
                 zip -r -q "${ZIP_NAME}.zip" .
                 rm ${builddir}/anykernel/${TARGET_IMAGE}
                 mv ${builddir}/anykernel/"${ZIP_NAME}.zip" ${builddir}/
-		cp ${builddir}/"${ZIP_NAME}.zip" /mnt/phone_share/
+
+		if [[ ${CUSTOM_ZIP_OUT_LOC} != "" ]]; then
+			cp ${builddir}/"${ZIP_NAME}.zip" ${CUSTOM_ZIP_OUT_LOC}
+		fi
 
 		print ${LGR} "(i)Flashable zip generated under $builddir"
 		if [ ${VERBOSE} == true ]; then
