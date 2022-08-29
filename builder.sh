@@ -201,15 +201,18 @@ function make_image()
 	make_wrapper olddefconfig
 
 	# Clang versioning
-	VERSION=$(${CLANG_LOC}/bin/clang --version | grep -wom 1 "[0-99][0-99].[0-99].[0-99]")
-	COMPILER_NAME="Clang-${VERSION}"
-	if [ ${BUILD_LTO} == true ]; then
-		COMPILER_NAME+="+LTO"
+	if [[ -d ${CLANG_LOC} ]]; then
+		VERSION=$(${CLANG_LOC}/bin/clang --version | grep -wom 1 "[0-99][0-99].[0-99].[0-99]")
+		COMPILER_NAME="Clang-${VERSION}"
+		if [ ${BUILD_LTO} == true ]; then
+			COMPILER_NAME+="+LTO"
+		fi
+		print ${LGR} "Compiling with ${YEL}${COMPILER_NAME}"
+		cd ${kernel_dir}
+		make_wrapper ${TARGET_IMAGE}
+	else
+		screen "Clang dir ${CLANG_LOC} does not exist.\nPlease set in CLANG_LOC"
 	fi
-	print ${LGR} "Compiling with ${YEL}${COMPILER_NAME}"
-	cd ${kernel_dir}
-	make_wrapper ${TARGET_IMAGE}
-
 	completion "${START}" "$(date +%s)"
 }
 
