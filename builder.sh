@@ -221,11 +221,14 @@ function completion()
 
 	if [[ -f ${COMPILED_IMAGE} ]]; then
 
+		DATE=$(date '+%d%m%y')
+		DATE_TIME=$(date '+%d%m%y_%H%M%S')
+
 		KERNEL_NAME=$(grep CONFIG_LOCALVERSION= ${objdir}/.config)
 		KERNEL_NAME="${KERNEL_NAME//*=/}"
 		KERNEL_NAME="${KERNEL_NAME//[-'"']/}"
 
-		ZIP_NAME="${KERNEL_NAME}${kVersion}"
+		ZIP_NAME="${KERNEL_NAME}"
 
 		if [[ ${BUILD_CASEFOLDING} == true ]]; then
 			ZIP_NAME+="-CASEFOLDING"
@@ -235,7 +238,12 @@ function completion()
 			ZIP_NAME+="-EROFS"
 		fi
 
-		ZIP_NAME+="${CUSTOM_NAME}"
+		if [[ ${RELEASE} == true ]]; then
+			ZIP_NAME+="-${DATE}-RELEASE${CUSTOM_NAME}"
+		else
+			ZIP_NAME+="-${DATE_TIME}${kVersion}${CUSTOM_NAME}"
+		fi
+		#ZIP_NAME+="${CUSTOM_NAME}"
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		print ${LGR} "Build completed in ${TIME}!"
