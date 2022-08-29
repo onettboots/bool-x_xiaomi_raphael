@@ -22,7 +22,6 @@ CLANG="${CLANG_LOC}/bin:$PATH"
 CT_BIN="${CLANG}/bin/"
 CT="${CT_BIN}/clang"
 objdir="${kernel_dir}/out"
-#export THINLTO_CACHE=${PWD}/../thinlto_cache
 
 # Colors
 NC='\033[0m'
@@ -81,7 +80,7 @@ function parse_parameters()
 			"-n")
 				print $YEL "Input kernel name:";
 				read CUSTOM_NAME; CUSTOM_NAME="-$CUSTOM_NAME";;
-            *) screen "Invalid parameter specified!" ;;
+            		*) screen "Invalid parameter specified!" ;;
 		esac
 
 		shift
@@ -148,6 +147,7 @@ function make_image()
 
 	SUPPORTS_THINLTO_CLANG=$(grep CONFIG_ARCH_SUPPORTS_THINLTO ${objdir}/.config)
 	SUPPORTS_FULL_CLANG=$(grep CONFIG_ARCH_SUPPORTS_LTO_CLANG ${objdir}/.config)
+	EROFS_STATE=$(grep CONFIG_EROFS_FS= ${objdir}/.config)
 
 	if [[ ${BUILD_LTO} == true && ${BUILD_FULL_LTO} == true  ||  ${BUILD_LTO} == false && ${BUILD_FULL_LTO} == false ]]; then
 		print ${RED} "Both LTO and FULL_LTO is true/false!"
@@ -157,7 +157,7 @@ function make_image()
 		DISABLE_CONF="LTO_NONE LD_GOLD LD_BFD"
 
 		if [ ${BUILD_FULL_LTO} == true ]; then
-			if [ ${SUPPORTS_FULL_CLANG} == CONFIG_ARCH_SUPPORTS_LTO_CLANG=y ]; then
+			if [[ ${SUPPORTS_FULL_CLANG} == CONFIG_ARCH_SUPPORTS_LTO_CLANG=y ]]; then
 				print ${LGR} "${CYN}Enabling ${YEL}Full LTO"
 				ENABLE_CONF="${ENABLE_CONF}"
 				DISABLE_CONF="${DISABLE_CONF} THINLTO"
@@ -166,7 +166,7 @@ function make_image()
 			fi
 
 		else if [ ${BUILD_LTO} == true ]; then
-			if [ ${SUPPORTS_THINLTO_CLANG} == CONFIG_ARCH_SUPPORTS_THINLTO=y ]; then
+			if [[ ${SUPPORTS_THINLTO_CLANG} == CONFIG_ARCH_SUPPORTS_THINLTO=y ]]; then
 				print ${LGR} "${CYN}Enabling ${YEL}ThinLTO"
 				ENABLE_CONF="${ENABLE_CONF} THINLTO"
 				DISABLE_CONF="${DISABLE_CONF}"
@@ -186,6 +186,10 @@ function make_image()
 		print ${LGR} "${LRD}Disabling ${YEL}Casefolding"
 		ENABLE_CONF="${ENABLE_CONF} CONFIG_SDCARD_FS"
 		DISABLE_CONF="${DISABLE_CONF} CONFIG_UNICODE"
+	fi
+
+	if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
+		print "${YEL}EROFS ${CYN}enabled"
 	fi
 
 	# enable/disable stuff
@@ -218,10 +222,16 @@ function completion()
 	if [[ -f ${COMPILED_IMAGE} ]]; then
 
 		if [[ ${BUILD_CASEFOLDING} == true ]]; then
-			ZIP_NAME="INFINITY${kVersion}-CASEFOLDING${CUSTOM_NAME}"
+			ZIP_NAME="INFINITY${kVersion}-CASEFOLDING"
 		else
-			ZIP_NAME="INFINITY${kVersion}${CUSTOM_NAME}"
+			ZIP_NAME="INFINITY${kVersion}"
 		fi
+
+		if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
+			ZIP_NAME="${ZIP_NAME}-EROFS"
+		fi
+
+		ZIP_NAME="${ZIP_NAME}${CUSTOM_NAME}"
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		print ${LGR} "Build completed in ${TIME}!"
