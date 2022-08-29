@@ -221,17 +221,21 @@ function completion()
 
 	if [[ -f ${COMPILED_IMAGE} ]]; then
 
+		KERNEL_NAME=$(grep CONFIG_LOCALVERSION= ${objdir}/.config)
+		KERNEL_NAME="${KERNEL_NAME//*=/}"
+		KERNEL_NAME="${KERNEL_NAME//[-'"']/}"
+
+		ZIP_NAME="${KERNEL_NAME}${kVersion}"
+
 		if [[ ${BUILD_CASEFOLDING} == true ]]; then
-			ZIP_NAME="INFINITY${kVersion}-CASEFOLDING"
-		else
-			ZIP_NAME="INFINITY${kVersion}"
+			ZIP_NAME+="-CASEFOLDING"
 		fi
 
 		if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
-			ZIP_NAME="${ZIP_NAME}-EROFS"
+			ZIP_NAME+="-EROFS"
 		fi
 
-		ZIP_NAME="${ZIP_NAME}${CUSTOM_NAME}"
+		ZIP_NAME+="${CUSTOM_NAME}"
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		print ${LGR} "Build completed in ${TIME}!"
