@@ -1,7 +1,18 @@
-![CommitCount](https://img.shields.io/github/commits-since/LuanHalaiko/kernel_raphael_sm8150/2.0.0/raphael-unified)
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FLuanHalaiko%2Fkernel_xiaomi_raphael&count_bg=%2379C83D&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
-![Downloads](https://img.shields.io/github/downloads/LuanHalaiko/kernel_raphael_sm8150/2.0.0/total)
-![Downloads-NewUpdate](https://img.shields.io/github/downloads/LuanHalaiko/kernel_raphael_sm8150/3.0.0/total)
+Linux kernel
+============
 
-## Technical Information
-![banner](https://github.com/LuanHalaiko/Artworks/raw/Kernel-Arts/infinity-banner-3.0.png "The new Infinity")
+This file was moved to Documentation/admin-guide/README.rst
+
+Please notice that there are several guides for kernel developers and users.
+These guides can be rendered in a number of formats, like HTML and PDF.
+
+In order to build the documentation, use ``make htmldocs`` or
+``make pdfdocs``.
+
+There are various text files in the Documentation/ subdirectory,
+several of them using the Restructured Text markup notation.
+See Documentation/00-INDEX for a list of what is contained in each file.
+
+Please read the Documentation/process/changes.rst file, as it contains the
+requirements for building and running the kernel, and information about
+the problems which may result by upgrading your kernel.
