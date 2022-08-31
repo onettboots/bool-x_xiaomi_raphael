@@ -1111,6 +1111,7 @@ void pagefault_out_of_memory(void)
 }
 
 /* Call this function with task_lock being held as we're accessing ->mm */
+#ifdef CONFIG_DEBUG_KERNEL
 void dump_killed_info(struct task_struct *selected)
 {
 	int selected_tasksize = get_mm_rss(selected->mm);
@@ -1133,6 +1134,7 @@ void dump_killed_info(struct task_struct *selected)
 			global_node_page_state(NR_FILE_PAGES) *
 				(long)(PAGE_SIZE / 1024));
 }
+#endif
 
 void add_to_oom_reaper(struct task_struct *p)
 {
@@ -1152,7 +1154,9 @@ void add_to_oom_reaper(struct task_struct *p)
 		wake_oom_reaper(p);
 	}
 
+#ifdef CONFIG_DEBUG_KERNEL
 	dump_killed_info(p);
+#endif
 	task_unlock(p);
 
 	if (__ratelimit(&reaper_rs) && p->signal->oom_score_adj == 0) {
