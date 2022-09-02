@@ -77,15 +77,14 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 {
 	struct boost_drv *b = &boost_drv_g;
 	unsigned int freq;
-
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_min_little;
+		freq = CONFIG_MIN_FREQ_LP;
 
 	if (kp_active_mode() == 3) {
 		if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-			freq = cpu_freq_min_big;
+			freq = CONFIG_MIN_FREQ_PERF;
 		else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
-			freq = cpu_freq_min_prime;
+			freq = CONFIG_MIN_FREQ_PRIME;
 	}
 
 	return max(freq, policy->cpuinfo.min_freq);
@@ -96,11 +95,11 @@ static unsigned int get_idle_freq(struct cpufreq_policy *policy)
 	unsigned int freq;
 
 	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = cpu_freq_idle_little;
+		freq = CONFIG_IDLE_MIN_FREQ_LP;
 	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = CONFIG_CPU_FREQ_IDLE_PERF;
+		freq = CONFIG_IDLE_MIN_FREQ_PERF;
 	else
-		freq = CONFIG_CPU_FREQ_IDLE_PERFP;
+		freq = CONFIG_IDLE_MIN_FREQ_PRIME;
 
 	return max(freq, policy->cpuinfo.min_freq);
 }
@@ -120,8 +119,11 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
+extern int kp_active_mode(void);
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
+	unsigned int multi = 1;
+
 	if (test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
