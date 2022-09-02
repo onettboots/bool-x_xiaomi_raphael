@@ -95,7 +95,6 @@
 #include <linux/cpufreq_times.h>
 #include <linux/scs.h>
 #include <linux/simple_lmk.h>
-#include <linux/kprofiles.h>
 #include <linux/devfreq_boost.h>
 #include <linux/cpu_input_boost.h>
 
@@ -2227,6 +2226,7 @@ struct task_struct *fork_idle(int cpu)
  * It copies the process, and if successful kick-starts
  * it and waits for it to finish using the VM if required.
  */
+extern int kp_active_mode(void);
 long _do_fork(unsigned long clone_flags,
 	      unsigned long stack_start,
 	      unsigned long stack_size,
@@ -2239,13 +2239,13 @@ long _do_fork(unsigned long clone_flags,
 	long nr;
 
 	/* Boost DDR bus to the max when userspace launches an app according to set kernel profile */
-	if (task_is_zygote(current) && (active_mode() == 2)) {
+	if (task_is_zygote(current) && (kp_active_mode() == 2)) {
 	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 25);
 	  cpu_input_boost_kick_max(25);
-	} else if (task_is_zygote(current) && ((active_mode() == 3) || (active_mode() == 0))) {
+	} else if (task_is_zygote(current) && ((kp_active_mode() == 3) || (kp_active_mode() == 0))) {
 	  devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 	  cpu_input_boost_kick_max(50);
-	} else if (task_is_zygote(current) && (active_mode() == 1)) {
+	} else if (task_is_zygote(current) && (kp_active_mode() == 1)) {
 	  pr_info("Battery profile detected! Skipping DDR bus boost...\n");
 	}
 

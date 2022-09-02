@@ -34,7 +34,6 @@
 #include <linux/pm_qos.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/sync_file.h>
-#include <linux/kprofiles.h>
 
 #include "drm_crtc_internal.h"
 
@@ -2208,6 +2207,7 @@ static void complete_crtc_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
+extern int kp_active_mode(void);
 static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file_priv)
 {
@@ -2252,10 +2252,10 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 		return -EINVAL;
 
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-	  if (active_mode() == 2) {
+	  if (kp_active_mode() == 2) {
 	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 25);
 	    cpu_input_boost_kick_max(25);
-	  } else if ((active_mode() == 3) || (active_mode() == 0)) {
+	  } else if ((kp_active_mode() == 3) || (kp_active_mode() == 0)) {
 	    devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 	    cpu_input_boost_kick_max(50);
 	  } else {
