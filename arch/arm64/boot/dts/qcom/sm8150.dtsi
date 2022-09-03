@@ -558,7 +558,7 @@
 	};
 
 	chosen {
-		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=4-7 cgroup.memory=nokmem,nosocket nodebugmon kpti=off noirqdebug nosoftlockup mce=ignore_ce";
+		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket nodebugmon kpti=off noirqdebug nosoftlockup mce=ignore_ce";
 		rng-seed = <0x12345678>;
 	};
 
