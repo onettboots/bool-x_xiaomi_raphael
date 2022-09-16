@@ -58,11 +58,6 @@ config ZRAM_MEMORY_TRACKING
 
 	  See Documentation/blockdev/zram.txt for more information.
 
-config ZRAM_DISKSIZE
-	int "zram disksize"
-	depends on ZRAM
-	default 2956984320
-
 if ZRAM
 
 choice
