@@ -16,7 +16,7 @@ jobs:
         repository: oli0371/AnyKernel3                # Your own AnyKernel3 repository.
         path: zipper                                  # Clone to path "zipper", REQUIRED.
     - name: "Android kernel build"                    # Build kernel with lemniskett/android-kernel-actions.
-      uses: oli0371/bool-x_xiaomi_raphael
+      uses: lemniskett/android-kernel-actions@master
       with:
         arch: arm64                                   # Specify arch
         compiler: gcc/9                               # Specify toolchain to use
