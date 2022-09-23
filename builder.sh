@@ -106,25 +106,11 @@ function format_time()
 function make_wrapper() {
 		PATH=${CT_BIN}:${PATH} \
 		make -s -j${cpus} \
-	    	AR="llvm-ar" \
-		AS="llvm-as" \
-	    	NM="llvm-nm" \
-	    	STRIP="llvm-strip" \
-    		OBJCOPY="llvm-objcopy" \
-    		OBJDUMP="llvm-objdump" \
-		OBJSIZE="llvm-size" \
-		READELF="llvm-readelf" \
-    		LD="ld.lld" \
-		LDLLD="ld.lld" \
-		HOSTCC="clang" \
-		HOSTCXX="clang++" \
-    		CC="clang" \
-		CXX="clang++" \
+		LLVM=1 \
+		LLVM_IAS=1 \
 		CROSS_COMPILE="aarch64-linux-gnu-" \
-		CROSS_COMPILE_COMPAT="arm-linux-gnueabi-" \
 		CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
 		KBUILD_COMPILER_STRING="${COMPILER_NAME}" \
-		CLANG_TRIPLE=aarch64-linux-gnu- \
 		O="${objdir}" ${1}
 }
 
@@ -154,7 +140,7 @@ function make_image()
 		print ${RED} "Both LTO and FULL_LTO is true/false!"
 
 	else
-		ENABLE_CONF="LTO_CLANG LD_LLD"
+		ENABLE_CONF="LTO_CLANG"
 		DISABLE_CONF="LTO_NONE LD_GOLD LD_BFD"
 
 		if [ ${BUILD_FULL_LTO} == true ]; then
