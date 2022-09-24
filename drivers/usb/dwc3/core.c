@@ -1485,8 +1485,6 @@ static int dwc3_probe(struct platform_device *pdev)
 #endif
 	return 0;
 
-err5:
-	dwc3_event_buffers_cleanup(dwc);
 
 	usb_phy_shutdown(dwc->usb2_phy);
 	usb_phy_shutdown(dwc->usb3_phy);
@@ -1500,8 +1498,6 @@ err5:
 
 	dwc3_ulpi_exit(dwc);
 
-err4:
-	dwc3_free_scratch_buffers(dwc);
 err3:
 	dwc3_free_scratch_buffers(dwc);
 err2:
