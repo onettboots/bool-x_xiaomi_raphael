@@ -1904,11 +1904,11 @@ static void rmap_walk_file(struct page *page, struct rmap_walk_control *rwc,
 
 		i_mmap_lock_read(mapping);
 
-	if (rwc->target_vma) {
-		address = vma_address(page, rwc->target_vma);
-		rwc->rmap_one(page, rwc->target_vma, address, rwc->arg);
-		goto done;
-	}
+		if (rwc->target_vma) {
+			address = vma_address(page, rwc->target_vma);
+			rwc->rmap_one(page, rwc->target_vma, address, rwc->arg);
+			goto done;
+		}
 	}
 lookup:
 	vma_interval_tree_foreach(vma, &mapping->i_mmap,
