@@ -165,6 +165,8 @@ void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq)
 			for (level = 0; level <= cpufreq_cdev->max_level; level++) {
 				int target_freq = cpufreq_cdev->freq_table[level].frequency;
 				if (max_freq >= target_freq) {
+					if ((level > 0))
+						level = level - 1;
 					cdev = cpufreq_cdev->cdev;
 					if (cdev)
 						cdev->ops->set_cur_state(cdev, level);
