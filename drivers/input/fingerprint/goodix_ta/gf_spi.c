@@ -859,7 +859,6 @@ static int gf_remove(struct platform_device *pdev)
 	if (gf_dev->irq)
 		free_irq(gf_dev->irq, gf_dev);
 
-	msm_drm_unregister_client(&gf_dev->notifier);
 	if (gf_dev->input)
 		input_unregister_device(gf_dev->input);
 	input_free_device(gf_dev->input);
