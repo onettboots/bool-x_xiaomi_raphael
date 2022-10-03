@@ -59,7 +59,7 @@ static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
 	return min(freq, policy->max);
 }
 
-static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
+static unsigned __maybe_unused int get_max_boost_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
 
@@ -74,7 +74,6 @@ static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 
 static unsigned int get_min_freq(struct cpufreq_policy *policy)
 {
-  struct boost_drv *b = &boost_drv_g;
   unsigned int freq;
 
   if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
@@ -101,6 +100,7 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
+extern int kp_active_mode(void);
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
 	if (test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
@@ -119,6 +119,7 @@ void cpu_input_boost_kick(void)
 	__cpu_input_boost_kick(b);
 }
 
+extern int kp_active_mode(void);
 static void __cpu_input_boost_kick_max(struct boost_drv *b,
 				       unsigned int duration_ms)
 {
