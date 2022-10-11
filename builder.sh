@@ -17,7 +17,7 @@ export ARCH="arm64"
 TARGET_IMAGE="Image.gz-dtb"
 
 # Toolchains
-CLANG_VERSION="neutron-clang-08102022"
+CLANG_VERSION="clang-neutron"
 CLANG_LOC="/home/pwnrazr/dev-stuff/${CLANG_VERSION}"
 CLANG="${CLANG_LOC}/bin:$PATH"
 CT_BIN="${CLANG}/bin/"
