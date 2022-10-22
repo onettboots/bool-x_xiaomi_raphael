@@ -7400,7 +7400,6 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 
 #ifdef CONFIG_DEBUGFS
 	ipa3_debugfs_pre_init();
-#endif
 
 #ifdef IPA_WAKELOCKS
 	/* Create a wakeup source. */
