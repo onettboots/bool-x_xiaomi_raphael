@@ -430,7 +430,7 @@ class Dtbo:
                                                          value=self.__dict__[key]))
         count = 0
         for dt_entry in self.__dt_entries:
-            sb.append(f'dt_table_entry[{count:d}]:')
+            sb.append('dt_table_entry[{0:d}]:'.format(count))
             sb.append(str(dt_entry))
             count = count + 1
         return '\n'.join(sb)
@@ -869,7 +869,7 @@ def dump_dtbo_image(fin, argv):
     if args.dtfilename:
         num_entries = len(dtbo.dt_entries)
         for idx in range(0, num_entries):
-            with open(args.dtfilename + f'.{idx:d}', 'wb') as fout:
+            with open(args.dtfilename + '.{:d}'.format(idx), 'wb') as fout:
                 dtbo.extract_dt_file(idx, fout, args.decompress)
     args.outfile.write(str(dtbo) + '\n')
     args.outfile.close()
