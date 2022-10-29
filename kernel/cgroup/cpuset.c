@@ -1802,6 +1802,8 @@ static ssize_t cpuset_write_resmask_wrapper(struct kernfs_open_file *of,
 		{ "background",		CONFIG_CPUSET_BG },
 		{ "camera-daemon",	CONFIG_CPUSET_CAMERA },
 		{ "foreground",		CONFIG_CPUSET_FG },
+		{ "game",		CONFIG_CPUSET_GAME },	
+		{ "gamelite",		CONFIG_CPUSET_GAME },			
 		{ "restricted",		CONFIG_CPUSET_RESTRICTED },
 		{ "system-background",	CONFIG_CPUSET_SYSTEM_BG },
 		{ "top-app",		CONFIG_CPUSET_TOP_APP },
@@ -2137,6 +2139,7 @@ static void uclamp_set(struct kernfs_open_file *of,
 		{"restricted",          "0",  "20",  0, 0},  // 0-20%
 		{"display",             "50", "100", 1, 1},
 		{"camera-daemon",       "20", "max", 1, 1},  // 20-100%
+		{"game",                "80", "max", 1, 1},
 	};
 
 	for (i = 0; i < ARRAY_SIZE(tgts); i++) {
