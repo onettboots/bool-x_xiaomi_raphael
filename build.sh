@@ -31,6 +31,7 @@ ZIP_NAME="$AK_VER"-"$DATE"
 TOOLCHAINS=$HOME/toolchains/boolx-clang
 CONFIG=out/.config
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
+DTBO=out/arch/arm64/boot/dtbo.img
 
 #functions
 function create_out {
@@ -54,7 +55,7 @@ function building {
 		make O=out CC=$HOME/toolchains/boolx-clang/bin/clang AR=llvm-ar NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump STRIP=llvm-strip KBUILD_BUILD_USER=OnettBoots KBUILD_BUILD_HOST=SuperTermux -j$(grep -c ^processor /proc/cpuinfo)
 }
 function make_boot {
-		cp out/arch/arm64/boot/Image.gz-dtb $REPACK_DIR
+		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
 }
 function make_zip {
 		cd $REPACK_DIR
