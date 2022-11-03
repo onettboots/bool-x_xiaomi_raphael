@@ -405,6 +405,7 @@ static int help(struct sk_buff *skb, unsigned int protoff,
  			/* Find first " :", the start of message */
  			if (memcmp(data, " :", 2)) {
  				data++;
+
 				continue;
 			}
 			data += 2;

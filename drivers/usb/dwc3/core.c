@@ -1485,7 +1485,6 @@ static int dwc3_probe(struct platform_device *pdev)
 #endif
 	return 0;
 
-
 	usb_phy_set_suspend(dwc->usb2_phy, 1);
 	usb_phy_set_suspend(dwc->usb3_phy, 1);
 	phy_power_off(dwc->usb2_generic_phy);
