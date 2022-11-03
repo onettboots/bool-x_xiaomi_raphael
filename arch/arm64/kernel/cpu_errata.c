@@ -282,6 +282,7 @@ static int __init ssbd_cfg(char *buf)
 
 	return -EINVAL;
 }
+early_param("ssbd", ssbd_cfg);
 
 void __init arm64_enable_wa2_handling(struct alt_instr *alt,
 				      __le32 *origptr, __le32 *updptr,
