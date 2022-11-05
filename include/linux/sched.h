@@ -571,6 +571,9 @@ extern int sched_set_boost(int enable);
 #define RAVG_HIST_SIZE_MAX  5
 #define NUM_BUSY_BUCKETS 10
 
+#define WALT_LOW_LATENCY_PROCFS	BIT(0)
+#define WALT_LOW_LATENCY_BINDER	BIT(1)
+
 /* ravg represents frequency scaled cpu-demand of tasks */
 struct ravg {
 	/*
