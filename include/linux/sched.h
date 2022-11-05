@@ -107,6 +107,18 @@ struct task_group;
 
 #define task_is_stopped_or_traced(task)	((task->state & (__TASK_STOPPED | __TASK_TRACED)) != 0)
 
+#define task_contributes_to_load(task)	((task->state & TASK_UNINTERRUPTIBLE) != 0 && \
+					 (task->flags & PF_FROZEN) == 0 && \
+					 (task->state & TASK_NOLOAD) == 0)
+
+enum task_boost_type {
+	TASK_BOOST_NONE = 0,
+	TASK_BOOST_ON_MID,
+	TASK_BOOST_ON_MAX,
+	TASK_BOOST_STRICT_MAX,
+	TASK_BOOST_END,
+};
+
 #ifdef CONFIG_DEBUG_ATOMIC_SLEEP
 
 /*
@@ -853,6 +865,9 @@ struct task_struct {
 	struct list_head grp_list;
 	u64 cpu_cycles;
 	bool misfit;
+	bool rtg_high_prio;
+	bool low_latency;
+	u32 unfilter;
 #endif
 
 #ifdef CONFIG_CGROUP_SCHED

@@ -2751,6 +2751,7 @@ struct related_thread_group {
 	struct list_head tasks;
 	struct list_head list;
 	struct sched_cluster *preferred_cluster;
+	bool skip_min;
 	struct rcu_head rcu;
 	u64 last_update;
 };
@@ -3015,8 +3016,17 @@ static inline bool task_in_related_thread_group(struct task_struct *p)
 	return !!(rcu_access_pointer(p->grp) != NULL);
 }
 
+static inline bool task_rtg_high_prio(struct task_struct *p)
+{
+        return task_in_related_thread_group(p) &&
+                (p->prio <= sysctl_walt_rtg_cfs_boost_prio);
+}
+
 static inline
 struct related_thread_group *task_related_thread_group(struct task_struct *p)
+{
+	return rcu_dereference(p->grp);
+}
 
 /* applying the task threshold for all types of low latency tasks. */
 static inline bool walt_low_latency_task(struct task_struct *p)
