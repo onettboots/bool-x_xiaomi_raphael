@@ -215,6 +215,9 @@ unsigned int sched_capacity_margin_down[NR_CPUS] = {
 unsigned int sysctl_sched_min_task_util_for_boost = 51;
 /* 0.68ms default for 20ms window size scaled to 1024 */
 unsigned int sysctl_sched_min_task_util_for_colocation = 35;
+__read_mostly unsigned int sysctl_sched_prefer_spread;
+unsigned int sysctl_walt_rtg_cfs_boost_prio = 119; /* disabled by default */
+unsigned int sysctl_walt_low_latency_task_threshold = 325; /* disabled by default */
 #endif
 static unsigned int __maybe_unused sched_small_task_threshold = 102;
 
