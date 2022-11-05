@@ -41,6 +41,7 @@
 #include "walt.h"
 
 #ifdef CONFIG_SMP
+static inline bool get_rtg_status(struct task_struct *p);
 static inline bool task_fits_max(struct task_struct *p, int cpu);
 #endif /* CONFIG_SMP */
 
@@ -8430,6 +8431,22 @@ static inline int wake_to_idle(struct task_struct *p)
 }
 
 #ifdef CONFIG_SCHED_WALT
+static inline bool get_rtg_status(struct task_struct *p)
+{
+        struct related_thread_group *grp;
+        bool ret = false;
+
+        rcu_read_lock();
+
+        grp = task_related_thread_group(p);
+        if (grp)
+                ret = grp->skip_min;
+
+        rcu_read_unlock();
+
+        return ret;
+}
+
 static inline bool is_task_util_above_min_thresh(struct task_struct *p)
 {
 	unsigned int threshold = (sched_boost() == CONSERVATIVE_BOOST) ?
@@ -8466,6 +8483,11 @@ static inline bool is_many_wakeup(int sibling_count_hint)
 }
 
 #else
+static inline bool get_rtg_status(struct task_struct *p)
+{
+        return false;
+}
+
 static inline struct cpumask *find_rtg_target(struct task_struct *p)
 {
 	return NULL;
@@ -9499,6 +9521,30 @@ static inline int migrate_degrades_locality(struct task_struct *p,
 	return -1;
 }
 #endif
+
+static inline bool can_migrate_boosted_task(struct task_struct *p,
+			int src_cpu, int dst_cpu, bool force)
+{
+	struct rq *rq = task_rq(p);
+
+	/* Don't detach task if it is under active migration */
+	if (rq->push_task == p)
+		return false;
+
+	if (capacity_orig_of(dst_cpu) < capacity_orig_of(src_cpu)) {
+		if (p->in_iowait)
+			return false;
+		if (per_task_boost(p) == TASK_BOOST_STRICT_MAX &&
+				task_in_related_thread_group(p))
+			return false;
+		if (!force && get_rtg_status(p))
+			return false;
+		if (!force && !task_fits_max(p, dst_cpu))
+			return false;
+	}
+
+	return true;
+}
 
 /*
  * can_migrate_task - may task p from runqueue rq be migrated to this_cpu?
@@ -11549,7 +11595,9 @@ no_move:
 			 * if the curr task on busiest cpu can't be
 			 * moved to this_cpu
 			 */
-			if (!cpumask_test_cpu(this_cpu, &busiest->curr->cpus_allowed)) {
+			if ((!cpumask_test_cpu(this_cpu, &busiest->curr->cpus_allowed)) ||
+				!can_migrate_boosted_task(busiest->curr,
+						cpu_of(busiest), this_cpu, false)) {
 				raw_spin_unlock_irqrestore(&busiest->lock,
 							    flags);
 				env.flags |= LBF_ALL_PINNED;
