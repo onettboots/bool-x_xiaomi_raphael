@@ -1595,6 +1595,13 @@ TRACE_EVENT(sched_isolate,
 
 #include "walt.h"
 
+#ifdef CONFIG_HW_RT_CAS
+#include "rt_cas.h"
+#endif
+#ifdef CONFIG_HW_RT_ACTIVE_LB
+#include "rt_misfit.h"
+#endif
+
 #endif /* CONFIG_SMP */
 
 TRACE_EVENT(sched_preempt_disable,

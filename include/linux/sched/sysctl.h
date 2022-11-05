@@ -24,6 +24,10 @@ enum { sysctl_hung_task_timeout_secs = 0 };
 /* MAX_MARGIN_LEVELS should be one less than MAX_CLUSTERS */
 #define MAX_MARGIN_LEVELS (MAX_CLUSTERS - 1)
 
+#if defined(CONFIG_HW_RT_CAS) || defined(CONFIG_HW_RT_ACTIVE_LB)
+#include <linux/hw/hw_rt/rt_cap.h>
+#endif
+
 extern unsigned int sysctl_sched_latency;
 extern unsigned int sysctl_sched_min_granularity;
 extern unsigned int sysctl_sched_sync_hint_enable;
