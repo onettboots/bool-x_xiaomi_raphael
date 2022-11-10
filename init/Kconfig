@@ -93,6 +93,12 @@ config LOCALVERSION
 	  object and source tree, in that order.  Your total string can
 	  be a maximum of 64 characters.
 
+config MIHW
+	bool "MI driver"
+	default n
+	help
+	  Mi driver code
+
 config LOCALVERSION_AUTO
 	bool "Automatically append version information to the version string"
 	default y
