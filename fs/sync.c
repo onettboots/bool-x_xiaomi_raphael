@@ -162,9 +162,6 @@ SYSCALL_DEFINE1(syncfs, int, fd)
 	struct super_block *sb;
 	int ret, ret2;
 
-	if (!fsync_enabled)
-		return 0;
-
 	if (!f.file)
 		return -EBADF;
 	sb = f.file->f_path.dentry->d_sb;

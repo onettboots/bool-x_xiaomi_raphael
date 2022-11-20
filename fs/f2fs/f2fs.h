@@ -4558,10 +4558,6 @@ static inline bool f2fs_force_buffered_io(struct inode *inode,
 
 	if (!fscrypt_dio_supported(iocb, iter))
 		return true;
-	if (fsverity_active(inode))
-		return true;
-	if (f2fs_compressed_file(inode))
-		return true;
 
 	/* disallow direct IO if any of devices has unaligned blksize */
 	if (f2fs_is_multi_device(sbi) && !sbi->aligned_blksize)
