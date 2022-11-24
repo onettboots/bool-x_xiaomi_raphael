@@ -548,14 +548,16 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 	/* This covers boosting for app launches and app transitions */
         if (!ret && !threadgroup &&
                !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
-               task_is_zygote(task->parent)) && (kp_active_mode() == 2)) {
+               task_is_zygote(task->parent)) {
+	       if (kp_active_mode() == 2) {
 	       cpu_input_boost_kick_max(500);
 	       devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 500);
-	} else if (task_is_zygote(current) && ((kp_active_mode() == 3) || (kp_active_mode() == 0))) {
+	       } else if (task_is_zygote(current) && ((kp_active_mode() == 3) || (kp_active_mode() == 0))) {
 	       devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 1000);
 	       cpu_input_boost_kick_max(1000);
-	} else if (task_is_zygote(current) && (kp_active_mode() == 1)) {
+	       } else if (task_is_zygote(current) && (kp_active_mode() == 1)) {
 	       pr_info("Battery profile detected! Skipping DDR bus boost...\n");
+	       }
         }
 
 out_finish:
