@@ -4419,6 +4419,11 @@ retry:
 	if (current->flags & PF_MEMALLOC)
 		goto nopage;
 
+	/* Boost when memory is low so allocation latency doesn't get too bad */
+	cpu_input_boost_kick_max(250, true);
+	devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 250);
+	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 250);
+
 	/* Try direct reclaim and then allocating */
 	if (!used_vmpressure)
 		used_vmpressure = vmpressure_inc_users(order);
