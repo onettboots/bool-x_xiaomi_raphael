@@ -2801,7 +2801,6 @@ got_it:
 			goto out_writepage;
 
 		set_page_writeback(page);
-		ClearPageError(page);
 		f2fs_put_dnode(&dn);
 		if (fio->need_lock == LOCK_REQ)
 			f2fs_unlock_op(fio->sbi);
@@ -2837,7 +2836,6 @@ got_it:
 		goto out_writepage;
 
 	set_page_writeback(page);
-	ClearPageError(page);
 
 	if (fio->compr_blocks && fio->old_blkaddr == COMPRESS_ADDR)
 		f2fs_i_compr_blocks_update(inode, fio->compr_blocks - 1, false);
