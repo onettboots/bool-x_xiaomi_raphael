@@ -210,7 +210,7 @@ function completion()
 	if [[ -f ${COMPILED_IMAGE} ]]; then
 
 		DATE=$(date '+%d%m%y')
-		DATE_TIME=$(date '+%d%m%y_%H%M%S')
+		DATE_TIME=$(date '+%y%m%d_%H%M%S')
 
 		KERNEL_NAME=$(grep CONFIG_LOCALVERSION= ${objdir}/.config)
 		KERNEL_NAME="${KERNEL_NAME//*=/}"
