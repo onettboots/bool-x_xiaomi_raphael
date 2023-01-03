@@ -348,7 +348,8 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 				policy->cpuinfo.max_freq : policy->cur;
 
 	freq = (freq + (freq >> 2)) * util / max;
-	do_freq_limit(sg_policy, &freq, time);
+	if(!cpumask_test_cpu(sg_policy->policy->cpu, cpu_lp_mask))
+		do_freq_limit(sg_policy, &freq, time);
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 
 	if (freq == sg_policy->cached_raw_freq && sg_policy->next_freq != UINT_MAX)
