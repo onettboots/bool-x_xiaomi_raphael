@@ -186,7 +186,7 @@ static unsigned int get_min_freq(struct cpufreq_policy *policy)
 			freq = cpu_freq_min_big;
 		else if (cpumask_test_cpu(policy->cpu, cpu_prime_mask))
 			freq = cpu_freq_min_prime;
-	
+	}
 
 	return max(freq, policy->cpuinfo.min_freq);
 }
