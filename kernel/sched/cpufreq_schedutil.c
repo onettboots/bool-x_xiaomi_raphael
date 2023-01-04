@@ -32,6 +32,12 @@ static u64 default_up_delay_hp[] = {CONFIG_SCHEDUTIL_DEFAULT_UP_DELAY_HP * NSEC_
 static unsigned int default_efficient_freq_pr[] = {CONFIG_SCHEDUTIL_DEFAULT_EFFICIENT_FREQ_PR};
 static u64 default_up_delay_pr[] = {CONFIG_SCHEDUTIL_DEFAULT_UP_DELAY_PR * NSEC_PER_MSEC};
 
+static unsigned int default_hispeed_freq_lp = CONFIG_SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_LP;
+
+static unsigned int default_hispeed_freq_hp = CONFIG_SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_HP;
+
+static unsigned int default_hispeed_freq_pr = CONFIG_SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_PR;
+
 struct sugov_tunables {
 	struct gov_attr_set attr_set;
 	unsigned int		up_rate_limit_us;
@@ -445,10 +451,12 @@ static inline bool sugov_cpu_is_busy(struct sugov_cpu *sg_cpu) { return false; }
 #endif /* CONFIG_NO_HZ_COMMON */
 
 #define NL_RATIO 75
-#define DEFAULT_HISPEED_LOAD 90
-#define DEFAULT_CPU0_RTG_BOOST_FREQ 1000000
-#define DEFAULT_CPU4_RTG_BOOST_FREQ 0
-#define DEFAULT_CPU7_RTG_BOOST_FREQ 0
+#define DEFAULT_HISPEED_LOAD_LP 75
+#define DEFAULT_HISPEED_LOAD_HP 85
+#define DEFAULT_HISPEED_LOAD_PR 90
+#define DEFAULT_CPU0_RTG_BOOST_FREQ 1612800
+#define DEFAULT_CPU4_RTG_BOOST_FREQ 1862400
+#define DEFAULT_CPU7_RTG_BOOST_FREQ 2073600
 static void sugov_walt_adjust(struct sugov_cpu *sg_cpu, unsigned long *util,
 			      unsigned long *max)
 {
@@ -1290,13 +1298,13 @@ static int sugov_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
-	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
-	tunables->hispeed_freq = 0;
 	if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_lp_mask)) {
 		tunables->up_rate_limit_us = 1000;
 		tunables->down_rate_limit_us = 1000;
 		tunables->efficient_freq = default_efficient_freq_lp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_lp);
+		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_LP;
+		tunables->hispeed_freq = default_hispeed_freq_lp;
 		tunables->up_delay = default_up_delay_lp;
 		tunables->nup_delay = ARRAY_SIZE(default_up_delay_lp);
 	} else if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_perf_mask)) {
@@ -1304,6 +1312,8 @@ static int sugov_init(struct cpufreq_policy *policy)
 		tunables->down_rate_limit_us = 2000;
 		tunables->efficient_freq = default_efficient_freq_hp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_hp);
+		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_HP;
+		tunables->hispeed_freq = default_hispeed_freq_hp;
 		tunables->up_delay = default_up_delay_hp;
 		tunables->nup_delay = ARRAY_SIZE(default_up_delay_hp);
 	} else {
@@ -1311,6 +1321,8 @@ static int sugov_init(struct cpufreq_policy *policy)
     		tunables->down_rate_limit_us = 4000;
 		tunables->efficient_freq = default_efficient_freq_pr;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_pr);
+		tunables->hispeed_load = DEFAULT_HISPEED_LOAD_PR;
+		tunables->hispeed_freq = default_hispeed_freq_pr;
 		tunables->up_delay = default_up_delay_pr;
 		tunables->nup_delay = ARRAY_SIZE(default_up_delay_pr);
 	}

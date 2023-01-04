@@ -493,6 +493,30 @@ config SCHEDUTIL_DEFAULT_EFFICIENT_FREQ_PR
 	  cluster. This frequency needs to be set according to the available
 	  frequencies at cpufreq-table-7 for the prime cores.
 
+config SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_LP
+	int "Default highspeed frequency for the lp cluster"
+	default 1171200
+	help
+	  This sets schedutil's default efficient frequency for the lp
+	  cluster. This frequency needs to be set according to the available
+	  frequencies at cpufreq-table-0 for the little cores.
+
+config SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_HP
+	int "Default highspeed frequency for the hp cluster"
+	default 1574400
+	help
+	  This sets schedutil's default efficient frequency for the hp
+	  cluster. This frequency needs to be set according to the available
+	  frequencies at cpufreq-table-4 for the big cores.
+
+config SCHEDUTIL_DEFAULT_HIGHSPEED_FREQ_PR
+	int "Default highspeed frequency for the pr cluster"
+	default 1516800
+	help
+	  This sets schedutil's default efficient frequency for the pr
+	  cluster. This frequency needs to be set according to the available
+	  frequencies at cpufreq-table-7 for the prime cores.
+
 config SCHEDUTIL_DEFAULT_UP_DELAY_LP
 	int "Default multiplicand of the up delay for the lp cluster"
 	default 3
