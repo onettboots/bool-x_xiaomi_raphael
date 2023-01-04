@@ -33,6 +33,16 @@ static unsigned int max_boost_freq_big __read_mostly =
 	CONFIG_MAX_BOOST_FREQ_PERF;
 static unsigned int max_boost_freq_prime __read_mostly =
 	CONFIG_MAX_BOOST_FREQ_PRIME;
+
+static unsigned int input_boost_freq_big_performance __read_mostly =
+	CONFIG_INPUT_BOOST_FREQ_PERF_PERFORMANCE;
+static unsigned int input_boost_freq_prime_performance __read_mostly =
+	CONFIG_INPUT_BOOST_FREQ_PRIME_PERFORMANCE;
+static unsigned int max_boost_freq_big_performance __read_mostly =
+	CONFIG_MAX_BOOST_FREQ_PERF_PERFORMANCE;
+static unsigned int max_boost_freq_prime_performance __read_mostly =
+	CONFIG_MAX_BOOST_FREQ_PRIME_PERFORMANCE;
+
 static unsigned int cpu_freq_min_little __read_mostly =
 	CONFIG_CPU_FREQ_MIN_LP;
 static unsigned int cpu_freq_min_big __read_mostly =
@@ -65,6 +75,12 @@ module_param(cpu_freq_min_prime, uint, 0644);
 module_param(cpu_freq_idle_little, uint, 0644);
 module_param(cpu_freq_idle_big, uint, 0644);
 module_param(cpu_freq_idle_prime, uint, 0644);
+
+module_param(input_boost_freq_big_performance, uint, 0644);
+module_param(input_boost_freq_prime_performance, uint, 0644);
+module_param(max_boost_freq_big_performance, uint, 0644);
+module_param(max_boost_freq_prime_performance, uint, 0644);
+
 
 module_param(input_boost_duration, short, 0644);
 module_param(wake_boost_duration, short, 0644);
@@ -99,30 +115,58 @@ static struct boost_drv boost_drv_g __read_mostly = {
 	.boost_waitq = __WAIT_QUEUE_HEAD_INITIALIZER(boost_drv_g.boost_waitq)
 };
 
+extern int kp_active_mode(void);
 static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
 
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = input_boost_freq_little;
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = input_boost_freq_big;
+	if (kp_active_mode() !=3)
+	{
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = max(input_boost_freq_little, cpu_freq_min_little);
+		else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+			freq = max(input_boost_freq_big, cpu_freq_min_big);
+		else
+      	          freq = max(input_boost_freq_prime, cpu_freq_min_prime);
+              	  return min(freq, policy->max);
+	}
 	else
-		freq = input_boost_freq_prime;
-	return min(freq, policy->max);
+	{
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = max(input_boost_freq_little, cpu_freq_min_little);
+		else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+			freq = max(input_boost_freq_big_performance, cpu_freq_min_big);
+		else
+      	          freq = max(input_boost_freq_prime_performance, cpu_freq_min_prime);
+              	  return min(freq, policy->max);
+	}
 }
 
+extern int kp_active_mode(void);
 static unsigned int get_max_boost_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
 
-	if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
-		freq = max_boost_freq_little;
-	else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
-		freq = max_boost_freq_big;
+	if (kp_active_mode() !=3)
+	{
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = max(max_boost_freq_little, cpu_freq_min_little);
+		else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+			freq = max(max_boost_freq_big, cpu_freq_min_big);
+	        else
+      	          freq = max(max_boost_freq_prime, cpu_freq_min_prime);
+			return min(freq, policy->max);
+	}
 	else
-		freq = max_boost_freq_prime;
-	return min(freq, policy->max);
+	{
+		if (cpumask_test_cpu(policy->cpu, cpu_lp_mask))
+			freq = max(max_boost_freq_little, cpu_freq_min_little);
+		else if (cpumask_test_cpu(policy->cpu, cpu_perf_mask))
+			freq = max(max_boost_freq_big_performance, cpu_freq_min_big);
+	        else
+      	          freq = max(max_boost_freq_prime_performance, cpu_freq_min_prime);
+			return min(freq, policy->max);
+	}
 }
 
 extern int kp_active_mode(void);
