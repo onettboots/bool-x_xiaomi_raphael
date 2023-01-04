@@ -1288,24 +1288,25 @@ static int sugov_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
-	tunables->up_rate_limit_us =
-				CONFIG_SCHEDUTIL_UP_RATE_LIMIT;
-	tunables->down_rate_limit_us =
-				CONFIG_SCHEDUTIL_DOWN_RATE_LIMIT;
-
 	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
 	tunables->hispeed_freq = 0;
 	if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_lp_mask)) {
+		tunables->up_rate_limit_us = 1000;
+		tunables->down_rate_limit_us = 1000;
 		tunables->efficient_freq = default_efficient_freq_lp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_lp);
 		tunables->up_delay = default_up_delay_lp;
 		tunables->nup_delay = ARRAY_SIZE(default_up_delay_lp);
 	} else if (cpumask_test_cpu(sg_policy->policy->cpu, cpu_perf_mask)) {
+		tunables->up_rate_limit_us = 1000;
+		tunables->down_rate_limit_us = 2000;
 		tunables->efficient_freq = default_efficient_freq_hp;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_hp);
 		tunables->up_delay = default_up_delay_hp;
 		tunables->nup_delay = ARRAY_SIZE(default_up_delay_hp);
 	} else {
+		tunables->up_rate_limit_us = 16000;
+    		tunables->down_rate_limit_us = 4000;
 		tunables->efficient_freq = default_efficient_freq_pr;
     		tunables->nefficient_freq = ARRAY_SIZE(default_efficient_freq_pr);
 		tunables->up_delay = default_up_delay_pr;
