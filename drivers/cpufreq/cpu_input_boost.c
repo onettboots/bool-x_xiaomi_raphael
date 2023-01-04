@@ -21,11 +21,6 @@
 #include <uapi/linux/sched/types.h>
 #endif
 
-#if IS_ENABLED(CONFIG_SCHED_WALT)
-#if IS_ENABLED(CONFIG_SCHED_TUNE_DUMMY)
-extern bool sched_boost_top_app(void);
-#endif
-#endif
 static unsigned int input_boost_freq_little __read_mostly =
 	CONFIG_INPUT_BOOST_FREQ_LP;
 static unsigned int input_boost_freq_big __read_mostly =
@@ -242,14 +237,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 
 	set_bit(INPUT_BOOST, &b->state);
 	if (dynamic_sched_boost)
-	{
-		#if IS_ENABLED(CONFIG_SCHED_WALT)
-		#if IS_ENABLED(CONFIG_SCHED_TUNE_DUMMY)
-	       sched_boost_top_app();
-		#endif
-		#endif
 		sched_set_boost(2);
-	}
 	if (!mod_delayed_work(system_unbound_wq, &b->input_unboost,
 			      msecs_to_jiffies(input_boost_duration)*multi)) {
 		wake_up(&b->boost_waitq);
