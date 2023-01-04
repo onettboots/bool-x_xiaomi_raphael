@@ -157,26 +157,28 @@ static void devfreq_update_boosts(struct boost_dev *b, unsigned long state)
 	struct devfreq *df = b->df;
 
 	mutex_lock(&df->lock);
-	if (state & BIT(SCREEN_OFF)) {
+	if (test_bit(SCREEN_OFF, &b->state)) {
 		df->min_freq = df->profile->freq_table[0];
 		df->max_boost = false;
+		if(SCREEN_OFF)
+			df->max_freq = df->profile->freq_table[3];
 	} else {
 		if(kp_active_mode()==0 || kp_active_mode()==2)
 		{
-			df->max_freq = 7980;
+			df->max_freq = df->profile->freq_table[9];
 			df->min_freq = state & BIT(INPUT_BOOST) ?
 			       	min(devfreq_boost_freq, df->max_freq) : df->profile->freq_table[0];
 		}
 		else if(kp_active_mode()==3)
 		{
-			df->max_freq = 10437;
+			df->max_freq = df->profile->freq_table[10];
 			df->min_freq = state & BIT(INPUT_BOOST) ?
 			       	min(devfreq_boost_freq_performance, df->max_freq) : df->profile->freq_table[0];
 		}
 		else if(kp_active_mode()==1)
 		{
-			df->min_freq = 762;
-			df->max_freq = 2597;
+			df->min_freq = df->profile->freq_table[0];
+			df->max_freq = df->profile->freq_table[5];
 		}
 		df->max_boost = state & BIT(MAX_BOOST);
 	}
