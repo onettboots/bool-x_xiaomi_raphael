@@ -355,6 +355,18 @@ config INPUT_BOOST_FREQ_PRIME
 	help
 	  Input boost frequency for the prime CPU cluster.
 
+config INPUT_BOOST_FREQ_PERF_PERFORMANCE
+	int "Performance cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the performance CPU cluster when Kprofiles is set to perfomance mode.
+
+config INPUT_BOOST_FREQ_PRIME_PERFORMANCE
+	int "Prime cluster boost freq"
+	default "0"
+	help
+	  Input boost frequency for the prime CPU cluster when Kprofiles is set to perfomance mode.
+
 config MAX_BOOST_FREQ_LP
 	int "Low-power cluster max-boost freq"
 	default "0"
@@ -372,6 +384,18 @@ config MAX_BOOST_FREQ_PRIME
 	default "0"
 	help
 	  Max-boost frequency for the prime CPU cluster.
+
+config MAX_BOOST_FREQ_PERF_PERFORMANCE
+	int "Performance cluster max-boost freq"
+	default "0"
+	help
+	  Max-boost frequency for the performance CPU cluster when Kprofiles is set to perfomance mode.
+
+config MAX_BOOST_FREQ_PRIME_PERFORMANCE
+	int "Prime cluster max-boost freq"
+	default "0"
+	help
+	  Max-boost frequency for the prime CPU cluster when Kprofiles is set to perfomance mode.
 
 config CPU_FREQ_MIN_LP
 	int "Default minimum frequency for the little cluster"
@@ -493,6 +517,19 @@ config SCHEDUTIL_DEFAULT_UP_DELAY_PR
 	  the default value acts as a multiplicand which is to be multiplied
 	  by the number of nanosecond in one milisecond (NSEC_PER_MSEC).
 
+config SCHEDUTIL_DEFAULT_EFFICIENT_FREQ_HP_WITH_PID_SHRINK
+	int "Default efficient frequency for the hp cluster"
+	default 2246400
+	help
+	  This sets schedutil's default efficient frequency for the hp
+	  cluster when pid shrink is enabled, usually for gaming use.
+
+config SCHEDUTIL_DEFAULT_EFFICIENT_FREQ_PR_WITH_PID_SHRINK
+	int "Default efficient frequency for the pr cluster"
+	default 3187200
+	help
+	  This sets schedutil's default efficient frequency for the pr
+	  cluster when pid shrink is enabled, usually for gaming use.
 
 endif
 
