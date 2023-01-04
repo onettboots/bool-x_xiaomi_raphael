@@ -294,6 +294,11 @@ config DEVFREQ_CPU_LLCC_DDR_BW_BOOST_FREQ
 	help
 	  Boost frequency for the MSM DDR bus.
 
+config DEVFREQ_CPU_LLCC_DDR_BW_BOOST_FREQ_PERFORMANCE_MODE
+	int "Boost freq for cpu-llcc-ddr-bw device"
+	default "0"
+	help
+	  Boost frequency for the MSM DDR bus.
 endif
 
 source "drivers/devfreq/event/Kconfig"
