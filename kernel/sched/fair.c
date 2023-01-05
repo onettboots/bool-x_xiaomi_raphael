@@ -7595,7 +7595,7 @@ static int get_start_cpu(struct task_struct *p)
 {
 	struct root_domain *rd = cpu_rq(smp_processor_id())->rd;
 	int start_cpu = rd->min_cap_orig_cpu;
-	bool boosted = schedtune_task_boost(p) > 0 ||
+	bool boosted = uclamp_boosted(p) > 0 ||
 			task_boost_policy(p) == SCHED_BOOST_ON_BIG;
 	bool task_skip_min = (sched_boost() != CONSERVATIVE_BOOST)
 				&& get_rtg_status(p) && p->unfilter;
@@ -7667,6 +7667,8 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 	 * performance CPU, thus requiring to maximise target_capacity. In this
 	 * case we initialise target_capacity to 0.
 	 */
+	prefer_idle = uclamp_latency_sensitive(p);
+	boosted = fbt_env->boosted || uclamp_boosted(p);
 	if (prefer_idle && boosted)
 		target_capacity = 0;
 
