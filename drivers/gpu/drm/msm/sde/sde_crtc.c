@@ -4268,6 +4268,7 @@ static bool _sde_crtc_prepare_for_kickoff_rot(struct drm_device *dev,
 	return false;
 }
 
+extern int kp_active_mode(void);
 void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 		struct drm_crtc_state *old_state)
 {
@@ -4309,8 +4310,10 @@ void sde_crtc_commit_kickoff(struct drm_crtc *crtc,
 
 	SDE_ATRACE_BEGIN("crtc_commit");
 
-	cpu_input_boost_kick();
-	devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+	if (kp_active_mode() == 2 || kp_active_mode() == 3 || kp_active_mode() == 0) {
+		cpu_input_boost_kick();
+		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
+	}
 
 	is_error = _sde_crtc_prepare_for_kickoff_rot(dev, crtc);
 

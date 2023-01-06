@@ -2208,6 +2208,7 @@ static void complete_crtc_signaling(struct drm_device *dev,
 	kfree(fence_state);
 }
 
+extern int kp_active_mode(void);
 static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 				   struct drm_file *file_priv)
 {
@@ -2253,9 +2254,11 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 
 	/* Boost CPU and DDR when committing a new frame */
 	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
+	    if (kp_active_mode() == 2 || kp_active_mode() == 3 || kp_active_mode() == 0) {
 		devfreq_boost_kick(DEVFREQ_CPU_LLCC_DDR_BW);
 		if (sysctl_sched_boost)
 			cpu_input_boost_kick();
+	    }
 	}
 
 	drm_modeset_acquire_init(&ctx, 0);
