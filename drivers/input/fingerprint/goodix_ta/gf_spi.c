@@ -20,7 +20,6 @@
 #include <linux/mutex.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <net/netlink.h>
@@ -31,8 +30,7 @@ static struct gf_dev {
 	struct list_head device_entry;
 	struct platform_device *spi;
 	struct input_dev *input;
-	struct regulator *vreg;
-	signed irq_gpio, rst_gpio;
+	signed irq_gpio, rst_gpio, pwr_gpio;
 	int irq, irq_enabled;
 } gf;
 
@@ -73,12 +71,12 @@ static inline void netlink_exit(void) {
 static inline void irq_switch(struct gf_dev *gf_dev, int status) {
 	if (status) {
 		if (!gf_dev->irq_enabled) {
-			enable_irq_wake(gf_dev->irq);
+			enable_irq(gf_dev->irq);
 			gf_dev->irq_enabled = 1;
 		}
 	} else {
 		if (gf_dev->irq_enabled) {
-			disable_irq_wake(gf_dev->irq);
+			disable_irq(gf_dev->irq);
 			gf_dev->irq_enabled = 0;
 		}
 	}
@@ -88,7 +86,24 @@ static inline irqreturn_t gf_irq(int irq, void *handle) {
 	return sendnlmsg();
 }
 
+static inline int gf_power_switch(struct gf_dev *gf_dev, int status)
+{
+	if (gpio_is_valid(gf_dev->pwr_gpio)) {
+		if(status) {
+			gpio_direction_output(gf_dev->pwr_gpio, 1);
+			usleep_range(10000, 10100);
+		} else {
+			gpio_direction_output(gf_dev->pwr_gpio, 0);
+		}
+	}
+	return 0;
+}
+
 static inline void gf_setup(struct gf_dev *gf_dev) {
+	gf_dev->pwr_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
+		"fp-gpio-pwr", 0);
+	gpio_request(gf_dev->pwr_gpio, "goodix_pwr");
+	//gpio_direction_output(gf_dev->pwr_gpio, 1);	// will be turned on through ioctl
 	gf_dev->rst_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node,
 		"goodix,gpio-reset", 0);
 	gpio_request(gf_dev->rst_gpio, "gpio-reset");
@@ -98,15 +113,12 @@ static inline void gf_setup(struct gf_dev *gf_dev) {
 	gpio_request(gf_dev->irq_gpio, "gpio-irq");
 	gpio_direction_input(gf_dev->irq_gpio);
 	gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
-	if (request_threaded_irq(gf_dev->irq, NULL, gf_irq,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT, "gf", gf_dev))
-		irq_switch(gf_dev, 1);
-	gf_dev->vreg = regulator_get(NULL, "pm8150_l17");
-	if (!regulator_is_enabled(gf_dev->vreg)) {
-		regulator_set_voltage(gf_dev->vreg, 3000000, 3000000);
-		if (regulator_enable(gf_dev->vreg))
-			return;
-	}
+	if (!request_threaded_irq(gf_dev->irq, NULL, gf_irq,
+			IRQF_TRIGGER_RISING | IRQF_ONESHOT | IRQF_NO_SUSPEND | IRQF_FORCE_RESUME | IRQF_PRIME_AFFINE,
+			"gf", gf_dev))
+		enable_irq_wake(gf_dev->irq);
+		gf_dev->irq_enabled = 1;
+		irq_switch(gf_dev, 0);
 	return;
 }
 
@@ -119,11 +131,9 @@ static inline void gf_cleanup(struct gf_dev *gf_dev) {
 		gpio_free(gf_dev->irq_gpio);
 	if (gpio_is_valid(gf_dev->rst_gpio))
 		gpio_free(gf_dev->rst_gpio);
-	if (regulator_is_enabled(gf_dev->vreg)) {
-		regulator_disable(gf_dev->vreg);
-		regulator_put(gf_dev->vreg);
-		gf_dev->vreg = NULL;
-	}
+	if (gpio_is_valid(gf_dev->pwr_gpio))
+		gf_power_switch(gf_dev, 0);
+		gpio_free(gf_dev->pwr_gpio);
 }
 
 static inline void gpio_reset(struct gf_dev *gf_dev) {
@@ -139,6 +149,8 @@ static inline void gpio_reset(struct gf_dev *gf_dev) {
 #define GF_IOC_RESET _IO(GF_IOC_MAGIC, 2)
 #define GF_IOC_ENABLE_IRQ _IO(GF_IOC_MAGIC, 3)
 #define GF_IOC_DISABLE_IRQ _IO(GF_IOC_MAGIC, 4)
+#define GF_IOC_ENABLE_POWER _IO(GF_IOC_MAGIC, 7)
+#define GF_IOC_DISABLE_POWER _IO(GF_IOC_MAGIC, 8)
 static inline long gf_ioctl(struct file *filp, unsigned int cmd,
 							unsigned long arg) {
 	struct gf_dev *gf_dev = &gf;
@@ -156,6 +168,12 @@ static inline long gf_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case GF_IOC_RESET:
 		gpio_reset(gf_dev);
+		break;
+	case GF_IOC_ENABLE_POWER:
+		gf_power_switch(gf_dev, 1);
+		break;
+	case GF_IOC_DISABLE_POWER:
+		gf_power_switch(gf_dev, 0);
 		break;
 	default:
 		break;
@@ -204,7 +222,7 @@ static inline int gf_probe(struct platform_device *pdev) {
 	unsigned long minor = find_first_zero_bit(minors, N_SPI_MINORS);
 	INIT_LIST_HEAD(&gf_dev->device_entry);
 	gf_dev->spi = pdev;
-	gf_dev->irq_gpio = gf_dev->rst_gpio = -EINVAL;
+	gf_dev->irq_gpio = gf_dev->rst_gpio = gf_dev->pwr_gpio = -EINVAL;
 	gf_dev->devt = MKDEV(SPIDEV_MAJOR, minor);
 	mutex_lock(&gf_lock);
 	device_create(gf_class, &gf_dev->spi->dev, gf_dev->devt, gf_dev,
