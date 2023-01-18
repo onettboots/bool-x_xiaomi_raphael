@@ -141,3 +141,4 @@ Buildlog-CLANG.txt
 build.sh
 qcacld-3.0.sh
 Zip-out/*.zip
+Zip-out/anykernel/dtbo.img

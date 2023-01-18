@@ -15,6 +15,7 @@ CUSTOM_ZIP_OUT_LOC="/mnt/phone_share/" # Unset if don't want to copy output zip 
 # Arch and target image
 export ARCH="arm64"
 TARGET_IMAGE="Image.gz-dtb"
+TARGET_DTBO="dtbo.img"
 
 # Toolchains
 CLANG_VERSION="clang-r475365b"
@@ -111,7 +112,8 @@ function make_wrapper() {
 		CROSS_COMPILE="aarch64-linux-gnu-" \
 		CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
 		KBUILD_COMPILER_STRING="${COMPILER_NAME}" \
-		O="${objdir}" ${1}
+		O="${objdir}" ${1} \
+		dtbo.img
 }
 
 function make_image()
@@ -207,9 +209,10 @@ function make_image()
 function completion()
 {
 	COMPILED_IMAGE=${objdir}/arch/arm64/boot/${TARGET_IMAGE}
+	COMPILED_DTBO=${objdir}/arch/arm64/boot/${TARGET_DTBO}
 	TIME=$(format_time "${1}" "${2}")
 
-	if [[ -f ${COMPILED_IMAGE} ]]; then
+	if [[ -f ${COMPILED_IMAGE} && -f ${COMPILED_DTBO} ]]; then
 
 		DATE=$(date '+%d%m%y')
 		DATE_TIME=$(date '+%y%m%d_%H%M%S')
@@ -235,6 +238,7 @@ function completion()
 		fi
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
+		mv -f ${COMPILED_DTBO} ${builddir}/anykernel/${TARGET_DTBO}
 		print ${LGR} "Build completed in ${TIME}!"
 		SIZE=$(ls -s ${builddir}/anykernel/${TARGET_IMAGE} | sed 's/ .*//')
 
