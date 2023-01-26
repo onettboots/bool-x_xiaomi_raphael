@@ -176,8 +176,6 @@ function make_image()
 		DISABLE_CONF+=" CONFIG_UNICODE"
 	fi
 
-	ENABLE_CONF+=" CONFIG_FORCE_FOD_STATUS" # enable my hack
-
 	if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
 		print "${YEL}EROFS ${CYN}enabled"
 	fi
