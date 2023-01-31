@@ -205,6 +205,11 @@ function make_image()
 	completion "${START}" "$(date +%s)"
 }
 
+function add_to_banner {
+  local text=$1
+  echo -e "$text" >> "${builddir}/anykernel/banner"
+}
+
 function completion()
 {
 	COMPILED_IMAGE=${objdir}/arch/arm64/boot/${TARGET_IMAGE}
@@ -236,6 +241,10 @@ function completion()
 			ZIP_NAME+="-${DATE_TIME}${kVersion}${CUSTOM_NAME}"
 		fi
 
+		add_to_banner "---------"
+		add_to_banner " ${KERNEL_NAME}"
+		add_to_banner "---------"
+
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		mv -f ${COMPILED_DTBO} ${builddir}/anykernel/${TARGET_DTBO}
 		print ${LGR} "Build completed in ${TIME}!"
@@ -245,6 +254,8 @@ function completion()
                 cd ${builddir}/anykernel
                 zip -r -q "${ZIP_NAME}.zip" .
                 rm ${builddir}/anykernel/${TARGET_IMAGE}
+                rm ${builddir}/anykernel/${TARGET_DTBO}
+                git restore ${builddir}/anykernel/banner
                 mv ${builddir}/anykernel/"${ZIP_NAME}.zip" ${builddir}/
 
 		if [[ ${CUSTOM_ZIP_OUT_LOC} != "" ]]; then
