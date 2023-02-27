@@ -68,26 +68,43 @@ function parse_parameters()
 	VERSION=""
 	COMPILER_NAME=""
 
-	while [[ ${#} -ge 1 ]]; do
-		case ${1} in
-			"-c"|"--clean")
-				BUILD_CLEAN=true ;;
-			"-v"|"--verbose")
-				VERBOSE=true ;;
-			"-l"|"--lto")
-				BUILD_LTO=true
-				BUILD_FULL_LTO=false ;;
-			"-r")
-				RELEASE=true ;;
-			"-n")
-				print $YEL "Input kernel name:";
-				read CUSTOM_NAME; CUSTOM_NAME="-$CUSTOM_NAME";;
-            		*) screen "Invalid parameter specified!" ;;
-		esac
-
-		shift
-	done
 	print ${LGR} ${SEP}
+
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+
+		case $key in
+		-c|--clean)
+			BUILD_CLEAN=true
+			shift 1
+			;;
+		-v|--verbose)
+			VERBOSE=true
+			shift 1
+			;;
+		-l|--lto)
+			BUILD_LTO=true
+			BUILD_FULL_LTO=false
+			shift 1
+			;;
+		-r)
+			RELEASE=true
+			shift 1
+			;;
+		-n)
+			if [[ -z "$2" || "$2" == -* ]]; then
+				screen "Error: Argument for ${key} is missing"
+			fi
+			print ${LGR} "Custom name: ${YEL}${2}"
+			CUSTOM_NAME="-$2"
+			shift 2
+			;;
+		*)
+			screen "Invalid parameter ${key} specified!"
+			;;
+		esac
+	done
+
 	print ${LGR} "Compilation started"
 }
 
@@ -241,22 +258,34 @@ function completion()
 			ZIP_NAME+="-${DATE_TIME}${kVersion}${CUSTOM_NAME}"
 		fi
 
-		add_to_banner "---------"
+		add_to_banner "--------------------------------------"
 		add_to_banner " ${KERNEL_NAME}"
-		add_to_banner "---------"
+		add_to_banner " HEAD:${kVersion//-/}"
+		if [[ ${CUSTOM_NAME} != "" ]]; then
+			add_to_banner " Name:${CUSTOM_NAME//-/}"
+		fi
+		if [[ ${BUILD_CASEFOLDING} == true ]]; then
+			add_to_banner " CASEFOLDING"
+		else
+			add_to_banner " SDCARD FS"
+		fi
+		if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
+			add_to_banner " EROFS"
+		fi
+		add_to_banner "--------------------------------------"
 
 		mv -f ${COMPILED_IMAGE} ${builddir}/anykernel/${TARGET_IMAGE}
 		mv -f ${COMPILED_DTBO} ${builddir}/anykernel/${TARGET_DTBO}
 		print ${LGR} "Build completed in ${TIME}!"
 		SIZE=$(ls -s ${builddir}/anykernel/${TARGET_IMAGE} | sed 's/ .*//')
 
-                # Zip up
-                cd ${builddir}/anykernel
-                zip -r -q "${ZIP_NAME}.zip" .
-                rm ${builddir}/anykernel/${TARGET_IMAGE}
-                rm ${builddir}/anykernel/${TARGET_DTBO}
-                git restore ${builddir}/anykernel/banner
-                mv ${builddir}/anykernel/"${ZIP_NAME}.zip" ${builddir}/
+		# Zip up
+		cd ${builddir}/anykernel
+		zip -r -q "${ZIP_NAME}.zip" .
+		rm ${builddir}/anykernel/${TARGET_IMAGE}
+		rm ${builddir}/anykernel/${TARGET_DTBO}
+		git restore ${builddir}/anykernel/banner
+		mv ${builddir}/anykernel/"${ZIP_NAME}.zip" ${builddir}/
 
 		if [[ ${CUSTOM_ZIP_OUT_LOC} != "" ]]; then
 			cp ${builddir}/"${ZIP_NAME}.zip" ${CUSTOM_ZIP_OUT_LOC}
