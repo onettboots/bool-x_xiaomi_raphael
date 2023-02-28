@@ -58,8 +58,8 @@ function parse_parameters()
 	# Build settings
 	BUILD_CASEFOLDING=true
 	BUILD_CLEAN=false
-	BUILD_LTO=false
-	BUILD_FULL_LTO=true
+	BUILD_LTO=true
+	BUILD_FULL_LTO=false
 	# Use verbose for bug fixing
 	VERBOSE=true
 	RELEASE=false
@@ -83,8 +83,8 @@ function parse_parameters()
 			shift 1
 			;;
 		-l|--lto)
-			BUILD_LTO=true
-			BUILD_FULL_LTO=false
+			BUILD_LTO=false
+			BUILD_FULL_LTO=true
 			shift 1
 			;;
 		-r)
