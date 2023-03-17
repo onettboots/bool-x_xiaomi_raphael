@@ -56,6 +56,10 @@ static DEFINE_SPINLOCK(tz_lock);
 
 #define TAG "msm_adreno_tz: "
 
+#if 1
+static u8 adrenoboost;
+#endif
+
 static atomic_long_t suspend_time;
 static atomic_long_t suspend_start;
 static atomic_long_t acc_total, acc_relative_busy;
@@ -77,6 +81,15 @@ static s64 suspend_time_ms(void)
 	atomic_long_set(&suspend_start, suspend_sampling_time);
 	return time_diff;
 }
+
+#if 1
+static ssize_t adrenoboost_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%d\n", adrenoboost);
+}
+
+#endif
 
 static ssize_t gpu_load_show(struct device *dev,
 		struct device_attribute *attr,
@@ -121,6 +134,11 @@ static ssize_t suspend_time_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%llu\n", time_diff);
 }
 
+#if 1
+static DEVICE_ATTR(adrenoboost, 0444,
+		adrenoboost_show, NULL);
+#endif
+
 static DEVICE_ATTR(gpu_load, 0444, gpu_load_show, NULL);
 
 static DEVICE_ATTR(suspend_time, 0444,
@@ -130,6 +148,9 @@ static DEVICE_ATTR(suspend_time, 0444,
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
 		&dev_attr_suspend_time,
+#if 1
+		&dev_attr_adrenoboost,
+#endif
 		NULL
 };
 
@@ -327,6 +348,8 @@ static inline int devfreq_get_freq_level(struct devfreq *devfreq,
 	return -EINVAL;
 }
 
+extern int kp_active_mode(void);
+
 static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 {
 	int result = 0;
@@ -343,9 +366,23 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 		return result;
 	}
 
+	if (kp_active_mode() != 3)
+		adrenoboost = 0;
+	else
+		adrenoboost = 2;
+
 	*freq = stats.current_frequency;
 	priv->bin.total_time += stats.total_time;
+#if 1
+	// scale busy time up based on adrenoboost parameter, only if MIN_BUSY exceeded...
+	if ((unsigned int)(priv->bin.busy_time + stats.busy_time) >= MIN_BUSY) {
+		priv->bin.busy_time += stats.busy_time * (1 + (adrenoboost*3)/2);
+	} else {
+		priv->bin.busy_time += stats.busy_time;
+	}
+#else
 	priv->bin.busy_time += stats.busy_time;
+#endif
 
 	if (stats.private_data)
 		context_count =  *((int *)stats.private_data);

@@ -750,6 +750,13 @@ config MSM_JTAGV8
 	  If unsure, say 'N' here to avoid potential power, performance and
 	  memory penalty.
 
+config SMP2P_SLEEPSTATE_TIME
+	int "SMP2P Sleepstate Timeout"
+	default 200
+	depends on QCOM_SMP2P
+	help
+	  This option allows modifying smp2p sleepstate wakeup time.
+
 config QCOM_QDSS_BRIDGE
 	bool "Configure bridge driver for QTI/Qualcomm Technologies, Inc. MDM"
 	depends on MHI_BUS
