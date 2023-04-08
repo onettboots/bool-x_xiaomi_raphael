@@ -50,7 +50,6 @@
 	&& (!chg->typec_legacy || chg->typec_legacy_use_rp_icl))
 
 static bool off_charge_flag;
-static bool first_boot_flag;
 
 bool smblib_rsbux_low(struct smb_charger *chg, int r_thr);
 static int smblib_get_prop_typec_mode(struct smb_charger *chg);
@@ -2181,28 +2180,6 @@ int smblib_get_prop_batt_capacity(struct smb_charger *chg,
 	return rc;
 }
 
-int smblib_get_prop_batt_capacity_level(struct smb_charger *chg,
-                                  union power_supply_propval *val)
-{
-	int rc,cap;
-	union power_supply_propval capacity;
-
-	rc = smblib_get_prop_from_bms(chg, POWER_SUPPLY_PROP_CAPACITY, &capacity);
-
-	cap=capacity.intval;
-	if (cap <= 0)
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_CRITICAL;
-	if (cap > 0 && cap <= 20)
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_LOW;
-	if (cap > 20 && cap <= 90)
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_NORMAL;
-	if (cap > 90 && cap <= 99)
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_HIGH;
-	if (cap == 100)
-		val->intval = POWER_SUPPLY_CAPACITY_LEVEL_FULL;
-	return rc;
-}
-
 static bool smblib_is_jeita_warm_charging(struct smb_charger *chg)
 {
 	union power_supply_propval pval = {0, };
@@ -2590,23 +2567,6 @@ int smblib_get_prop_batt_iterm(struct smb_charger *chg,
 	return rc;
 }
 
-static int smblib_set_wdog_bark_timer(struct smb_charger *chg,
-					int wdog_timer)
-{
-	u8 val = 0;
-	int rc;
-
-	val = (ilog2(wdog_timer / 16) << BARK_WDOG_TIMEOUT_SHIFT)
-			& BARK_WDOG_TIMEOUT_MASK;
-	rc = smblib_masked_write(chg, SNARL_BARK_BITE_WD_CFG_REG,
-			BARK_WDOG_TIMEOUT_MASK, val);
-	if (rc < 0) {
-		pr_err("Couldn't configue WD config rc=%d\n", rc);
-		return rc;
-	}
-	return rc;
-}
-
 int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 					union power_supply_propval *val)
 {
@@ -2624,8 +2584,6 @@ int smblib_get_prop_batt_charge_done(struct smb_charger *chg,
 	val->intval = (stat == TERMINATE_CHARGE);
 
 	if (val->intval == 1) {
-		/* when charge done, set bark timer to 128s to decrease wakeups */
-		smblib_set_wdog_bark_timer(chg, BARK_TIMER_LONG);
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 		vote(chg->awake_votable, DC_AWAKE_VOTER, false, 0);
 	}
@@ -6221,14 +6179,6 @@ static void smblib_cc_un_compliant_charge_work(struct work_struct *work)
 	}
 }
 
-static void smb_check_init_boot(struct work_struct *work)
-{
-	struct smb_charger *chg = container_of(work, struct smb_charger,
-					check_init_boot.work);
-	first_boot_flag = true;
-	if (chg->usb_psy)
-		power_supply_changed(chg->usb_psy);
-}
 
 static void smblib_micro_usb_plugin(struct smb_charger *chg, bool vbus_rising)
 {
@@ -6257,11 +6207,6 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 
 	if (vbus_rising) {
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, true, 0);
-		/* when vbus present, enable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && !chg->batt_temp_irq_enabled) {
-			enable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = true;
-		}
 		/* Remove FCC_STEPPER 1.5A init vote to allow FCC ramp up */
 		if (chg->fcc_stepper_enable)
 			vote(chg->fcc_votable, FCC_STEPPER_VOTER, false, 0);
@@ -6288,11 +6233,6 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 			chg->cc_un_compliant_detected = false;
 		}
 
-		/* when vbus absent, disable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && chg->batt_temp_irq_enabled) {
-			disable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = false;
-		}
 		vote(chg->awake_votable, CHG_AWAKE_VOTER, false, 0);
 
 		/* Force 1500mA FCC on USB removal if fcc stepper is enabled */
@@ -6326,11 +6266,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 						chg->chg_freq.freq_removal);
 
 	if (vbus_rising) {
-		/* when vbus present, enable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && !chg->batt_temp_irq_enabled) {
-			enable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = true;
-		}
 		if (smblib_get_prop_dfp_mode(chg) != POWER_SUPPLY_TYPEC_NONE
 				&& smblib_get_prop_dfp_mode(chg)
 					!= POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER) {
@@ -6357,8 +6292,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
-		if (!first_boot_flag)
-			schedule_delayed_work(&chg->check_init_boot, msecs_to_jiffies(18000));
 		queue_delayed_work(system_power_efficient_wq, &chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 		queue_delayed_work(system_power_efficient_wq, &chg->charger_type_recheck,
@@ -6366,11 +6299,6 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		queue_delayed_work(system_power_efficient_wq, &chg->cc_un_compliant_charge_work,
 					msecs_to_jiffies(CC_UN_COMPLIANT_START_DELAY_MS));
 	} else {
-		/* when vbus absent, disable batt_temp irq wakeup */
-		if (chg->irq_info[BAT_TEMP_IRQ].irq && chg->batt_temp_irq_enabled) {
-			disable_irq_wake(chg->irq_info[BAT_TEMP_IRQ].irq);
-			chg->batt_temp_irq_enabled = false;
-		}
 		if (chg->fake_usb_insertion) {
 			chg->fake_usb_insertion = false;
 			return;
@@ -7187,7 +7115,6 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	cancel_delayed_work_sync(&chg->pl_enable_work);
 	cancel_delayed_work_sync(&chg->raise_qc3_vbus_work);
-	cancel_delayed_work_sync(&chg->check_init_boot);
 
 	/* reset input current limit voters */
 	vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, true,
@@ -7291,9 +7218,6 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	if (chg->use_extcon)
 		smblib_notify_device_mode(chg, false);
-
-	/* when src removal, set bark timer back to default 16s */
-	smblib_set_wdog_bark_timer(chg, BARK_TIMER_NORMAL);
 
 	chg->typec_legacy = false;
 	pr_debug("%s:", __func__);
@@ -7790,8 +7714,6 @@ irqreturn_t dc_plugin_irq_handler(int irq, void *data)
 
 		schedule_work(&chg->dcin_aicl_work);
 	} else {
-		/* when dc plug out, set bark timer back to default 16s */
-		smblib_set_wdog_bark_timer(chg, BARK_TIMER_NORMAL);
 		vote(chg->awake_votable, DC_AWAKE_VOTER, false, 0);
 		vote(chg->dc_icl_votable, DCIN_ADAPTER_VOTER, true, 100000);
 		chg->flag_dc_present = 0;
@@ -9187,7 +9109,6 @@ int smblib_init(struct smb_charger *chg)
 					smblib_pr_lock_clear_work);
 	setup_timer(&chg->apsd_timer, apsd_timer_cb, (unsigned long)chg);
 
-	INIT_DELAYED_WORK(&chg->check_init_boot, smb_check_init_boot);
 	if (chg->wa_flags & CHG_TERMINATION_WA) {
 		INIT_WORK(&chg->chg_termination_work,
 					smblib_chg_termination_work);
@@ -9345,7 +9266,6 @@ int smblib_deinit(struct smb_charger *chg)
 		cancel_delayed_work_sync(&chg->usbov_dbc_work);
 		cancel_delayed_work_sync(&chg->role_reversal_check);
 		cancel_delayed_work_sync(&chg->pr_swap_detach_work);
-		cancel_delayed_work_sync(&chg->check_init_boot);
 		power_supply_unreg_notifier(&chg->nb);
 		smblib_destroy_votables(chg);
 		qcom_step_chg_deinit();
