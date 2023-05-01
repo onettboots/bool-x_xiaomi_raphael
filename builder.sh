@@ -289,6 +289,11 @@ function completion()
 		if [[ ${EROFS_STATE} == CONFIG_EROFS_FS=y ]]; then
 			add_to_banner " EROFS"
 		fi
+		if [[ $(grep CONFIG_INITRAMFS_IGNORE_SKIP_FLAG= ${objdir}/.config) == CONFIG_INITRAMFS_IGNORE_SKIP_FLAG=y ]]; then
+			add_to_banner " Dynamic Partitions"
+		else
+			add_to_banner " Stock Partitions"
+		fi
 		if [[ $(grep CONFIG_KSU= ${objdir}/.config) == CONFIG_KSU=y ]]; then
 			add_to_banner " KernelSU"
 		fi
