@@ -290,7 +290,7 @@ static int simple_lmk_reclaim_thread(void *data)
 	while (1) {
 		wait_event_freezable(oom_waitq, atomic_read(&needs_reclaim));
 		scan_and_kill();
-		atomic_set_release(&needs_reclaim, 0);
+		atomic_set(&needs_reclaim, 0);
 	}
 
 	return 0;
@@ -317,8 +317,10 @@ void simple_lmk_mm_freed(struct mm_struct *mm)
 
 void simple_lmk_trigger(void)
 {
-	if (!atomic_cmpxchg_acquire(&needs_reclaim, 0, 1))
-		wake_up(&oom_waitq);
+	atomic_set(&needs_reclaim, 1);
+	smp_mb__after_atomic();
+	if (waitqueue_active(&oom_waitq))
+	    wake_up(&oom_waitq);
 }
 
 static int simple_lmk_vmpressure_cb(struct notifier_block *nb,
