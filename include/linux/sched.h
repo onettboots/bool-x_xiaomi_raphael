@@ -506,6 +506,24 @@ struct sched_statistics {
 #endif
 };
 
+#ifdef CONFIG_SCHED_BORE
+typedef union {
+	u16	u16;
+	s16	s16;
+	u8	u8[2];
+	s8	s8[2];
+} x16;
+
+typedef union {
+	u32	u32;
+	s32	s32;
+	u16	u16[2];
+	s16	s16[2];
+	u8	u8[4];
+	s8	s8[4];
+} x32;
+#endif // CONFIG_SCHED_BORE
+
 struct sched_entity {
 	/* For load-balancing: */
 	struct load_weight		load;
@@ -517,6 +535,12 @@ struct sched_entity {
 	u64				sum_exec_runtime;
 	u64				vruntime;
 	u64				prev_sum_exec_runtime;
+#ifdef CONFIG_SCHED_BORE
+	u64				burst_time;
+	u16				prev_burst_penalty;
+	u16				curr_burst_penalty;
+	u16				burst_penalty;
+#endif // CONFIG_SCHED_BORE
 
 	u64				nr_migrations;
 
@@ -1014,6 +1038,13 @@ struct task_struct {
 	struct list_head		children;
 	struct list_head		sibling;
 	struct task_struct		*group_leader;
+#ifdef CONFIG_SCHED_BORE
+	u16	child_burst_cache;
+	u16	child_burst_count_cache;
+	u64	child_burst_last_cached;
+	u16	group_burst_cache;
+	u64	group_burst_last_cached;
+#endif // CONFIG_SCHED_BORE
 
 	/*
 	 * 'ptraced' is the list of tasks this task is using ptrace() on.
