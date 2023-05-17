@@ -207,8 +207,6 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-	panel->bl_config.bl_level = bl_lvl;
-
 	/* scale backlight */
 	bl_scale = panel->bl_config.bl_scale;
 	bl_temp = bl_lvl * bl_scale / MAX_BL_SCALE_LEVEL;
@@ -231,6 +229,18 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	if (rc)
 		pr_debug("unable to set backlight\n");
 
+	if (bl_lvl == 4095 && panel->bl_config.bl_level <= 2047)
+	{
+		panel->hbm_mode = 1;
+		rc = dsi_panel_apply_hbm_mode(panel);
+	}
+	else if (bl_lvl <= 2047 && panel->bl_config.bl_level == 4095)
+	{
+		panel->hbm_mode = 0;
+		rc = dsi_panel_apply_hbm_mode(panel);
+	}
+
+	panel->bl_config.bl_level = bl_lvl;
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
 	if (rc) {
@@ -5117,6 +5127,9 @@ static ssize_t sysfs_hbm_write(struct device *dev,
 	if (!display->panel)
 		return -EINVAL;
 
+        if (display->panel->bl_config.bl_level > 2047)
+                return count;
+
 	ret = kstrtoint(buf, 10, &hbm_mode);
 	if (ret) {
 		pr_debug("kstrtoint failed. ret=%d\n", ret);
@@ -7089,7 +7102,7 @@ static void dsi_display_handle_fifo_overflow(struct work_struct *work)
 	 * Add sufficient delay to make sure
 	 * pixel transmission has started
 	 */
-	usleep_range(190, 210);
+	usleep_range(180, 220);
 end:
 	dsi_display_clk_ctrl(display->dsi_clk_handle,
 			DSI_ALL_CLKS, DSI_CLK_OFF);
@@ -7167,7 +7180,7 @@ static void dsi_display_handle_lp_rx_timeout(struct work_struct *work)
 	 * Add sufficient delay to make sure
 	 * pixel transmission as started
 	 */
-	udelay(200);
+	usleep_range(180, 220);
 
 end:
 	dsi_display_clk_ctrl(display->dsi_clk_handle,
