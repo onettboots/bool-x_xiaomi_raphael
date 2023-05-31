@@ -13,6 +13,7 @@
  * sleep+wake cycles. EEVDF placement strategy #1, #2 if disabled.
  */
 #define SCHED_FEAT_PLACE_LAG 1
+#define SCHED_FEAT_PLACE_DEADLINE_INITIAL 1
 
 /*
  * Prefer to schedule the task we woke last (assuming it failed
@@ -140,11 +141,4 @@
  */
 #define SCHED_FEAT_SCHEDTUNE_BOOST_HOLD_ALL 0
 
-/*
- * Inflate the effective utilization of SchedTune-boosted tasks, which
- * generally leads to usage of higher frequencies.
- * If disabled, boosts will only bias tasks to higher-capacity CPUs.
- */
-
-#define SCHED_FEAT_ALT_PERIOD 1
-#define SCHED_FEAT_BASE_SLICE 1
+#define SCHED_FEAT_EEVDF 1
