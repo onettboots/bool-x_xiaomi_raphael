@@ -184,9 +184,6 @@ static inline int cpu_to_mem(int cpu)
 #ifndef topology_physical_package_id
 #define topology_physical_package_id(cpu)	((void)(cpu), -1)
 #endif
-#ifndef topology_die_id
-#define topology_die_id(cpu)			((void)(cpu), -1)
-#endif
 #ifndef topology_core_id
 #define topology_core_id(cpu)			((void)(cpu), 0)
 #endif
