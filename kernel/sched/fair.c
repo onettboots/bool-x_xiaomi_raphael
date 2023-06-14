@@ -7864,7 +7864,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 	return task_fits_capacity(p, capacity, cpu);
 }
 
-static bool __maybe_unused is_packing_eligible(struct task_struct *p, int target_cpu,
+static bool is_packing_eligible(struct task_struct *p, int target_cpu,
 				struct find_best_target_env *fbt_env,
 				unsigned int target_cpus_count,
 				int best_idle_cstate, bool boosted)
