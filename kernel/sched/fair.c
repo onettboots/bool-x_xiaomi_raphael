@@ -6194,7 +6194,7 @@ cpu_is_in_target_set(struct task_struct *p, int cpu)
 		first_cpu = rd->min_cap_orig_cpu;
 	}
 
-	next_usable_cpu = cpumask_next(first_cpu - 1, p->cpus_ptr);
+	next_usable_cpu = cpumask_next(first_cpu - 1, &p->cpus_allowed);
 	return cpu >= next_usable_cpu || next_usable_cpu >= nr_cpu_ids;
 }
 
@@ -7654,7 +7654,7 @@ select_idle_capacity(struct task_struct *p, struct sched_domain *sd, int target)
 	sync_entity_load_avg(&p->se);
 
 	cpus = this_cpu_cpumask_var_ptr(select_idle_mask);
-	cpumask_and(cpus, sched_domain_span(sd), p->cpus_ptr);
+	cpumask_and(cpus, sched_domain_span(sd), &p->cpus_allowed);
 
 	for_each_cpu_wrap(cpu, cpus, target) {
 		unsigned long cpu_cap = capacity_of(cpu);
@@ -7718,7 +7718,7 @@ symmetric:
 	    recent_used_cpu != target &&
 	    cpus_share_cache(recent_used_cpu, target) &&
 	    idle_cpu(recent_used_cpu) &&
-	    cpumask_test_cpu(p->recent_used_cpu, p->cpus_ptr)) {
+	    cpumask_test_cpu(p->recent_used_cpu, &p->cpus_allowed)) {
 		/*
 		 * Replace recent_used_cpu with prev as it is a potential
 		 * candidate for the next wake.
@@ -8914,7 +8914,7 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	rcu_read_lock();
 
 	if (sd_flag & SD_BALANCE_WAKE) {
-		int _cpus_allowed = cpumask_test_cpu(cpu, p->cpus_ptr);
+		int _cpus_allowed = cpumask_test_cpu(cpu, &p->cpus_allowed);
 
 		if (sysctl_sched_sync_hint_enable && sync &&
 				_cpus_allowed &&

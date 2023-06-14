@@ -882,7 +882,8 @@ struct task_struct {
 
 	unsigned int			policy;
 	int				nr_cpus_allowed;
-	const cpumask_t			*cpus_ptr;
+	cpumask_t			cpus_allowed;
+const cpumask_t			*cpus_ptr;
 	cpumask_t			cpus_mask;
 	cpumask_t			cpus_requested;
 #if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
