@@ -7994,6 +7994,7 @@ void sched_move_task(struct task_struct *tsk)
 	task_rq_unlock(rq, tsk, &rf);
 }
 
+#ifdef CONFIG_PROC_SYSCTL
 static int find_capacity_margin_levels(void)
 {
 	int cpu, max_clusters;
@@ -8176,6 +8177,7 @@ int sched_updown_migrate_handler_boosted(struct ctl_table *table, int write,
 	return __sched_updown_migrate_handler(table, write, buffer,
 					      lenp, ppos, true);
 }
+#endif
 
 static inline struct task_group *css_tg(struct cgroup_subsys_state *css)
 {
