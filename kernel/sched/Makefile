@@ -39,4 +39,3 @@ obj-$(CONFIG_SCHED_CORE_CTL) += core_ctl.o
 obj-$(CONFIG_PSI) += psi.o
 
 subdir-ccflags-y := $(call cc-disable-warning, unused-function)
-subdir-ccflags-y := $(call cc-disable-warning, int-conversion)
