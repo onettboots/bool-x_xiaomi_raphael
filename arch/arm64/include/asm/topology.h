@@ -10,7 +10,6 @@ struct cpu_topology {
 	int cluster_id;
 	cpumask_t thread_sibling;
 	cpumask_t core_sibling;
-	cpumask_t core_possible_sibling;
 };
 
 extern struct cpu_topology cpu_topology[NR_CPUS];
@@ -23,7 +22,6 @@ extern struct cpu_topology cpu_topology[NR_CPUS];
 void init_cpu_topology(void);
 void store_cpu_topology(unsigned int cpuid);
 const struct cpumask *cpu_coregroup_mask(int cpu);
-const struct cpumask *cpu_possible_coregroup_mask(int cpu);
 
 #ifdef CONFIG_NUMA
 
