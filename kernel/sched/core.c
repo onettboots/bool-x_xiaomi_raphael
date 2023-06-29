@@ -5,10 +5,6 @@
  *
  *  Copyright (C) 1991-2002  Linus Torvalds
  */
-#ifdef CONFIG_MINIMAL_TRACING_FOR_IORAP
-#undef NOTRACE
-#endif
-
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
 #include <uapi/linux/sched/types.h>

@@ -790,9 +790,6 @@ ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= -mllvm -polly-run-dce
 endif
 endif
-ifdef CONFIG_MINIMAL_TRACING_FOR_IORAP
-KBUILD_CFLAGS   += -DNOTRACE
-endif
 
 ifdef CONFIG_INLINE_OPTIMIZATION
 KBUILD_CFLAGS	+= -mllvm -inline-threshold=2000
