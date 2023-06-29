@@ -290,10 +290,8 @@ struct iwl_tx_cmd {
 	u8 tid_tspec;
 	__le16 pm_frame_timeout;
 	__le16 reserved4;
-	union {
-		DECLARE_FLEX_ARRAY(u8, payload);
-		DECLARE_FLEX_ARRAY(struct ieee80211_hdr, hdr);
-	};
+	u8 payload[0];
+	struct ieee80211_hdr hdr[0];
 } __packed; /* TX_CMD_API_S_VER_6 */
 
 struct iwl_dram_sec_info {
@@ -743,10 +741,8 @@ struct iwl_mvm_compressed_ba_notif {
 	__le32 tx_rate;
 	__le16 tfd_cnt;
 	__le16 ra_tid_cnt;
-	union {
-		DECLARE_FLEX_ARRAY(struct iwl_mvm_compressed_ba_ratid, ra_tid);
-		DECLARE_FLEX_ARRAY(struct iwl_mvm_compressed_ba_tfd, tfd);
-	};
+	struct iwl_mvm_compressed_ba_ratid ra_tid[0];
+	struct iwl_mvm_compressed_ba_tfd tfd[];
 } __packed; /* COMPRESSED_BA_RES_API_S_VER_4 */
 
 /**
