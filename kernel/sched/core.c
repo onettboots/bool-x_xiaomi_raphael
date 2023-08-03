@@ -97,6 +97,9 @@ int sysctl_sched_rt_runtime = 950000;
 /* CPUs with isolated domains */
 cpumask_var_t cpu_isolated_map;
 
+unsigned long sched_init_time;
+static bool sched_boot_done;
+
 /*
  * __task_rq_lock - lock the rq @p resides on.
  */
@@ -987,6 +990,12 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 	if (task_group(p) == &root_task_group)
 		return uc_req;
 
+	if (!sched_boot_done) {
+		if (time_after(jiffies, sched_init_time + msecs_to_jiffies(20000))) {
+			sched_boot_done = true;
+		}
+	}
+
 	if (kp_active_mode() != 1) {
 		css = task_css(p, cpu_cgrp_id);
 		if (strcmp(css->cgroup->kn->name, "top-app") == 0
@@ -996,7 +1005,8 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 			else
 				tg_min = 410;
 		} else if (strcmp(css->cgroup->kn->name, "foreground") == 0
-			&& time_before(jiffies, last_mb_time + msecs_to_jiffies(5000))) {
+			&& time_before(jiffies, last_mb_time + msecs_to_jiffies(5000))
+			&& sched_boot_done) {
 			if (time_before(jiffies, last_fod_time + msecs_to_jiffies(300))) {
 				tg_min = 675;
 				tg_max = 1024;
@@ -7579,6 +7589,8 @@ void __init sched_init(void)
 	psi_init();
 
 	init_uclamp();
+
+	sched_init_time = jiffies;
 
 	scheduler_running = 1;
 }
