@@ -972,8 +972,6 @@ extern int kp_active_mode(void);
 static inline struct uclamp_se
 uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 {
-	const char *process_name = current->comm;
-
 	/* Copy by value as we could modify it */
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 #ifdef CONFIG_UCLAMP_TASK_GROUP
@@ -999,23 +997,21 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 				tg_min = 410;
 		} else if (strcmp(css->cgroup->kn->name, "foreground") == 0
 			&& time_before(jiffies, last_mb_time + msecs_to_jiffies(5000))) {
-			if (strstr(process_name, "Finger")) {
-				if (time_before(jiffies, last_fod_time + msecs_to_jiffies(300))) {
-					tg_min = 675;
-					tg_max = 1024;
-					task_group(p)->latency_sensitive = 1;
-				} else {
-					tg_min = 505;
-					task_group(p)->latency_sensitive = 0;
-				}
-				if (time_before(jiffies, last_mb_time + msecs_to_jiffies(300))
-					&& (!time_before(jiffies, last_fod_time + msecs_to_jiffies(300))))
-					tg_min = 505;
-				else if (time_before(jiffies, last_mb_time + msecs_to_jiffies(1000)))
-					tg_min = 307;
-				else
-					tg_min = 159;
+			if (time_before(jiffies, last_fod_time + msecs_to_jiffies(300))) {
+				tg_min = 675;
+				tg_max = 1024;
+				task_group(p)->latency_sensitive = 1;
+			} else {
+				tg_min = 505;
+				task_group(p)->latency_sensitive = 0;
 			}
+			if (time_before(jiffies, last_mb_time + msecs_to_jiffies(300))
+				&& (!time_before(jiffies, last_fod_time + msecs_to_jiffies(300))))
+				tg_min = 505;
+			else if (time_before(jiffies, last_mb_time + msecs_to_jiffies(1000)))
+				tg_min = 307;
+			else
+				tg_min = 159;
 		} else if (strcmp(css->cgroup->kn->name, "camera-daemon") == 0
 			&& time_before(jiffies, last_cam_time + msecs_to_jiffies(1000))) {
 			tg_min = 612;
