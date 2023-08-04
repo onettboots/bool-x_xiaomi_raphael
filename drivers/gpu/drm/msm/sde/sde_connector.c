@@ -73,8 +73,6 @@ static const struct drm_prop_enum_list e_frame_trigger_mode[] = {
 	{FRAME_DONE_WAIT_POSTED_START, "posted_start"},
 };
 
-unsigned long last_fod_time;
-
 static int sde_backlight_device_update_status(struct backlight_device *bd)
 {
 	int brightness;
@@ -635,7 +633,6 @@ static void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn)
 		cpu_input_boost_kick_max(1200, true);
 		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200, true);
 		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200, true);
-		last_fod_time = jiffies;
 	}
 
 	dsi_panel_set_fod_hbm(panel, status);
