@@ -20,20 +20,22 @@ $(eval KSU_VERSION=$(shell expr 10000 + $(KSU_GIT_VERSION) + 200))
 $(info -- KernelSU version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else # If there is no .git file, the default version will be passed.
-KSU_GIT_VERSION := 905
-$(eval KSU_VERSION=$(shell expr 10000 + $(KSU_GIT_VERSION) + 200))
-ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
+$(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!")
+ccflags-y += -DKSU_VERSION=16
 endif
 
-ifndef EXPECTED_SIZE
-EXPECTED_SIZE := 0x033b
+ifndef KSU_EXPECTED_SIZE
+KSU_EXPECTED_SIZE := 0x033b
 endif
 
-ifndef EXPECTED_HASH
-EXPECTED_HASH := 0xb0b91415
+ifndef KSU_EXPECTED_HASH
+KSU_EXPECTED_HASH := 0xb0b91415
 endif
 
-ccflags-y += -DEXPECTED_SIZE=$(EXPECTED_SIZE)
-ccflags-y += -DEXPECTED_HASH=$(EXPECTED_HASH)
+$(info -- KernelSU Manager signature size: $(KSU_EXPECTED_SIZE))
+$(info -- KernelSU Manager signature hash: $(KSU_EXPECTED_HASH))
+
+ccflags-y += -DEXPECTED_SIZE=$(KSU_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_HASH=$(KSU_EXPECTED_HASH)
 ccflags-y += -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
 ccflags-y += -Wno-declaration-after-statement
