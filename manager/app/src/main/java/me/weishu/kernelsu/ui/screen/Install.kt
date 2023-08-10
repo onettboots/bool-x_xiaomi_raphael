@@ -14,7 +14,10 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.R
+import me.weishu.kernelsu.ui.component.KeyEventBlocker
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
 import me.weishu.kernelsu.ui.util.installModule
 import me.weishu.kernelsu.ui.util.reboot
@@ -35,15 +39,18 @@ import java.util.*
  * @author weishu
  * @date 2023/1/1.
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 @Destination
 fun InstallScreen(navigator: DestinationsNavigator, uri: Uri) {
 
     var text by rememberSaveable { mutableStateOf("") }
+    val logContent = StringBuilder()
     var showFloatAction by rememberSaveable { mutableStateOf(false) }
 
     val snackBarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(Unit) {
         if (text.isNotEmpty()) {
@@ -54,9 +61,15 @@ fun InstallScreen(navigator: DestinationsNavigator, uri: Uri) {
                 if (success) {
                     showFloatAction = true
                 }
-            }) {
+            }, onStdout = {
                 text += "$it\n"
-            }
+                scope.launch {
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
+                logContent.append(it).append("\n")
+            }, onStderr = {
+                logContent.append(it).append("\n")
+            });
         }
     }
 
@@ -74,7 +87,7 @@ fun InstallScreen(navigator: DestinationsNavigator, uri: Uri) {
                             Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
                             "KernelSU_install_log_${date}.log"
                         )
-                        file.writeText(text)
+                        file.writeText(logContent.toString())
                         snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")
                     }
                 }
@@ -98,11 +111,14 @@ fun InstallScreen(navigator: DestinationsNavigator, uri: Uri) {
 
         }
     ) { innerPadding ->
+        KeyEventBlocker {
+            it.key == Key.VolumeDown || it.key == Key.VolumeUp
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize(1f)
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState()),
+                .verticalScroll(scrollState),
         ) {
             Text(
                 modifier = Modifier.padding(8.dp),
