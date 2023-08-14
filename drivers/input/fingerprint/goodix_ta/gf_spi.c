@@ -113,7 +113,7 @@ static inline void gf_setup(struct gf_dev *gf_dev) {
 	gpio_request(gf_dev->irq_gpio, "gpio-irq");
 	gpio_direction_input(gf_dev->irq_gpio);
 	gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
-	if (!request_threaded_irq(gf_dev->irq, NULL, gf_irq,
+	if (!request_threaded_irq(gf_dev->irq, gf_irq, NULL,
 			IRQF_TRIGGER_RISING | IRQF_ONESHOT | IRQF_HP_AFFINE,
 			"gf", gf_dev))
 		enable_irq_wake(gf_dev->irq);
