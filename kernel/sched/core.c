@@ -975,7 +975,6 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 	/* Copy by value as we could modify it */
 	struct uclamp_se uc_req = p->uclamp_req[clamp_id];
 #ifdef CONFIG_UCLAMP_TASK_GROUP
-	struct cgroup_subsys_state *css;
 	unsigned int tg_min, tg_max, value;
 
 	/*
