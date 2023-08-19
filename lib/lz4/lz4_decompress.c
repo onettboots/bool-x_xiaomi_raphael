@@ -915,8 +915,9 @@ int LZ4_decompress_safe(const char *source, char *dest, int compressedSize,
 				      noDict, (BYTE *)dest, NULL, 0);
 }
 
-int LZ4_decompress_safe_partial(const char *src, char *dst, int compressedSize,
-				int targetOutputSize, int dstCapacity)
+#if IS_ENABLED(CONFIG_EROFS_FS)
+int LZ4_decompress_safe_partial(const char *src, char *dst,
+	int compressedSize, int targetOutputSize, int dstCapacity)
 {
 	dstCapacity = min(targetOutputSize, dstCapacity);
 	return LZ4_decompress_generic(src, dst, compressedSize, dstCapacity,
