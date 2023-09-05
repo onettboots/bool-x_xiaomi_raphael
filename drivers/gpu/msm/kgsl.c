@@ -5059,7 +5059,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	}
 
 	if (!strcmp(device->name, "kgsl-3d0")) {
-		irqflags |= IRQF_PRIME_AFFINE;
+		irqflags |= IRQF_PERF_AFFINE;
 	}
 
 	status = devm_request_irq(device->dev, device->pwrctrl.interrupt_num,
