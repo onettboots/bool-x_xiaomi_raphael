@@ -79,7 +79,6 @@ static DEFINE_RWLOCK(binfmt_lock);
 
 #define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer"
 #define QTIHW_BIN_PREFIX "/vendor/bin/hw/vendor.qti.hardware.display.allocator"
-#define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_raphael"
 #define SFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
@@ -1840,12 +1839,6 @@ static int do_execveat_common(int fd, struct filename *filename,
 			zygote32_sig = current->signal;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
 			zygote64_sig = current->signal;
-		else if (unlikely(!strncmp(filename->name,
-					   UDFPS_BIN_PREFIX,
-					   strlen(UDFPS_BIN_PREFIX)))) {
-			current->pc_flags |= PC_PRIME_AFFINE;
-			set_cpus_allowed_ptr(current, cpu_prime_mask);
-		}
 	}
 
 	/* execve succeeded */
