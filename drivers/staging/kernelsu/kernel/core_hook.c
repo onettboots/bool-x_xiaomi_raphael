@@ -538,7 +538,7 @@ int ksu_handle_setuid(struct cred *new, const struct cred *old)
 	}
 
 	// umount the target mnt
-	pr_info("handle umount for uid: %d\n", new_uid.val);
+	pr_debug("handle umount for uid: %d\n", new_uid.val);
 
 	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
 	// filter the mountpoint whose target is `/data/adb`
