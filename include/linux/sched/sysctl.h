@@ -30,27 +30,24 @@ extern unsigned int sysctl_sched_sync_hint_enable;
 extern unsigned int sysctl_sched_cstate_aware;
 extern unsigned int sysctl_sched_wakeup_granularity;
 extern unsigned int sysctl_sched_child_runs_first;
-extern unsigned int sysctl_sched_energy_aware;
 extern unsigned int sysctl_sched_capacity_margin_up[MAX_MARGIN_LEVELS];
 extern unsigned int sysctl_sched_capacity_margin_down[MAX_MARGIN_LEVELS];
-extern unsigned int sysctl_sched_capacity_margin_up_boosted[MAX_MARGIN_LEVELS];
-extern unsigned int
-       sysctl_sched_capacity_margin_down_boosted[MAX_MARGIN_LEVELS];
 #ifdef CONFIG_SCHED_WALT
 extern unsigned int sysctl_sched_use_walt_cpu_util;
 extern unsigned int sysctl_sched_use_walt_task_util;
 extern unsigned int sysctl_sched_walt_init_task_load_pct;
 extern unsigned int sysctl_sched_cpu_high_irqload;
 extern unsigned int sysctl_sched_boost;
-extern unsigned int sysctl_sched_group_upmigrate_pct;
-extern unsigned int sysctl_sched_group_downmigrate_pct;
+extern unsigned int sysctl_sched_conservative_pl;
+extern unsigned int sysctl_sched_many_wakeup_threshold;
 extern unsigned int sysctl_sched_walt_rotate_big_tasks;
 extern unsigned int sysctl_sched_min_task_util_for_boost;
 extern unsigned int sysctl_sched_min_task_util_for_colocation;
 extern unsigned int sysctl_sched_little_cluster_coloc_fmin_khz;
+extern unsigned int sysctl_sched_asym_cap_sibling_freq_match_pct;
 
 extern int
-walt_proc_update_handler(struct ctl_table *table, int write,
+walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
 			 void __user *buffer, size_t *lenp,
 			 loff_t *ppos);
 
@@ -125,10 +122,6 @@ extern int sched_rt_handler(struct ctl_table *table, int write,
 		loff_t *ppos);
 
 extern int sched_updown_migrate_handler(struct ctl_table *table,
-					int write, void __user *buffer,
-					size_t *lenp, loff_t *ppos);
-
-extern int sched_updown_migrate_handler_boosted(struct ctl_table *table,
 					int write, void __user *buffer,
 					size_t *lenp, loff_t *ppos);
 

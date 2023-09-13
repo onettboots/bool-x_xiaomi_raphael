@@ -10,9 +10,10 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/slab.h>
+#include <linux/event_tracking.h>
 #include <uapi/linux/sched/types.h>
 
-#ifndef CONFIG_CPU_INPUT_BOOST
+#if(CONFIG_INPUT_BOOST_DURATION_MS == 0)
 	unsigned long last_input_time;
 #endif
 
@@ -62,7 +63,7 @@ static struct df_boost_drv df_boost_drv_g __read_mostly = {
 extern int kp_active_mode(void);
 static void __devfreq_boost_kick(struct boost_dev *b)
 {
-	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() != 3)
+	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) || kp_active_mode() == 1)
 		return;
 
 	set_bit(INPUT_BOOST, &b->state);
@@ -86,7 +87,7 @@ static void __devfreq_boost_kick_max(struct boost_dev *b,
 	unsigned long curr_expires, new_expires;
 
 	if (!READ_ONCE(b->df) || test_bit(SCREEN_OFF, &b->state) ||
-		(kp_active_mode() != 3 && !always))
+		(kp_active_mode() == 1 && !always))
 		return;
 
 	do {
@@ -226,7 +227,7 @@ static void devfreq_boost_input_event(struct input_handle *handle,
 	for (i = 0; i < DEVFREQ_MAX; i++)
 		__devfreq_boost_kick(d->devices + i);
 
-#ifndef CONFIG_CPU_INPUT_BOOST
+#if(CONFIG_INPUT_BOOST_DURATION_MS == 0)
 	last_input_time = jiffies;
 #endif
 }
@@ -313,7 +314,7 @@ static int __init devfreq_boost_init(void)
 	for (i = 0; i < DEVFREQ_MAX; i++) {
 		struct boost_dev *b = d->devices + i;
 
-		thread[i] = kthread_run_perf_critical(cpu_hp_mask, devfreq_boost_thread, b,
+		thread[i] = kthread_run(devfreq_boost_thread, b,
 						      "devfreq_boostd/%d", i);
 		if (IS_ERR(thread[i])) {
 			ret = PTR_ERR(thread[i]);

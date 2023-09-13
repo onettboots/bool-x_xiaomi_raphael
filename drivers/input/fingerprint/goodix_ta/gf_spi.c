@@ -38,12 +38,12 @@ static struct gf_dev {
 static struct sock *nl_sk = NULL;
 static int pid = -1;
 static inline int sendnlmsg(void) {
-	struct sk_buff *skb_1 = alloc_skb(NLMSG_SPACE(MAX_MSGSIZE), GFP_KERNEL);
+	struct sk_buff *skb_1 = alloc_skb(NLMSG_SPACE(MAX_MSGSIZE), GFP_KERNEL | GFP_DMA);
 	struct nlmsghdr *nlh = nlmsg_put(skb_1, 0, 0, 0, MAX_MSGSIZE, 0);
 	char msg[MAX_MSGSIZE] = { 1, 0 };
 	memcpy(NLMSG_DATA(nlh), msg, MAX_MSGSIZE);
 	NETLINK_CB(skb_1).portid = NETLINK_CB(skb_1).dst_group = 0;
-	netlink_unicast(nl_sk, skb_1, pid, MSG_DONTWAIT);
+	netlink_unicast(nl_sk, skb_1, pid, MSG_DONTWAIT + MSG_NOSIGNAL);
 	return 1;
 }
 
@@ -113,8 +113,8 @@ static inline void gf_setup(struct gf_dev *gf_dev) {
 	gpio_request(gf_dev->irq_gpio, "gpio-irq");
 	gpio_direction_input(gf_dev->irq_gpio);
 	gf_dev->irq = gpio_to_irq(gf_dev->irq_gpio);
-	if (!request_threaded_irq(gf_dev->irq, NULL, gf_irq,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT | IRQF_PRIME_AFFINE,
+	if (!request_threaded_irq(gf_dev->irq, gf_irq, NULL,
+			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
 			"gf", gf_dev))
 		enable_irq_wake(gf_dev->irq);
 		gf_dev->irq_enabled = 1;

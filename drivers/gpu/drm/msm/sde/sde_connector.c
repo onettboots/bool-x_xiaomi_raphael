@@ -21,6 +21,7 @@
 #include <linux/string.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
+#include <linux/event_tracking.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
 #include "sde_crtc.h"
@@ -548,7 +549,7 @@ void sde_connector_set_qsync_params(struct drm_connector *connector)
 	}
 }
 
-static int _sde_connector_update_dirty_properties(
+static inline int _sde_connector_update_dirty_properties(
 				struct drm_connector *connector)
 {
 	struct sde_connector *c_conn;
@@ -612,7 +613,7 @@ struct dsi_panel *sde_connector_panel(struct sde_connector *c_conn)
 	return display ? display->panel : NULL;
 }
 
-static void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn)
+static inline void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn)
 {
 	struct dsi_panel *panel;
 	bool status;

@@ -535,10 +535,8 @@ struct asd_ms_conn_map {
 	u8    num_nodes;
 	u8    usage_model_id;
 	u32   _resvd;
-	union {
-		DECLARE_FLEX_ARRAY(struct asd_ms_conn_desc, conn_desc);
-		DECLARE_FLEX_ARRAY(struct asd_ms_node_desc, node_desc);
-	};
+	struct asd_ms_conn_desc conn_desc[0];
+	struct asd_ms_node_desc node_desc[];
 } __attribute__ ((packed));
 
 struct asd_ctrla_phy_entry {
@@ -738,12 +736,10 @@ static void *asd_find_ll_by_id(void * const start, const u8 id0, const u8 id1)
 	do {
 		switch (id1) {
 		default:
-			if (el->id1 == id1) {
-			fallthrough;
+			if (el->id1 == id1)
 		case 0xFF:
 				if (el->id0 == id0)
 					return el;
-			}
 		}
 		el = start + le16_to_cpu(el->next);
 	} while (el != start);

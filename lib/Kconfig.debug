@@ -1065,15 +1065,6 @@ config PANIC_ON_RT_THROTTLING
 
 	  Say N if unsure.
 
-config SYSRQ_SCHED_DEBUG
-	bool "Print scheduling debugging info from sysrq-trigger"
-	depends on SCHED_DEBUG
-	default y
-	help
-	  If you say Y here, the "show-task-states(T)" and
-	  "show-blocked-tasks(W)" sysrq-triggers will print additional
-	  scheduling statistics.
-
 config SCHEDSTATS
 	bool "Collect scheduler statistics"
 	depends on PROC_FS
@@ -2024,17 +2015,6 @@ config TEST_SYSCTL
 	  This builds the "test_sysctl" module. This driver enables to test the
 	  proc sysctl interfaces available to drivers safely without affecting
 	  production knobs which might alter system functionality.
-
-	  If unsure, say N.
-
-config MEMCPY_KUNIT_TEST
-	tristate "Test memcpy(), memmove(), and memset() functions at runtime" if !KUNIT_ALL_TESTS
-	depends on KUNIT
-	default KUNIT_ALL_TESTS
-	help
-	  Builds unit tests for memcpy(), memmove(), and memset() functions.
-	  For more information on KUnit and unit tests in general please refer
-	  to the KUnit documentation in Documentation/dev-tools/kunit/.
 
 	  If unsure, say N.
 

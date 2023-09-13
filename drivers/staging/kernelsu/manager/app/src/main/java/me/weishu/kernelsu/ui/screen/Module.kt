@@ -2,12 +2,15 @@ package me.weishu.kernelsu.ui.screen
 
 import android.app.Activity.RESULT_OK
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -19,6 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -30,11 +34,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
 import me.weishu.kernelsu.ui.component.ConfirmDialog
 import me.weishu.kernelsu.ui.component.ConfirmResult
+import me.weishu.kernelsu.ui.component.LoadingDialog
 import me.weishu.kernelsu.ui.screen.destinations.InstallScreenDestination
 import me.weishu.kernelsu.ui.util.*
 import me.weishu.kernelsu.ui.viewmodel.ModuleViewModel
@@ -45,16 +52,15 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val viewModel = viewModel<ModuleViewModel>()
 
     LaunchedEffect(Unit) {
-        if (viewModel.moduleList.isEmpty()) {
+        if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
             viewModel.fetchModuleList()
         }
     }
 
-    val isSafeMode = Natives.isSafeMode()
-    val isKSUVersionInvalid = Natives.getVersion() < 0
+    val isSafeMode = Natives.isSafeMode
     val hasMagisk = hasMagisk()
 
-    val hideInstallButton = isSafeMode || isKSUVersionInvalid || hasMagisk
+    val hideInstallButton = isSafeMode || hasMagisk
 
     Scaffold(topBar = {
         TopBar()
@@ -74,6 +80,8 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
                 navigator.navigate(InstallScreenDestination(uri))
 
+                viewModel.markNeedRefresh()
+
                 Log.i("ModuleScreen", "select zip result: ${it.data}")
             }
 
@@ -92,12 +100,9 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
         ConfirmDialog()
 
+        LoadingDialog()
+
         when {
-            isKSUVersionInvalid -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.require_kernel_version_8))
-                }
-            }
             hasMagisk -> {
                 Box(
                     modifier = Modifier
@@ -111,13 +116,15 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
                     )
                 }
             }
+
             else -> {
                 ModuleList(
-                    viewModel = viewModel,
-                    modifier = Modifier
+                    viewModel = viewModel, modifier = Modifier
                         .padding(innerPadding)
                         .fillMaxSize()
-                )
+                ) {
+                    navigator.navigate(InstallScreenDestination(it))
+                }
             }
         }
     }
@@ -125,7 +132,9 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-private fun ModuleList(viewModel: ModuleViewModel, modifier: Modifier = Modifier) {
+private fun ModuleList(
+    viewModel: ModuleViewModel, modifier: Modifier = Modifier, onInstallModule: (Uri) -> Unit
+) {
     val failedEnable = stringResource(R.string.module_failed_to_enable)
     val failedDisable = stringResource(R.string.module_failed_to_disable)
     val failedUninstall = stringResource(R.string.module_uninstall_failed)
@@ -135,8 +144,7 @@ private fun ModuleList(viewModel: ModuleViewModel, modifier: Modifier = Modifier
     val moduleStr = stringResource(id = R.string.module)
     val uninstall = stringResource(id = R.string.uninstall)
     val cancel = stringResource(id = android.R.string.cancel)
-    val moduleUninstallConfirm =
-        stringResource(id = R.string.module_uninstall_confirm)
+    val moduleUninstallConfirm = stringResource(id = R.string.module_uninstall_confirm)
 
     val dialogHost = LocalDialogHost.current
     val snackBarHost = LocalSnackbarHost.current
@@ -152,7 +160,12 @@ private fun ModuleList(viewModel: ModuleViewModel, modifier: Modifier = Modifier
             return
         }
 
-        val success = uninstallModule(module.id)
+        val success = dialogHost.withLoading {
+            withContext(Dispatchers.IO) {
+                uninstallModule(module.id)
+            }
+        }
+
         if (success) {
             viewModel.fetchModuleList()
         }
@@ -172,46 +185,66 @@ private fun ModuleList(viewModel: ModuleViewModel, modifier: Modifier = Modifier
         }
     }
 
-    val refreshState = rememberPullRefreshState(
-        refreshing = viewModel.isRefreshing,
-        onRefresh = { viewModel.fetchModuleList() }
-    )
+    val refreshState = rememberPullRefreshState(refreshing = viewModel.isRefreshing,
+        onRefresh = { viewModel.fetchModuleList() })
     Box(modifier.pullRefresh(refreshState)) {
-        if (viewModel.isOverlayAvailable) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = remember {
-                    PaddingValues(
-                        start = 16.dp,
-                        top = 16.dp,
-                        end = 16.dp,
-                        bottom = 16.dp
-                                + 16.dp + 56.dp /*  Scaffold Fab Spacing + Fab container height */
-                    )
-                },
-            ) {
-                val isEmpty = viewModel.moduleList.isEmpty()
-                if (isEmpty) {
+        val context = LocalContext.current
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = remember {
+                PaddingValues(
+                    start = 16.dp,
+                    top = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp + 16.dp + 56.dp /*  Scaffold Fab Spacing + Fab container height */
+                )
+            },
+        ) {
+            when {
+                !viewModel.isOverlayAvailable -> {
                     item {
                         Box(
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillParentMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.module_empty))
+                            Text(stringResource(R.string.module_overlay_fs_not_available), textAlign = TextAlign.Center)
                         }
                     }
-                } else {
+                }
+                viewModel.moduleList.isEmpty() -> {
+                    item {
+                        Box(
+                            modifier = Modifier.fillParentMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.module_empty), textAlign = TextAlign.Center)
+                        }
+                    }
+                }
+                else -> {
                     items(viewModel.moduleList) { module ->
                         var isChecked by rememberSaveable(module) { mutableStateOf(module.enabled) }
                         val scope = rememberCoroutineScope()
-                        ModuleItem(module, isChecked, onUninstall = {
+                        val updateUrl by produceState(initialValue = "") {
+                            viewModel.checkUpdate(module) { value = it.orEmpty() }
+                        }
+
+                        val downloadingText = stringResource(R.string.module_downloading)
+                        val startDownloadingText = stringResource(R.string.module_start_downloading)
+
+                        ModuleItem(module, isChecked, updateUrl, onUninstall = {
                             scope.launch { onModuleUninstall(module) }
                         }, onCheckChanged = {
-                            val success = toggleModule(module.id, !isChecked)
-                            if (success) {
-                                isChecked = it
-                                scope.launch {
+                            scope.launch {
+                                val success = dialogHost.withLoading {
+                                    withContext(Dispatchers.IO) {
+                                        toggleModule(module.id, !isChecked)
+                                    }
+                                }
+                                if (success) {
+                                    isChecked = it
                                     viewModel.fetchModuleList()
 
                                     val result = snackBarHost.showSnackbar(
@@ -220,27 +253,45 @@ private fun ModuleList(viewModel: ModuleViewModel, modifier: Modifier = Modifier
                                     if (result == SnackbarResult.ActionPerformed) {
                                         reboot()
                                     }
+                                } else {
+                                    val message = if (isChecked) failedDisable else failedEnable
+                                    snackBarHost.showSnackbar(message.format(module.name))
                                 }
-                            } else scope.launch {
-                                val message = if (isChecked) failedDisable else failedEnable
-                                snackBarHost.showSnackbar(message.format(module.name))
                             }
+                        }, onUpdate = {
+
+                            scope.launch {
+                                Toast.makeText(
+                                    context,
+                                    startDownloadingText.format(module.name),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            val downloading = downloadingText.format(module.name)
+                            download(
+                                context,
+                                updateUrl,
+                                "${module.name}-${module.version}.zip",
+                                downloading,
+                                onDownloaded = onInstallModule,
+                                onDownloading = {
+                                    Toast.makeText(context, downloading, Toast.LENGTH_SHORT).show()
+                                }
+                            )
                         })
+
                         // fix last item shadow incomplete in LazyColumn
                         Spacer(Modifier.height(1.dp))
                     }
                 }
             }
-        } else {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(stringResource(R.string.module_overlay_fs_not_available))
-            }
         }
 
+        DownloadListener(context, onInstallModule)
+
         PullRefreshIndicator(
-            refreshing = viewModel.isRefreshing,
-            state = refreshState,
-            modifier = Modifier.align(
+            refreshing = viewModel.isRefreshing, state = refreshState, modifier = Modifier.align(
                 Alignment.TopCenter
             )
         )
@@ -257,8 +308,10 @@ private fun TopBar() {
 private fun ModuleItem(
     module: ModuleViewModel.ModuleInfo,
     isChecked: Boolean,
+    updateUrl: String,
     onUninstall: (ModuleViewModel.ModuleInfo) -> Unit,
-    onCheckChanged: (Boolean) -> Unit
+    onCheckChanged: (Boolean) -> Unit,
+    onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
 ) {
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -340,6 +393,23 @@ private fun ModuleItem(
             ) {
                 Spacer(modifier = Modifier.weight(1f, true))
 
+                if (updateUrl.isNotEmpty()) {
+                    Button(
+                        modifier = Modifier
+                            .padding(0.dp)
+                            .defaultMinSize(52.dp, 32.dp),
+                        onClick = { onUpdate(module) },
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                            text = stringResource(R.string.module_update),
+                        )
+                    }
+                }
+
                 TextButton(
                     enabled = !module.remove,
                     onClick = { onUninstall(module) },
@@ -368,6 +438,7 @@ fun ModuleItemPreview() {
         enabled = true,
         update = true,
         remove = true,
+        updateJson = ""
     )
-    ModuleItem(module, true, {}, {})
+    ModuleItem(module, true, "", {}, {}, {})
 }

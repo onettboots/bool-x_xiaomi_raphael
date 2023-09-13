@@ -186,10 +186,8 @@ struct chcr_authenc_ctx {
 };
 
 struct __aead_ctx {
-	union {
-		DECLARE_FLEX_ARRAY(struct chcr_gcm_ctx, gcm);
-		DECLARE_FLEX_ARRAY(struct chcr_authenc_ctx, authenc);
-	};
+	struct chcr_gcm_ctx gcm[0];
+	struct chcr_authenc_ctx authenc[];
 };
 
 
@@ -215,11 +213,9 @@ struct hmac_ctx {
 };
 
 struct __crypto_ctx {
-	union {
-		DECLARE_FLEX_ARRAY(struct hmac_ctx, hmacctx);
-		DECLARE_FLEX_ARRAY(struct ablk_ctx, ablkctx);
-		DECLARE_FLEX_ARRAY(struct chcr_aead_ctx, aeadctx);
-	};
+	struct hmac_ctx hmacctx[0];
+	struct ablk_ctx ablkctx[0];
+	struct chcr_aead_ctx aeadctx[];
 };
 
 struct chcr_context {

@@ -412,7 +412,7 @@ static char *task_group_path(struct task_group *tg)
 static void
 print_task(struct seq_file *m, struct rq *rq, struct task_struct *p)
 {
-	if (task_current(rq, p))
+	if (rq->curr == p)
 		SEQ_printf(m, ">R");
 	else
 		SEQ_printf(m, " %c", task_state_to_char(p));
@@ -747,7 +747,6 @@ static int sched_debug_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-#ifdef CONFIG_SYSRQ_SCHED_DEBUG
 void sysrq_sched_debug_show(void)
 {
 	int cpu;
@@ -757,7 +756,6 @@ void sysrq_sched_debug_show(void)
 		print_cpu(NULL, cpu);
 
 }
-#endif
 
 /*
  * This itererator needs some explanation.
@@ -973,10 +971,6 @@ void proc_sched_show_task(struct task_struct *p, struct pid_namespace *ns,
 		P(dl.runtime);
 		P(dl.deadline);
 	}
-#if defined(CONFIG_PREEMPT_COUNT) && defined(CONFIG_SMP)
-	P(migrate_disable);
-#endif
-	P(nr_cpus_allowed);
 #undef PN_SCHEDSTAT
 #undef PN
 #undef __PN

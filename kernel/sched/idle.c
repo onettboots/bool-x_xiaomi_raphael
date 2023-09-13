@@ -189,13 +189,17 @@ static void cpuidle_idle_call(void)
 		next_state = cpuidle_find_deepest_state(drv, dev);
 		call_cpuidle(drv, dev, next_state);
 	} else {
+		bool stop_tick = true;
 
 		/*
 		 * Ask the cpuidle framework to choose a convenient idle state.
 		 */
-		next_state = cpuidle_select(drv, dev);
+		next_state = cpuidle_select(drv, dev, &stop_tick);
 
-		tick_nohz_idle_stop_tick();
+		if (stop_tick)
+			tick_nohz_idle_stop_tick();
+		else
+			tick_nohz_idle_retain_tick();
 
 		rcu_idle_enter();
 
@@ -236,20 +240,20 @@ static void do_idle(void)
 	 */
 
 	__current_set_polling();
+	quiet_vmstat();
 	tick_nohz_idle_enter();
 
 	while (!need_resched()) {
 		check_pgt_cache();
 		rmb();
 
-		local_irq_disable();
-
 		if (cpu_is_offline(cpu)) {
-			tick_nohz_idle_stop_tick();
+			tick_nohz_idle_stop_tick_protected();
 			cpuhp_report_idle_dead();
 			arch_cpu_idle_dead();
 		}
 
+		local_irq_disable();
 		arch_cpu_idle_enter();
 
 		/*

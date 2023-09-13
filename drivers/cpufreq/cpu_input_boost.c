@@ -13,6 +13,7 @@
 #include <linux/msm_drm_notify.h>
 #include <linux/slab.h>
 #include <linux/version.h>
+#include <linux/event_tracking.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -59,7 +60,10 @@ module_param(cpu_freq_idle_little, uint, 0644);
 module_param(input_boost_duration, short, 0644);
 module_param(wake_boost_duration, short, 0644);
 
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
 unsigned long last_input_time;
+#endif
+unsigned long last_mb_time;
 
 enum {
 	SCREEN_OFF,
@@ -88,6 +92,7 @@ static struct boost_drv boost_drv_g __read_mostly = {
 	.boost_waitq = __WAIT_QUEUE_HEAD_INITIALIZER(boost_drv_g.boost_waitq)
 };
 
+extern int kp_active_mode(void);
 static unsigned int get_input_boost_freq(struct cpufreq_policy *policy)
 {
 	unsigned int freq;
@@ -159,7 +164,6 @@ static void update_online_cpu_policy(void)
 	put_online_cpus();
 }
 
-extern int kp_active_mode(void);
 static void __cpu_input_boost_kick(struct boost_drv *b)
 {
 	unsigned int multi = 1;
@@ -170,7 +174,7 @@ static void __cpu_input_boost_kick(struct boost_drv *b)
 	if (!input_boost_duration)
 		return;
 
-	if (kp_active_mode() != 3)
+	if (kp_active_mode() == 1 && !test_bit(INPUT_BOOST, &b->state))
 		return;
 
 	set_bit(INPUT_BOOST, &b->state);
@@ -196,7 +200,7 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
-	if (kp_active_mode() != 3 && !always)
+	if (kp_active_mode() == 1 && !always && !test_bit(MAX_BOOST, &b->state))
 		return;
 
 	do {
@@ -220,6 +224,7 @@ void cpu_input_boost_kick_max(unsigned int duration_ms, bool always)
 	struct boost_drv *b = &boost_drv_g;
 
 	__cpu_input_boost_kick_max(b, duration_ms, always);
+	last_mb_time = jiffies;
 }
 
 static void input_unboost_worker(struct work_struct *work)
@@ -332,7 +337,9 @@ static void cpu_input_boost_input_event(struct input_handle *handle,
 
 	__cpu_input_boost_kick(b);
 
+#if(CONFIG_INPUT_BOOST_DURATION_MS != 0)
 	last_input_time = jiffies;
+#endif
 }
 
 static int cpu_input_boost_input_connect(struct input_handler *handler,
@@ -436,7 +443,7 @@ static int __init cpu_input_boost_init(void)
 		goto unregister_handler;
 	}
 
-	thread = kthread_run_perf_critical(cpu_hp_mask, cpu_boost_thread, b, "cpu_boostd");
+	thread = kthread_run(cpu_boost_thread, b, "cpu_boostd");
 	if (IS_ERR(thread)) {
 		ret = PTR_ERR(thread);
 		pr_debug("Failed to start CPU boost thread, err: %d\n", ret);

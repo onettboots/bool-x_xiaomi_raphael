@@ -95,7 +95,7 @@ This method does not require you to have TWRP, nor does it require your phone to
 
 KernelSU provides a generic boot.img for GKI devices and you should flush the boot.img to the boot partition of the device.
 
-You can download boot.img from [GitHub Release](https://github.com/tiann/KernelSU/releases), please note that you should use the correct version of boot.img. For example, if your device displays the kernel `android12-5.10.101` , you need to download `android-5.10.101_yyyy-MM.boot-<format>.img`. , you need to download `android-5.10.101_yyyy-MM.boot-<format>.img`.(Keep KMI consistent!)
+You can download boot.img from [GitHub Release](https://github.com/tiann/KernelSU/releases), please note that you should use the correct version of boot.img. For example, if your device displays the kernel `android12-5.10.101` , you need to download `android-5.10.101_yyyy-MM.boot-<format>.img`. (Keep KMI consistent!)
 
 Where `<format>` refers to the kernel compression format of your official boot.img, please check the kernel compression format of your original boot.img, you should use the correct format, e.g. `lz4`, `gz`; if you use an incorrect compression format, you may encounter bootloop.
 
@@ -125,7 +125,7 @@ After flashing is complete, you should reboot your device:
 fastboot reboot
 ```
 
-## Patch boot.img manully
+## Patch boot.img manually
 
 For some devices, the boot.img format is not so common, such as not `lz4`, `gz` and uncompressed; the most typical is Pixel, its boot.img format is `lz4_legacy` compressed, ramdisk may be `gz` may also be `lz4_legacy` compression; at this time, if you directly flash the boot.img provided by KernelSU, the phone may not be able to boot; at this time, you can manually patch the boot.img to achieve.
 

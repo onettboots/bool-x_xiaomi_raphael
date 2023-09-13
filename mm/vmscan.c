@@ -4142,7 +4142,6 @@ static bool sort_page(struct lruvec *lruvec, struct page *page, int tier_idx)
 
 		WRITE_ONCE(lrugen->protected[hist][type][tier - 1],
 			   lrugen->protected[hist][type][tier - 1] + delta);
-		__mod_lruvec_state(lruvec, WORKINGSET_ACTIVATE, delta);
 		return true;
 	}
 
@@ -6608,8 +6607,7 @@ int kswapd_run(int nid)
 	if (pgdat->kswapd)
 		return 0;
 
-	pgdat->kshrinkd = kthread_run_perf_critical(cpu_hp_mask,
-					kshrinkd, pgdat, "kshrinkd%d", nid);
+	pgdat->kshrinkd = kthread_run(kshrinkd, pgdat, "kshrinkd%d", nid);
 	if (IS_ERR(pgdat->kshrinkd)) {
 		/* failure at boot is fatal */
 		BUG_ON(system_state < SYSTEM_RUNNING);
@@ -6619,8 +6617,7 @@ int kswapd_run(int nid)
 		return ret;
 	}
 
-	pgdat->kswapd = kthread_run_perf_critical(cpu_hp_mask, kswapd,
-					pgdat, "kswapd%d", nid);
+	pgdat->kswapd = kthread_run(kswapd, pgdat, "kswapd%d", nid);
 	if (IS_ERR(pgdat->kswapd)) {
 		/* failure at boot is fatal */
 		BUG_ON(system_state < SYSTEM_RUNNING);

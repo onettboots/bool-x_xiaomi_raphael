@@ -58,11 +58,11 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
-fn set_identity(uid: u32) {
+fn set_identity(uid: u32, gid: u32) {
     #[cfg(any(target_os = "linux", target_os = "android"))]
     unsafe {
         libc::seteuid(uid);
-        libc::setresgid(uid, uid, uid);
+        libc::setresgid(gid, gid, gid);
         libc::setresuid(uid, uid, uid);
     }
 }
@@ -75,8 +75,21 @@ pub fn root_shell() -> Result<()> {
 #[cfg(unix)]
 pub fn root_shell() -> Result<()> {
     // we are root now, this was set in kernel!
-    let args: Vec<String> = std::env::args().collect();
-    let program = args[0].clone();
+    let env_args: Vec<String> = std::env::args().collect();
+    let program = env_args[0].clone();
+    let args = env_args
+        .iter()
+        .position(|arg| arg == "-c")
+        .map(|i| {
+            let rest = env_args[i + 1..].to_vec();
+            let mut new_args = env_args[..i].to_vec();
+            new_args.push("-c".to_string());
+            if !rest.is_empty() {
+                new_args.push(rest.join(" "));
+            }
+            new_args
+        })
+        .unwrap_or_else(|| env_args.clone());
 
     let mut opts = Options::new();
     opts.optopt(
@@ -148,27 +161,21 @@ pub fn root_shell() -> Result<()> {
     let preserve_env = matches.opt_present("p");
     let mount_master = matches.opt_present("M");
 
+    // we've make sure that -c is the last option and it already contains the whole command, no need to construct it again
+    let args = matches
+        .opt_str("c")
+        .map(|cmd| vec!["-c".to_string(), cmd])
+        .unwrap_or_default();
+
     let mut free_idx = 0;
-    let command = matches.opt_str("c").map(|cmd| {
-        free_idx = matches.free.len();
-        let mut cmds = vec![];
-        cmds.push(cmd);
-        cmds.extend(matches.free.clone());
-        cmds
-    });
-
-    let mut args = vec![];
-    if let Some(cmd) = command {
-        args.push("-c".to_string());
-        args.push(cmd.join(" "));
-    };
-
-    if free_idx < matches.free.len() && matches.free[free_idx] == "-" {
+    if !matches.free.is_empty() && matches.free[free_idx] == "-" {
         is_login = true;
         free_idx += 1;
     }
 
-    let mut uid = 0; // default uid = 0(root)
+    // use current uid if no user specified, these has been done in kernel!
+    let mut uid = unsafe { libc::getuid() };
+    let gid = unsafe { libc::getgid() };
     if free_idx < matches.free.len() {
         let name = &matches.free[free_idx];
         uid = unsafe {
@@ -234,7 +241,7 @@ pub fn root_shell() -> Result<()> {
                 let _ = utils::unshare_mnt_ns();
             }
 
-            set_identity(uid);
+            set_identity(uid, gid);
 
             std::result::Result::Ok(())
         })
@@ -247,7 +254,7 @@ pub fn root_shell() -> Result<()> {
 fn add_path_to_env(path: &str) -> Result<()> {
     let mut paths =
         env::var_os("PATH").map_or(Vec::new(), |val| env::split_paths(&val).collect::<Vec<_>>());
-    let new_path = PathBuf::from(path);
+    let new_path = PathBuf::from(path.trim_end_matches('/'));
     paths.push(new_path);
     let new_path_env = env::join_paths(paths)?;
     env::set_var("PATH", new_path_env);

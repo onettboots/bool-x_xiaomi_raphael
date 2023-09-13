@@ -2,13 +2,18 @@ package me.weishu.kernelsu.ui.screen
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Android
@@ -17,6 +22,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilterChip
@@ -35,10 +42,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -47,12 +58,15 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.launch
 import me.weishu.kernelsu.Natives
 import me.weishu.kernelsu.R
-import me.weishu.kernelsu.profile.AppProfile
-import me.weishu.kernelsu.profile.RootProfile
 import me.weishu.kernelsu.ui.component.SwitchItem
 import me.weishu.kernelsu.ui.component.profile.AppProfileConfig
 import me.weishu.kernelsu.ui.component.profile.RootProfileConfig
 import me.weishu.kernelsu.ui.util.LocalSnackbarHost
+import me.weishu.kernelsu.ui.util.forceStopApp
+import me.weishu.kernelsu.ui.util.getSepolicy
+import me.weishu.kernelsu.ui.util.launchApp
+import me.weishu.kernelsu.ui.util.restartApp
+import me.weishu.kernelsu.ui.util.setSepolicy
 import me.weishu.kernelsu.ui.viewmodel.SuperUserViewModel
 
 /**
@@ -68,14 +82,27 @@ fun AppProfileScreen(
     val context = LocalContext.current
     val snackbarHost = LocalSnackbarHost.current
     val scope = rememberCoroutineScope()
-    val failToGrantRoot = stringResource(R.string.superuser_failed_to_grant_root)
-    var isRootGranted by rememberSaveable { mutableStateOf(appInfo.onAllowList) }
+    val failToUpdateAppProfile =
+        stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
+    val failToUpdateSepolicy =
+        stringResource(R.string.failed_to_update_sepolicy).format(appInfo.label)
+
+    val packageName = appInfo.packageName
+    val initialProfile = Natives.getAppProfile(packageName, appInfo.uid)
+    if (initialProfile.allowSu) {
+        initialProfile.rules = getSepolicy(packageName)
+    }
+    var profile by rememberSaveable {
+        mutableStateOf(initialProfile)
+    }
 
     Scaffold(
-        topBar = { TopBar { navigator.popBackStack() } }
+        topBar = { TopBar { navigator.popBackStack() } },
     ) { paddingValues ->
         AppProfileInner(
-            modifier = Modifier.padding(paddingValues),
+            modifier = Modifier
+                .padding(paddingValues)
+                .verticalScroll(rememberScrollState()),
             packageName = appInfo.packageName,
             appLabel = appInfo.label,
             appIcon = {
@@ -91,14 +118,19 @@ fun AppProfileScreen(
                         .height(48.dp)
                 )
             },
-            isRootGranted = isRootGranted,
-            onSwitchRootPermission = { grant ->
+            profile = profile,
+            onProfileChange = {
                 scope.launch {
-                    val success = Natives.allowRoot(appInfo.uid, grant)
-                    if (success) {
-                        isRootGranted = grant
+                    if (it.allowSu && !it.rootUseDefault && it.rules.isNotEmpty()) {
+                        if (!setSepolicy(profile.name, it.rules)) {
+                            snackbarHost.showSnackbar(failToUpdateSepolicy)
+                            return@launch
+                        }
+                    }
+                    if (!Natives.setAppProfile(it)) {
+                        snackbarHost.showSnackbar(failToUpdateAppProfile.format(appInfo.uid))
                     } else {
-                        snackbarHost.showSnackbar(failToGrantRoot.format(appInfo.uid))
+                        profile = it
                     }
                 }
             },
@@ -113,32 +145,57 @@ private fun AppProfileInner(
     packageName: String,
     appLabel: String,
     appIcon: @Composable () -> Unit,
-    isRootGranted: Boolean,
-    onSwitchRootPermission: (Boolean) -> Unit,
+    profile: Natives.Profile,
+    onProfileChange: (Natives.Profile) -> Unit,
 ) {
+    val isRootGranted = profile.allowSu
+
     Column(modifier = modifier) {
-        ListItem(
-            headlineContent = { Text(appLabel) },
-            supportingContent = { Text(packageName) },
-            leadingContent = appIcon,
-        )
+        AppMenuBox(packageName) {
+            ListItem(
+                headlineContent = { Text(appLabel) },
+                supportingContent = { Text(packageName) },
+                leadingContent = appIcon,
+            )
+        }
 
         SwitchItem(
             icon = Icons.Filled.Security,
             title = stringResource(id = R.string.superuser),
             checked = isRootGranted,
-            onCheckedChange = onSwitchRootPermission,
+            onCheckedChange = { onProfileChange(profile.copy(allowSu = it)) },
         )
 
         Crossfade(targetState = isRootGranted, label = "") { current ->
             Column {
                 if (current) {
-                    var mode by rememberSaveable { mutableStateOf(Mode.Default) }
-                    ProfileBox(mode, true) { mode = it }
+                    val initialMode = if (profile.rootUseDefault) {
+                        Mode.Default
+                    } else if (profile.rootTemplate != null) {
+                        Mode.Template
+                    } else {
+                        Mode.Custom
+                    }
+                    var mode by remember {
+                        mutableStateOf(initialMode)
+                    }
+                    ProfileBox(mode, false) {
+                        // template mode shouldn't change profile here!
+                        if (it == Mode.Default || it == Mode.Custom) {
+                            onProfileChange(profile.copy(rootUseDefault = it == Mode.Default))
+                        }
+                        mode = it
+                    }
                     Crossfade(targetState = mode, label = "") { currentMode ->
                         if (currentMode == Mode.Template) {
                             var expanded by remember { mutableStateOf(false) }
-                            var template by rememberSaveable { mutableStateOf("None") }
+                            val templateNone = "None"
+                            var template by rememberSaveable {
+                                mutableStateOf(
+                                    profile.rootTemplate
+                                        ?: templateNone
+                                )
+                            }
                             ListItem(headlineContent = {
                                 ExposedDropdownMenuBox(
                                     expanded = expanded,
@@ -149,7 +206,17 @@ private fun AppProfileInner(
                                         readOnly = true,
                                         label = { Text(stringResource(R.string.profile_template)) },
                                         value = template,
-                                        onValueChange = {},
+                                        onValueChange = {
+                                            if (template != templateNone) {
+                                                onProfileChange(
+                                                    profile.copy(
+                                                        rootTemplate = it,
+                                                        rootUseDefault = false
+                                                    )
+                                                )
+                                                template = it
+                                            }
+                                        },
                                         trailingIcon = {
                                             if (expanded) Icon(Icons.Filled.ArrowDropUp, null)
                                             else Icon(Icons.Filled.ArrowDropDown, null)
@@ -159,26 +226,26 @@ private fun AppProfileInner(
                                 }
                             })
                         } else if (mode == Mode.Custom) {
-                            var profile by rememberSaveable { mutableStateOf(RootProfile("@$packageName")) }
                             RootProfileConfig(
                                 fixedName = true,
                                 profile = profile,
-                                onProfileChange = { profile = it }
+                                onProfileChange = onProfileChange
                             )
                         }
                     }
                 } else {
-                    var mode by rememberSaveable { mutableStateOf(Mode.Default) }
-                    ProfileBox(mode, false) { mode = it }
+                    val mode = if (profile.nonRootUseDefault) Mode.Default else Mode.Custom
+                    ProfileBox(mode, false) {
+                        onProfileChange(profile.copy(nonRootUseDefault = (it == Mode.Default)))
+                    }
                     Crossfade(targetState = mode, label = "") { currentMode ->
-                        if (currentMode == Mode.Custom) {
-                            var profile by rememberSaveable { mutableStateOf(AppProfile(packageName)) }
-                            AppProfileConfig(
-                                fixedName = true,
-                                profile = profile,
-                                onProfileChange = { profile = it }
-                            )
-                        }
+                        val modifyEnabled = currentMode == Mode.Custom
+                        AppProfileConfig(
+                            fixedName = true,
+                            profile = profile,
+                            enabled = modifyEnabled,
+                            onProfileChange = onProfileChange
+                        )
                     }
                 }
             }
@@ -249,15 +316,76 @@ private fun ProfileBox(
     })
 }
 
+@Composable
+private fun AppMenuBox(packageName: String, content: @Composable () -> Unit) {
+
+    var expanded by remember { mutableStateOf(false) }
+    var touchPoint: Offset by remember { mutableStateOf(Offset.Zero) }
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    touchPoint = it
+                    expanded = true
+                }
+            }
+    ) {
+
+        content()
+
+        val (offsetX, offsetY) = with(density) {
+            (touchPoint.x.toDp()) to (touchPoint.y.toDp())
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            offset = DpOffset(offsetX, -offsetY),
+            onDismissRequest = {
+                expanded = false
+            },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(id = R.string.launch_app)) },
+                onClick = {
+                    expanded = false
+                    launchApp(packageName)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(id = R.string.force_stop_app)) },
+                onClick = {
+                    expanded = false
+                    forceStopApp(packageName)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(id = R.string.restart_app)) },
+                onClick = {
+                    expanded = false
+                    restartApp(packageName)
+                },
+            )
+        }
+    }
+
+
+}
+
 @Preview
 @Composable
 private fun AppProfilePreview() {
-    var isRootGranted by remember { mutableStateOf(false) }
+    var profile by remember { mutableStateOf(Natives.Profile("")) }
     AppProfileInner(
         packageName = "icu.nullptr.test",
         appLabel = "Test",
         appIcon = { Icon(Icons.Filled.Android, null) },
-        isRootGranted = isRootGranted,
-        onSwitchRootPermission = { isRootGranted = it },
+        profile = profile,
+        onProfileChange = {
+            profile = it
+        },
     )
 }
+

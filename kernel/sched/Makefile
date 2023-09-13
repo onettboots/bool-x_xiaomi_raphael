@@ -20,6 +20,8 @@ ccflags-y += -O3
 ccflags-y += -mllvm -inline-threshold=15000
 ccflags-y += -mllvm -inlinehint-threshold=10000
 
+KBUILD_CFLAGS += -Wno-void-pointer-to-int-cast
+
 obj-y += core.o loadavg.o clock.o cputime.o
 obj-y += idle_task.o fair.o rt.o deadline.o
 obj-y += wait.o wait_bit.o swait.o completion.o idle.o
@@ -37,6 +39,3 @@ obj-$(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) += cpufreq_schedutil.o
 obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_SCHED_CORE_CTL) += core_ctl.o
 obj-$(CONFIG_PSI) += psi.o
-
-subdir-ccflags-y := $(call cc-disable-warning, unused-function)
-subdir-ccflags-y := $(call cc-disable-warning, int-conversion)

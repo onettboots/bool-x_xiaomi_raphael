@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#define HALFLIFE { 32, 24, 16, 12, 10, 8, 4}
+#define HALFLIFE { 32, 16, 8 }
 #define SHIFT 32
 
 double y;
@@ -20,8 +20,7 @@ void calc_runnable_avg_yN_inv(const int halflife)
 	int i;
 	unsigned int x;
 
-        /* To silence -Wunused-but-set-variable warnings. */
-	printf("static const u32 runnable_avg_yN_inv[] __maybe_unused = {");
+	printf("static const u32 runnable_avg_yN_inv[] = {");
 	for (i = 0; i < halflife; i++) {
 		x = ((1UL<<32)-1)*pow(y, i);
 
@@ -115,8 +114,8 @@ void main(void)
 
 		printf("\n#ifdef CONFIG_PELT_UTIL_HALFLIFE_%d\n", halflife);
 		calc_runnable_avg_yN_inv(halflife);
-		calc_runnable_avg_yN_sum(halflife * 2);
-		calc_converged_max(halflife * 2);
+		calc_runnable_avg_yN_sum(halflife);
+		calc_converged_max(halflife);
 		/*
 		 * calc_accumulated_sum_32(halflife) precomputed load sum table of half-life,
 		 * not used yet.
