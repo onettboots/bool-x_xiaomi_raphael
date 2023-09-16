@@ -1146,7 +1146,7 @@ setup_irq_thread(struct irqaction *new, unsigned int irq, bool secondary)
 	if (IS_ERR(t))
 		return PTR_ERR(t);
 
-	sched_setscheduler_nocheck(t, SCHED_RR, &param);
+	sched_setscheduler_nocheck(t, SCHED_FIFO, &param);
 
 	/*
 	 * We keep the reference to the task struct even if
