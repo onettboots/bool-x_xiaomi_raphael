@@ -1740,7 +1740,7 @@ out:
 
 static int ufshcd_clock_scaling_prepare(struct ufs_hba *hba)
 {
-	#define DOORBELL_CLR_TOUT_US		(1000 * 1000) /* 1 sec */
+	#define DOORBELL_CLR_TOUT_US		(2000 * 1000) /* 2 sec */
 	int ret = 0;
 	/*
 	 * make sure that there are no outstanding requests when
@@ -11052,7 +11052,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 			   PM_QOS_DEFAULT_VALUE);
 
 	/* IRQ registration */
-	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED,
+	err = devm_request_irq(dev, irq, ufshcd_intr, IRQF_SHARED | IRQF_PERF_AFFINE,
 				dev_name(dev), hba);
 	if (err) {
 		dev_err(hba->dev, "request irq failed\n");

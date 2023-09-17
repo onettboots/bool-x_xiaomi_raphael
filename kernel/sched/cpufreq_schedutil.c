@@ -101,12 +101,10 @@ static bool sugov_should_update_freq(struct sugov_policy *sg_policy, u64 time)
 	 * by the hardware, as calculating the frequency is pointless if
 	 * we cannot in fact act on it.
 	 *
-	 * For the slow switching platforms, the kthread is always scheduled on
-	 * the right set of CPUs and any CPU can find the next frequency and
-	 * schedule the kthread.
+	 * This is needed on the slow switching platforms too to prevent CPUs
+	 * going offline from leaving stale IRQ work items behind.
 	 */
-	if (sg_policy->policy->fast_switch_enabled &&
-	    !cpufreq_can_do_remote_dvfs(sg_policy->policy))
+	if (!cpufreq_can_do_remote_dvfs(sg_policy->policy))
 		return false;
 
 	if (unlikely(sg_policy->limits_changed)) {
@@ -140,6 +138,29 @@ static bool sugov_up_down_rate_limit(struct sugov_policy *sg_policy, u64 time,
 		return true;
 
 	return false;
+}
+
+static void sugov_update_commit(struct sugov_policy *sg_policy, u64 time,
+				unsigned int next_freq)
+{
+	struct cpufreq_policy *policy = sg_policy->policy;
+	if (sg_policy->next_freq == next_freq)
+		return;
+	if (sugov_up_down_rate_limit(sg_policy, time, next_freq))
+		return;
+	sg_policy->next_freq = next_freq;
+	sg_policy->last_freq_update_time = time;
+	if (policy->fast_switch_enabled) {
+		next_freq = cpufreq_driver_fast_switch(policy, next_freq);
+		if (!next_freq)
+			return;
+		policy->cur = next_freq;
+		trace_cpu_frequency(next_freq, smp_processor_id());
+	} else if (!sg_policy->work_in_progress) {
+		sg_policy->work_in_progress = true;
+		irq_work_queue(&sg_policy->irq_work);
+		sched_irq_work_queue(&sg_policy->irq_work);
+	}
 }
 
 static inline bool use_pelt(void)
@@ -387,6 +408,7 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sugov_deferred_update(sg_policy, time, next_f);
 		raw_spin_unlock(&sg_policy->update_lock);
 	}
+	sugov_update_commit(sg_policy, time, next_f);
 }
 
 static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
@@ -470,7 +492,7 @@ static void sugov_update_shared(struct update_util_data *hook, u64 time,
 		if (sg_policy->policy->fast_switch_enabled)
 			sugov_fast_switch(sg_policy, time, next_f);
 		else
-			sugov_deferred_update(sg_policy, time, next_f);
+			sugov_update_commit(sg_policy, time, next_f);
 	}
 
 	raw_spin_unlock(&sg_policy->update_lock);

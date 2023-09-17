@@ -1971,9 +1971,6 @@ static int swrm_probe(struct platform_device *pdev)
 	swrm->wlock_holders = 0;
 	swrm->pm_state = SWRM_PM_SLEEPABLE;
 	init_waitqueue_head(&swrm->pm_wq);
-	pm_qos_add_request(&swrm->pm_qos_req,
-			   PM_QOS_CPU_DMA_LATENCY,
-			   PM_QOS_DEFAULT_VALUE);
 
 	for (i = 0 ; i < SWR_MSTR_PORT_LEN; i++)
 		INIT_LIST_HEAD(&swrm->mport_cfg[i].port_req_list);
@@ -2092,7 +2089,6 @@ err_irq_fail:
 	mutex_destroy(&swrm->iolock);
 	mutex_destroy(&swrm->clklock);
 	mutex_destroy(&swrm->pm_lock);
-	pm_qos_remove_request(&swrm->pm_qos_req);
 
 err_pdata_fail:
 err_memory_fail:
@@ -2125,7 +2121,6 @@ static int swrm_remove(struct platform_device *pdev)
 	mutex_destroy(&swrm->clklock);
 	mutex_destroy(&swrm->force_down_lock);
 	mutex_destroy(&swrm->pm_lock);
-	pm_qos_remove_request(&swrm->pm_qos_req);
 	devm_kfree(&pdev->dev, swrm);
 	return 0;
 }
@@ -2214,6 +2209,7 @@ static int swrm_runtime_suspend(struct device *dev)
 	struct swr_master *mstr = &swrm->master;
 	struct swr_device *swr_dev;
 	int current_state = 0;
+	struct irq_data *irq_data = NULL;
 
 	dev_dbg(dev, "%s: pm_runtime: suspend state: %d\n",
 		__func__, swrm->state);
@@ -2253,7 +2249,9 @@ static int swrm_runtime_suspend(struct device *dev)
 
 		if (swrm->clk_stop_mode0_supp) {
 			if (swrm->wake_irq > 0) {
-				enable_irq(swrm->wake_irq);
+				irq_data = irq_get_irq_data(swrm->wake_irq);
+				if (irq_data && irqd_irq_disabled(irq_data))
+					enable_irq(swrm->wake_irq);
 			} else if (swrm->ipc_wakeup) {
 				msm_aud_evt_blocking_notifier_call_chain(
 					SWR_WAKE_IRQ_REGISTER, (void *)swrm);
@@ -2546,8 +2544,6 @@ static bool swrm_lock_sleep(struct swr_mstr_ctrl *swrm)
 	mutex_lock(&swrm->pm_lock);
 	if (swrm->wlock_holders++ == 0) {
 		dev_dbg(swrm->dev, "%s: holding wake lock\n", __func__);
-		pm_qos_update_request(&swrm->pm_qos_req,
-					  msm_cpuidle_get_deep_idle_latency());
 		pm_stay_awake(swrm->dev);
 	}
 	mutex_unlock(&swrm->pm_lock);
@@ -2582,8 +2578,6 @@ static void swrm_unlock_sleep(struct swr_mstr_ctrl *swrm)
 		 */
 		if (likely(swrm->pm_state == SWRM_PM_AWAKE))
 			swrm->pm_state = SWRM_PM_SLEEPABLE;
-		pm_qos_update_request(&swrm->pm_qos_req,
-				  PM_QOS_DEFAULT_VALUE);
 		pm_relax(swrm->dev);
 	}
 	mutex_unlock(&swrm->pm_lock);
