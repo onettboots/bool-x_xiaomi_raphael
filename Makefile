@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 325
+SUBLEVEL = 326
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -765,7 +765,7 @@ ifeq ($(cc-name),gcc)
 KBUILD_CFLAGS	+= -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
 endif
 ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76+crypto+crc -mtune=cortex-a76
+KBUILD_CFLAGS	+= -march=armv8.2-a+dotprod -mcpu=cortex-a76+crypto+crc
 endif
 
 ifdef CONFIG_LTO_CLANG
