@@ -1,9 +1,10 @@
 ### AnyKernel methods (DO NOT CHANGE)
 ## osm0sis @ xda-developers
 
-OUTFD=$1;
+[ "$OUTFD" ] || OUTFD=$1;
 
 # set up working directory variables
+[ "$AKHOME" ] && home=$AKHOME;
 [ "$home" ] || home=$PWD;
 bootimg=$home/boot.img;
 bin=$home/tools;
@@ -126,7 +127,7 @@ split_boot() {
   elif [ -f "$bin/rkcrc" ]; then
     dd bs=4096 skip=8 iflag=skip_bytes conv=notrunc if=$bootimg of=ramdisk.cpio.gz;
   else
-    $bin/magiskboot unpack -h $bootimg;
+    (set -o pipefail; $bin/magiskboot unpack -h $bootimg 2>&1 | tee infotmp >&2);
     case $? in
       1) dumpfail=1;;
       2) touch chromeos;;
@@ -192,6 +193,10 @@ repack_ramdisk() {
   local comp packfail mtktype;
 
   cd $home;
+  if [ "$ramdisk_compression" != "auto" ] && [ "$(grep HEADER_VER $split_img/infotmp | sed -n 's;.*\[\(.*\)\];\1;p')" -gt 3 ]; then
+    ui_print " " "Warning: Only lz4-l ramdisk compression is allowed with hdr v4+ images. Resetting to auto...";
+    ramdisk_compression=auto;
+  fi;
   case $ramdisk_compression in
     auto|"") comp=$(ls $split_img/ramdisk.cpio.* 2>/dev/null | grep -v 'mtk' | rev | cut -d. -f1 | rev);;
     none|cpio) comp="";;
@@ -211,8 +216,10 @@ repack_ramdisk() {
   [ $? != 0 ] && packfail=1;
 
   cd $home;
-  $bin/magiskboot cpio ramdisk-new.cpio test;
-  magisk_patched=$?;
+  if [ ! "$no_magisk_check" ]; then
+    $bin/magiskboot cpio ramdisk-new.cpio test;
+    magisk_patched=$?;
+  fi;
   [ $((magisk_patched & 3)) -eq 1 ] && $bin/magiskboot cpio ramdisk-new.cpio "extract .backup/.magisk $split_img/.magisk";
   if [ "$comp" ]; then
     $bin/magiskboot compress=$comp ramdisk-new.cpio;
@@ -314,7 +321,7 @@ flash_boot() {
     done;
     case $kernel in
       *Image*)
-        if [ ! "$magisk_patched" ]; then
+        if [ ! "$magisk_patched" -a ! "$no_magisk_check" ]; then
           $bin/magiskboot cpio ramdisk.cpio test;
           magisk_patched=$?;
         fi;
@@ -326,8 +333,9 @@ flash_boot() {
             echo "Attempting kernel unpack with busybox $comp..." >&2;
             $comp -dc $kernel > kernel;
           fi;
-          $bin/magiskboot hexpatch kernel 736B69705F696E697472616D667300 77616E745F696E697472616D667300;
-          if [ "$(file_getprop $home/anykernel.sh do.systemless)" == 1 ]; then
+          # legacy SAR kernel string skip_initramfs -> want_initramfs
+          $bin/magiskboot hexpatch kernel 736B69705F696E697472616D6673 77616E745F696E697472616D6673;
+          if [ "$(file_getprop $home/anykernel.sh do.modules)" == 1 ] && [ "$(file_getprop $home/anykernel.sh do.systemless)" == 1 ]; then
             strings kernel 2>/dev/null | grep -E -m1 'Linux version.*#' > $home/vertmp;
           fi;
           if [ "$comp" ]; then
@@ -340,16 +348,40 @@ flash_boot() {
           fi;
           [ ! -f .magisk ] && $bin/magiskboot cpio ramdisk.cpio "extract .backup/.magisk .magisk";
           export $(cat .magisk);
-          [ $((magisk_patched & 8)) -ne 0 ] && export TWOSTAGEINIT=true;
           for fdt in dtb extra kernel_dtb recovery_dtbo; do
-            [ -f $fdt ] && $bin/magiskboot dtb $fdt patch;
+            [ -f $fdt ] && $bin/magiskboot dtb $fdt patch; # remove dtb verity/avb
           done;
+        elif [ -d /data/data/me.weishu.kernelsu ] && [ "$(file_getprop $home/anykernel.sh do.modules)" == 1 ] && [ "$(file_getprop $home/anykernel.sh do.systemless)" == 1 ]; then
+          ui_print " " "KernelSU detected! Setting up for kernel helper module...";
+          comp=$($bin/magiskboot decompress kernel 2>&1 | grep -vE 'raw|zimage' | sed -n 's;.*\[\(.*\)\];\1;p');
+          ($bin/magiskboot split $kernel || $bin/magiskboot decompress $kernel kernel) 2>/dev/null;
+          if [ $? != 0 -a "$comp" ] && $comp --help 2>/dev/null; then
+            echo "Attempting kernel unpack with busybox $comp..." >&2;
+            $comp -dc $kernel > kernel;
+          fi;
+          strings kernel > stringstmp 2>/dev/null;
+          if grep -q -E '^/data/adb/ksud$' stringstmp; then
+            touch $home/kernelsu_patched;
+            grep -E -m1 'Linux version.*#' stringstmp > $home/vertmp;
+            [ -d $ramdisk/overlay.d ] && ui_print " " "Warning: overlay.d detected in ramdisk but not currently supported by KernelSU!";
+          else
+            ui_print " " "Warning: No KernelSU support detected in kernel!";
+          fi;
+          rm -f stringstmp;
+          if [ "$comp" ]; then
+            $bin/magiskboot compress=$comp kernel kernel.$comp;
+            if [ $? != 0 ] && $comp --help 2>/dev/null; then
+              echo "Attempting kernel repack with busybox $comp..." >&2;
+              $comp -9c kernel > kernel.$comp;
+            fi;
+            mv -f kernel.$comp kernel;
+          fi;
         else
           case $kernel in
             *-dtb) rm -f kernel_dtb;;
           esac;
         fi;
-        unset magisk_patched KEEPFORCEENCRYPT KEEPVERITY SHA1 TWOSTAGEINIT; # leave PATCHVBMETAFLAG set for repack
+        unset magisk_patched KEEPVERITY KEEPFORCEENCRYPT RECOVERYMODE PREINITDEVICE SHA1 RANDOMSEED; # leave PATCHVBMETAFLAG set for repack
       ;;
     esac;
     case $ramdisk_compression in
@@ -361,11 +393,11 @@ flash_boot() {
       *) export PATCHVBMETAFLAG=false;;
     esac;
     $bin/magiskboot repack $nocompflag $bootimg $home/boot-new.img;
-    unset PATCHVBMETAFLAG;
   fi;
   if [ $? != 0 ]; then
     abort "Repacking image failed. Aborting...";
   fi;
+  [ "$PATCHVBMETAFLAG" ] && unset PATCHVBMETAFLAG;
   [ -f .magisk ] && touch $home/magisk_patched;
 
   cd $home;
@@ -376,16 +408,23 @@ flash_boot() {
     fi;
     [ $? != 0 ] && signfail=1;
   fi;
-  if [ -f "$bin/boot_signer-dexed.jar" -a -d "$bin/avb" ]; then
+  if [ -d "$bin/avb" ]; then
     pk8=$(ls $bin/avb/*.pk8);
     cert=$(ls $bin/avb/*.x509.*);
     case $block in
-      *recovery*|*SOS*) avbtype=recovery;;
+      *recovery*|*RECOVERY*|*SOS*) avbtype=recovery;;
       *) avbtype=boot;;
     esac;
-    if [ "$(/system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature -verify boot.img 2>&1 | grep VALID)" ]; then
-      echo "Signing with AVBv1..." >&2;
-      /system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature /$avbtype boot-new.img $pk8 $cert boot-new-signed.img;
+    if [ -f "$bin/boot_signer-dexed.jar" ]; then
+      if [ -f /system/bin/dalvikvm ] && [ "$(/system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature -verify boot.img 2>&1 | grep VALID)" ]; then
+        echo "Signing with AVBv1 /$avbtype..." >&2;
+        /system/bin/dalvikvm -Xnoimage-dex2oat -cp $bin/boot_signer-dexed.jar com.android.verity.BootSignature /$avbtype boot-new.img $pk8 $cert boot-new-signed.img;
+      fi;
+    else
+      if $bin/magiskboot verify boot.img; then
+        echo "Signing with AVBv1 /$avbtype..." >&2;
+        $bin/magiskboot sign /$avbtype boot-new.img $cert $pk8;
+      fi;
     fi;
   fi;
   if [ $? != 0 -o "$signfail" ]; then
@@ -415,7 +454,7 @@ flash_boot() {
 
 # flash_generic <name>
 flash_generic() {
-  local avb avbblock avbpath file flags img imgblock isro isunmounted path;
+  local avb avbblock avbpath file flags img imgblock imgsz isro isunmounted path;
 
   cd $home;
   for file in $1 $1.img; do
@@ -461,25 +500,36 @@ flash_generic() {
           cd $home;
         fi
       fi
-      echo "Removing any existing $1_ak3..." >&2;
-      $bin/lptools_static remove $1_ak3;
-      echo "Attempting to create $1_ak3..." >&2;
-      if $bin/lptools_static create $1_ak3 $(wc -c < $img); then
-        echo "Replacing $1$slot with $1_ak3..." >&2;
-        $bin/lptools_static unmap $1_ak3 || abort "Unmapping $1_ak3 failed. Aborting...";
-        $bin/lptools_static map $1_ak3 || abort "Mapping $1_ak3 failed. Aborting...";
-        $bin/lptools_static replace $1_ak3 $1$slot || abort "Replacing $1$slot failed. Aborting...";
-        imgblock=/dev/block/mapper/$1_ak3;
-      else
-        echo "Creating $1_ak3 failed. Attempting to resize $1$slot..." >&2;
-        $bin/httools_static umount $1 || abort "Unmounting $1 failed. Aborting...";
-        if [ -e $path/$1-verity ]; then
-          $bin/lptools_static unmap $1-verity || abort "Unmapping $1-verity failed. Aborting...";
+      imgsz=$(wc -c < $img);
+      if [ "$imgsz" != "$(wc -c < $imgblock)" ]; then
+        if [ -d /postinstall/tmp -a "$slot_select" == "inactive" ]; then
+          echo "Resizing $1$slot snapshot..." >&2;
+          $bin/snapshotupdater_static update $1 $imgsz || abort "Resizing $1$slot snapshot failed. Aborting...";
+        else
+          echo "Removing any existing $1_ak3..." >&2;
+          $bin/lptools_static remove $1_ak3;
+          echo "Clearing any merged cow partitions..." >&2;
+          $bin/lptools_static clear-cow;
+          echo "Attempting to create $1_ak3..." >&2;
+          if $bin/lptools_static create $1_ak3 $imgsz; then
+            echo "Replacing $1$slot with $1_ak3..." >&2;
+            $bin/lptools_static unmap $1_ak3 || abort "Unmapping $1_ak3 failed. Aborting...";
+            $bin/lptools_static map $1_ak3 || abort "Mapping $1_ak3 failed. Aborting...";
+            $bin/lptools_static replace $1_ak3 $1$slot || abort "Replacing $1$slot failed. Aborting...";
+            imgblock=/dev/block/mapper/$1_ak3;
+            ui_print " " "Warning: $1$slot replaced in super. Reboot before further logical partition operations.";
+          else
+            echo "Creating $1_ak3 failed. Attempting to resize $1$slot..." >&2;
+            $bin/httools_static umount $1 || abort "Unmounting $1 failed. Aborting...";
+            if [ -e $path/$1-verity ]; then
+              $bin/lptools_static unmap $1-verity || abort "Unmapping $1-verity failed. Aborting...";
+            fi
+            $bin/lptools_static unmap $1$slot || abort "Unmapping $1$slot failed. Aborting...";
+            $bin/lptools_static resize $1$slot $imgsz || abort "Resizing $1$slot failed. Aborting...";
+            $bin/lptools_static map $1$slot || abort "Mapping $1$slot failed. Aborting...";
+            isunmounted=1;
+          fi
         fi
-        $bin/lptools_static unmap $1$slot || abort "Unmapping $1$slot failed. Aborting...";
-        $bin/lptools_static resize $1$slot $(wc -c < $img) || abort "Resizing $1$slot failed. Aborting...";
-        $bin/lptools_static map $1$slot || abort "Mapping $1$slot failed. Aborting...";
-        isunmounted=1;
       fi
     elif [ "$(wc -c < $img)" -gt "$(wc -c < $imgblock)" ]; then
       abort "New $1 image larger than $1 partition. Aborting...";
@@ -814,17 +864,6 @@ setup_ak() {
     touch vendor_v3_setup;
   fi;
 
-  # allow multi-partition ramdisk modifying configurations (using reset_ak)
-  if [ "$block" ] && [ ! -d "$ramdisk" -a ! -d "$patch" ]; then
-    blockfiles=$home/$(basename $block)-files;
-    if [ "$(ls $blockfiles 2>/dev/null)" ]; then
-      cp -af $blockfiles/* $home;
-    else
-      mkdir $blockfiles;
-    fi;
-    touch $blockfiles/current;
-  fi;
-
   # target block partition detection enabled by block=<partition filename> or auto (from anykernel.sh)
   case $block in
     /dev/*)
@@ -848,7 +887,7 @@ setup_ak() {
       esac;
       for name in $parttype; do
         for part in $name$slot $name; do
-          if [ "$(grep -w "$part" /proc/mtd 2> /dev/null)" ]; then
+          if [ "$(grep -w "$part" /proc/mtd 2>/dev/null)" ]; then
             mtdmount=$(grep -w "$part" /proc/mtd);
             mtdpart=$(echo $mtdmount | cut -d\" -f2);
             if [ "$mtdpart" == "$part" ]; then
@@ -881,6 +920,22 @@ setup_ak() {
   if [ ! "$no_block_display" ]; then
     ui_print "$block";
   fi;
+  
+  # allow multi-partition ramdisk modifying configurations (using reset_ak)
+  name=$(basename $block | sed -e 's/_a$//' -e 's/_b$//');
+  if [ "$block" ] && [ ! -d "$ramdisk" -a ! -d "$patch" ]; then
+    blockfiles=$home/$name-files;
+    if [ "$(ls $blockfiles 2>/dev/null)" ]; then
+      cp -af $blockfiles/* $home;
+    else
+      mkdir $blockfiles;
+    fi;
+    touch $blockfiles/current;
+  fi;
+
+  # run attributes function for current block if it exists
+  type attributes >/dev/null 2>&1 && attributes; # backwards compatibility
+  type ${name}_attributes >/dev/null 2>&1 && ${name}_attributes;
 }
 ###
 
