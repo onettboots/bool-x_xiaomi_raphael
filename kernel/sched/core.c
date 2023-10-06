@@ -957,9 +957,11 @@ extern int kp_active_mode(void);
 static inline void uclamp_boost_write(struct task_struct *p) {
 	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
 	int boost_value = 102;
+#ifdef CONFIG_STOCKISH_ROM_SUPPORT
 	int min_value = 0;
 	int max_value = 0;
 	int latency_sensitive = 0;
+#endif
 
 	//top-app min clamp input boost
 	if (strcmp(css->cgroup->kn->name, "top-app") == 0) {
