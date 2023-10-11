@@ -4188,9 +4188,6 @@ void scheduler_tick(void)
 		set_preferred_cluster(grp);
 	rcu_read_unlock();
 
-	if (curr->sched_class == &fair_sched_class)
-		check_for_migration(rq, curr);
-
 	if (idle_cpu(cpu) && is_reserved(cpu))
 		clear_reserved(cpu);
 }
