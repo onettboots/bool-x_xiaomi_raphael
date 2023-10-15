@@ -77,17 +77,19 @@ int suid_dumpable = 0;
 static LIST_HEAD(formats);
 static DEFINE_RWLOCK(binfmt_lock);
 
-#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer"
+#define SURFACEFLINGER_BIN_PREFIX "/system/bin/surfaceflinger"
+#define HWCOMPOSER_BIN_PREFIX "/vendor/bin/hw/android.hardware.graphics.composer@2.4-service"
 #define UDFPS_BIN_PREFIX "/vendor/bin/hw/android.hardware.biometrics.fingerprint@2.3-service.xiaomi_raphael"
 #define ZYGOTE32_BIN "/system/bin/app_process32"
 #define ZYGOTE64_BIN "/system/bin/app_process64"
-static struct signal_struct *zygote32_sig;
-static struct signal_struct *zygote64_sig;
+static struct task_struct *zygote32_task;
+static struct task_struct *zygote64_task;
 
-bool task_is_zygote(struct task_struct *p)
+bool task_is_zygote(struct task_struct *task)
 {
-	return p->signal == zygote32_sig || p->signal == zygote64_sig;
+	return task == zygote32_task || task == zygote64_task;
 }
+
 
 void __register_binfmt(struct linux_binfmt * fmt, int insert)
 {
@@ -1756,7 +1758,7 @@ static void android_service_blacklist(const char *name)
 		if (!strncmp(blacklist[i].path, name, blacklist[i].len)) {
 			pr_info("%s: sending SIGSTOP to %s\n", __func__, name);
 			do_send_sig_info(SIGSTOP, SEND_SIG_PRIV, current,
-					 true);
+					 __PIDTYPE_TGID);
 			break;
 		}
 	}
@@ -1764,7 +1766,6 @@ static void android_service_blacklist(const char *name)
 
 extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 			void *envp, int *flags);
-
 /*
  * sys_execve() executes a new program.
  */
@@ -1889,27 +1890,34 @@ static int do_execveat_common(int fd, struct filename *filename,
 		}
 	}
 #endif
+	/*
+	 * When argv is empty, add an empty string ("") as argv[0] to
+	 * ensure confused userspace programs that start processing
+	 * from argv[1] won't end up walking envp. See also
+	 * bprm_stack_limits().
+	 */
+	if (bprm->argc == 0) {
+		const char *argv[] = { "", NULL };
+		retval = copy_strings_kernel(1, argv, bprm);
+		if (retval < 0)
+			goto out;
+		bprm->argc = 1;
+	}
 
 	retval = exec_binprm(bprm);
 
 	if (retval < 0)
 		goto out;
 
-	if (is_global_init(current->parent)) {
+	if (capable(CAP_SYS_ADMIN)) {
 		if (unlikely(!strcmp(filename->name, ZYGOTE32_BIN)))
-			zygote32_sig = current->signal;
+			zygote32_task = current;
 		else if (unlikely(!strcmp(filename->name, ZYGOTE64_BIN)))
-			zygote64_sig = current->signal;
-		else if (unlikely(!strncmp(filename->name,
-					   UDFPS_BIN_PREFIX,
-					   strlen(UDFPS_BIN_PREFIX)))) {
-			current->flags |= PF_PERF_CRITICAL;
-			set_cpus_allowed_ptr(current, cpu_perf_mask);
-		}
+                        zygote64_task = current;
 	}
 
 	if (is_global_init(current->parent))
-		android_service_blacklist(filename->name);
+                android_service_blacklist(filename->name);
 
 	/* execve succeeded */
 	current->fs->in_exec = 0;

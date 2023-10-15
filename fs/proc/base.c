@@ -405,7 +405,8 @@ static int proc_pid_stack(struct seq_file *m, struct pid_namespace *ns,
 	if (!file_ns_capable(m->file, &init_user_ns, CAP_SYS_ADMIN))
 		return -EACCES;
 
-	entries = kmalloc(MAX_STACK_TRACE_DEPTH * sizeof(*entries), GFP_KERNEL);
+	entries = kmalloc_array(MAX_STACK_TRACE_DEPTH, sizeof(*entries),
+				GFP_KERNEL);
 	if (!entries)
 		return -ENOMEM;
 
@@ -3680,7 +3681,8 @@ static int proc_tid_comm_permission(struct inode *inode, int mask)
 }
 
 static const struct inode_operations proc_tid_comm_inode_operations = {
-		.permission = proc_tid_comm_permission,
+		.setattr	= proc_setattr,
+		.permission	= proc_tid_comm_permission,
 };
 
 /*

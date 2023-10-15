@@ -347,7 +347,7 @@ static int l2cap_seq_list_init(struct l2cap_seq_list *seq_list, u16 size)
 	 */
 	alloc_size = roundup_pow_of_two(size);
 
-	seq_list->list = kmalloc(sizeof(u16) * alloc_size, GFP_KERNEL);
+	seq_list->list = kmalloc_array(alloc_size, sizeof(u16), GFP_KERNEL);
 	if (!seq_list->list)
 		return -ENOMEM;
 
@@ -1370,7 +1370,8 @@ static void l2cap_request_info(struct l2cap_conn *conn)
 	conn->info_state |= L2CAP_INFO_FEAT_MASK_REQ_SENT;
 	conn->info_ident = l2cap_get_ident(conn);
 
-	schedule_delayed_work(&conn->info_timer, L2CAP_INFO_TIMEOUT);
+	queue_delayed_work(system_power_efficient_wq,
+			&conn->info_timer, L2CAP_INFO_TIMEOUT);
 
 	l2cap_send_cmd(conn, conn->info_ident, L2CAP_INFO_REQ,
 		       sizeof(req), &req);
@@ -3952,7 +3953,8 @@ sendresp:
 		conn->info_state |= L2CAP_INFO_FEAT_MASK_REQ_SENT;
 		conn->info_ident = l2cap_get_ident(conn);
 
-		schedule_delayed_work(&conn->info_timer, L2CAP_INFO_TIMEOUT);
+		queue_delayed_work(system_power_efficient_wq,
+				&conn->info_timer, L2CAP_INFO_TIMEOUT);
 
 		l2cap_send_cmd(conn, conn->info_ident, L2CAP_INFO_REQ,
 			       sizeof(info), &info);
