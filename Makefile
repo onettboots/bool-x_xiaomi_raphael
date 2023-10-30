@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 326
+SUBLEVEL = 328
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -765,6 +765,10 @@ ifeq ($(cc-name),gcc)
 KBUILD_CFLAGS	+= -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
 endif
 ifeq ($(cc-name),clang)
+#Enable MLGO for register allocation.
+KBUILD_CFLAGS   += -mllvm -regalloc-enable-advisor=release
+#Enable hot cold split optimization
+KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
 KBUILD_CFLAGS	+= -march=armv8.2-a+dotprod -mcpu=cortex-a76+crypto+crc
 endif
 

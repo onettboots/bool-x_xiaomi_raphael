@@ -3517,6 +3517,7 @@ void wake_up_new_task(struct task_struct *p)
 	 * Use __set_task_cpu() to avoid calling sched_class::migrate_task_rq,
 	 * as we're not fully set-up yet.
 	 */
+	p->recent_used_cpu = task_cpu(p);
 	__set_task_cpu(p, select_task_rq(p, task_cpu(p), SD_BALANCE_FORK, 0, 1));
 #endif
 	rq = __task_rq_lock(p, &rf);
@@ -4187,6 +4188,9 @@ void scheduler_tick(void)
 	if (update_preferred_cluster(grp, curr, old_load))
 		set_preferred_cluster(grp);
 	rcu_read_unlock();
+
+	if (curr->sched_class == &fair_sched_class)
+		check_for_migration(rq, curr);
 
 	if (idle_cpu(cpu) && is_reserved(cpu))
 		clear_reserved(cpu);
@@ -5156,6 +5160,23 @@ int idle_cpu(int cpu)
 		return 0;
 #endif
 #endif
+
+	return 1;
+}
+
+/**
+ * available_idle_cpu - is a given CPU idle for enqueuing work.
+ * @cpu: the CPU in question.
+ *
+ * Return: 1 if the CPU is currently idle. 0 otherwise.
+ */
+int available_idle_cpu(int cpu)
+{
+	if (!idle_cpu(cpu))
+		return 0;
+
+	if (vcpu_is_preempted(cpu))
+		return 0;
 
 	return 1;
 }

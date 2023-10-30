@@ -6705,8 +6705,8 @@ wake_affine_idle(struct sched_domain *sd, struct task_struct *p,
 	 * a cpufreq perspective, it's better to have higher utilisation
 	 * on one CPU.
 	 */
-	if (idle_cpu(this_cpu) && cpus_share_cache(this_cpu, prev_cpu))
-		return idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
+	if (available_idle_cpu(this_cpu) && cpus_share_cache(this_cpu, prev_cpu))
+		return available_idle_cpu(prev_cpu) ? prev_cpu : this_cpu;
 
 	if (sync && cpu_rq(this_cpu)->nr_running == 1)
 		return true;
@@ -7032,7 +7032,7 @@ find_idlest_group_cpu(struct sched_group *group, struct task_struct *p, int this
 		if (sched_idle_cpu(i))
 			return i;
 
-		if (idle_cpu(i)) {
+		if (available_idle_cpu(i)) {
 			struct rq *rq = cpu_rq(i);
 			struct cpuidle_state *idle = idle_get_state(rq);
 			if (idle && idle->exit_latency < min_exit_latency) {
@@ -7164,7 +7164,7 @@ void __update_idle_core(struct rq *rq)
 		if (cpu == core)
 			continue;
 
-		if (!idle_cpu(cpu))
+		if (!available_idle_cpu(cpu))
 			goto unlock;
 	}
 
@@ -7196,7 +7196,7 @@ static int select_idle_core(struct task_struct *p, struct sched_domain *sd, int 
 
 		for_each_cpu(cpu, cpu_smt_mask(core)) {
 			cpumask_clear_cpu(cpu, cpus);
-			if (!idle_cpu(cpu)) {
+			if (!available_idle_cpu(cpu)) {
 				idle = false;
 				break;
 			}
@@ -7228,7 +7228,7 @@ static int select_idle_smt(struct task_struct *p, struct sched_domain *sd, int t
 	for_each_cpu(cpu, cpu_smt_mask(target)) {
 		if (!cpumask_test_cpu(cpu, &p->cpus_allowed))
 			continue;
-		if (idle_cpu(cpu) || sched_idle_cpu(cpu))
+		if (available_idle_cpu(cpu) || sched_idle_cpu(cpu))
 			return cpu;
 	}
 
@@ -7294,7 +7294,7 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 			return -1;
 		if (cpu_isolated(cpu))
 			continue;
-		if (idle_cpu(cpu) || sched_idle_cpu(cpu))
+		if (available_idle_cpu(cpu) || sched_idle_cpu(cpu))
 			break;
 	}
 
@@ -7312,16 +7312,31 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 static inline int __select_idle_sibling(struct task_struct *p, int prev, int target)
 {
 	struct sched_domain *sd;
-	int i;
+	int i, recent_used_cpu;
 
-	if ((idle_cpu(target) && !cpu_isolated(target)) || sched_idle_cpu(target))
+	if ((available_idle_cpu(target) && !cpu_isolated(target)) || sched_idle_cpu(target))
 		return target;
 
 	/*
 	 * If the previous cpu is cache affine and idle, don't be stupid.
 	 */
-	if ((prev != target && cpus_share_cache(prev, target) && idle_cpu(prev) && !cpu_isolated(prev)) || sched_idle_cpu(prev))
+	if ((prev != target && cpus_share_cache(prev, target) && available_idle_cpu(prev) && !cpu_isolated(prev)) || sched_idle_cpu(prev))
 		return prev;
+
+	/* Check a recently used CPU as a potential idle candidate */
+	recent_used_cpu = p->recent_used_cpu;
+	if (recent_used_cpu != prev &&
+	    recent_used_cpu != target &&
+	    cpus_share_cache(recent_used_cpu, target) &&
+	    available_idle_cpu(recent_used_cpu) &&
+	    cpumask_test_cpu(p->recent_used_cpu, &p->cpus_allowed)) {
+		/*
+		 * Replace recent_used_cpu with prev as it is a potential
+		 * candidate for the next wake.
+		 */
+		p->recent_used_cpu = prev;
+		return recent_used_cpu;
+	}
 
 	sd = rcu_dereference(per_cpu(sd_llc, target));
 	if (!sd)
@@ -7653,6 +7668,7 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 			/*
 			 * This CPU is the target of an active migration that's
 			 * yet to complete. Avoid placing another task on it.
+			 * See check_for_migration()
 			 */
 			if (is_reserved(i))
 				continue;
@@ -8547,9 +8563,12 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 
 	if (!sd) {
 pick_cpu:
-		if (sd_flag & SD_BALANCE_WAKE) /* XXX always ? */
+		if (sd_flag & SD_BALANCE_WAKE) { /* XXX always ? */
 			new_cpu = select_idle_sibling(p, prev_cpu, new_cpu);
 
+			if (want_affine)
+				current->recent_used_cpu = cpu;
+		}
 	} else {
 		if (energy_sd)
 			new_cpu = find_energy_efficient_cpu(energy_sd, p, cpu,
@@ -13023,6 +13042,33 @@ static void walt_fixup_nr_big_tasks(struct rq *rq, struct task_struct *p,
 		walt_adjust_nr_big_tasks(rq, delta, inc);
 }
 
+/*
+ * Check if task is part of a hierarchy where some cfs_rq does not have any
+ * runtime left.
+ *
+ * We can't rely on throttled_hierarchy() to do this test, as
+ * cfs_rq->throttle_count will not be updated yet when this function is called
+ * from scheduler_tick()
+ */
+static int task_will_be_throttled(struct task_struct *p)
+{
+	struct sched_entity *se = &p->se;
+	struct cfs_rq *cfs_rq;
+
+	if (!cfs_bandwidth_used())
+		return 0;
+
+	for_each_sched_entity(se) {
+		cfs_rq = cfs_rq_of(se);
+		if (!cfs_rq->runtime_enabled)
+			continue;
+		if (cfs_rq->runtime_remaining <= 0)
+			return 1;
+	}
+
+	return 0;
+}
+
 #else /* CONFIG_CFS_BANDWIDTH */
 
 static void walt_fixup_sched_stats_fair(struct rq *rq, struct task_struct *p,
@@ -13037,6 +13083,11 @@ static void walt_fixup_nr_big_tasks(struct rq *rq, struct task_struct *p,
 							int delta, bool inc)
 {
 	walt_adjust_nr_big_tasks(rq, delta, inc);
+}
+
+static int task_will_be_throttled(struct task_struct *p)
+{
+	return false;
 }
 
 #endif /* CONFIG_CFS_BANDWIDTH */
@@ -13097,5 +13148,142 @@ void walt_rotate_work_init(void)
 	}
 }
 
+#define WALT_ROTATION_THRESHOLD_NS	16000000
+static void walt_check_for_rotation(struct rq *src_rq)
+{
+	u64 wc, wait, max_wait = 0, run, max_run = 0;
+	int deserved_cpu = nr_cpu_ids, dst_cpu = nr_cpu_ids;
+	int i, src_cpu = cpu_of(src_rq);
+	struct rq *dst_rq;
+	struct walt_rotate_work *wr = NULL;
+
+	if (!walt_rotation_enabled)
+		return;
+
+	if (!is_min_capacity_cpu(src_cpu))
+		return;
+
+	wc = sched_ktime_clock();
+	for_each_possible_cpu(i) {
+		struct rq *rq = cpu_rq(i);
+
+		if (!is_min_capacity_cpu(i))
+			break;
+
+		if (is_reserved(i))
+			continue;
+
+		if (!rq->misfit_task_load || rq->curr->sched_class !=
+						&fair_sched_class)
+			continue;
+
+		wait = wc - rq->curr->last_enqueued_ts;
+		if (wait > max_wait) {
+			max_wait = wait;
+			deserved_cpu = i;
+		}
+	}
+
+	if (deserved_cpu != src_cpu)
+		return;
+
+	for_each_possible_cpu(i) {
+		struct rq *rq = cpu_rq(i);
+
+		if (is_min_capacity_cpu(i))
+			continue;
+
+		if (is_reserved(i))
+			continue;
+
+		if (rq->curr->sched_class != &fair_sched_class)
+			continue;
+
+		if (rq->nr_running > 1)
+			continue;
+
+		run = wc - rq->curr->last_enqueued_ts;
+
+		if (run < WALT_ROTATION_THRESHOLD_NS)
+			continue;
+
+		if (run > max_run) {
+			max_run = run;
+			dst_cpu = i;
+		}
+	}
+
+	if (dst_cpu == nr_cpu_ids)
+		return;
+
+	dst_rq = cpu_rq(dst_cpu);
+
+	double_rq_lock(src_rq, dst_rq);
+	if (dst_rq->curr->sched_class == &fair_sched_class) {
+		get_task_struct(src_rq->curr);
+		get_task_struct(dst_rq->curr);
+
+		mark_reserved(src_cpu);
+		mark_reserved(dst_cpu);
+		wr = &per_cpu(walt_rotate_works, src_cpu);
+
+		wr->src_task = src_rq->curr;
+		wr->dst_task = dst_rq->curr;
+
+		wr->src_cpu = src_cpu;
+		wr->dst_cpu = dst_cpu;
+	}
+	double_rq_unlock(src_rq, dst_rq);
+
+	if (wr)
+		queue_work_on(src_cpu, system_highpri_wq, &wr->w);
+}
+#else
+static inline void walt_check_for_rotation(struct rq *rq)
+{
+}
 #endif
+
+static DEFINE_RAW_SPINLOCK(migration_lock);
+void check_for_migration(struct rq *rq, struct task_struct *p)
+{
+	int active_balance;
+	int new_cpu = -1;
+	int cpu = smp_processor_id();
+	int prev_cpu = task_cpu(p);
+	struct sched_domain *sd = NULL;
+
+	if (IS_ENABLED(CONFIG_SCHED_CASS))
+		return;
+
+	if (rq->misfit_task_load) {
+		if (rq->curr->state != TASK_RUNNING ||
+		    rq->curr->nr_cpus_allowed == 1)
+			return;
+
+		if (task_will_be_throttled(p))
+			return;
+
+		raw_spin_lock(&migration_lock);
+		rcu_read_lock();
+		new_cpu = find_energy_efficient_cpu(sd, p, cpu, prev_cpu, 0, 1);
+		rcu_read_unlock();
+		if ((new_cpu != prev_cpu) && (capacity_orig_of(new_cpu) >
+					capacity_orig_of(prev_cpu))) {
+			active_balance = kick_active_balance(rq, p, new_cpu);
+			if (active_balance) {
+				mark_reserved(new_cpu);
+				raw_spin_unlock(&migration_lock);
+				stop_one_cpu_nowait(prev_cpu,
+					active_load_balance_cpu_stop, rq,
+					&rq->active_balance_work);
+				return;
+			}
+		} else {
+			walt_check_for_rotation(rq);
+		}
+		raw_spin_unlock(&migration_lock);
+	}
+}
+
 #endif /* CONFIG_SCHED_WALT */
