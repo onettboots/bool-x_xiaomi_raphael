@@ -322,7 +322,8 @@ struct sde_hw_sspp_ops {
 	void (*setup_format)(struct sde_hw_pipe *ctx,
 			const struct sde_format *fmt,
 			bool blend_enabled, u32 flags,
-			enum sde_sspp_multirect_index index);
+			enum sde_sspp_multirect_index index,
+			bool force_csc);
 
 	/**
 	 * setup_rects - setup pipe ROI rectangles
@@ -373,9 +374,7 @@ struct sde_hw_sspp_ops {
 	 * @ctx: Pointer to pipe context
 	 * @data: Pointer to config structure
 	 */
-	void (*setup_csc)(struct sde_hw_pipe *ctx,
-			  const struct sde_format *fmt,
-			  struct sde_csc_cfg *data);
+	void (*setup_csc)(struct sde_hw_pipe *ctx, struct sde_csc_cfg *data);
 
 	/**
 	 * setup_solidfill - enable/disable colorfill
