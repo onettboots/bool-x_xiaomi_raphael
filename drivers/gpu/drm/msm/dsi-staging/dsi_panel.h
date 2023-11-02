@@ -253,7 +253,6 @@ struct dsi_panel {
 	bool force_fod_ui;
 	bool force_fod_dim_alpha;
 	bool dc_dim;
-	bool force_dc_dim_alpha;
 	bool was_dc_dim;
 };
 
