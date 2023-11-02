@@ -996,7 +996,6 @@ static int goodix_ts_input_report(struct input_dev *dev,
 	struct goodix_ts_device *ts_dev = core_data->ts_dev;
 	unsigned int touch_num = touch_data->touch_num;
 	int i, id;
-	bool event_fod;
 
 	if (core_data->fod_status) {
 		if ((core_data->event_status & 0x20) == 0x20) {
@@ -1007,7 +1006,6 @@ static int goodix_ts_input_report(struct input_dev *dev,
 
 	mutex_lock(&ts_dev->report_mutex);
 	id = coords->id;
-	event_fod = (core_data->event_status & 0x88) == 0x88;
 	for (i = 0; i < ts_bdata->panel_max_id * 2; i++) {
 		if (touch_num && i == id) { /* this is a valid touch down event */
 			input_mt_slot(dev, id);
@@ -1024,7 +1022,7 @@ static int goodix_ts_input_report(struct input_dev *dev,
 			input_report_abs(dev, ABS_MT_TOUCH_MINOR, coords->area);
 			*/
 
-			if (!event_fod || !core_data->fod_status)
+			if ((core_data->event_status & 0x88) != 0x88 || !core_data->fod_status)
 				coords->overlapping_area = 0;
 			input_report_abs(dev, ABS_MT_WIDTH_MINOR, coords->overlapping_area);
 			input_report_abs(dev, ABS_MT_WIDTH_MAJOR, coords->overlapping_area);
@@ -1051,12 +1049,12 @@ static int goodix_ts_input_report(struct input_dev *dev,
 
 	/*report finger*/
 	/*ts_info("get_event_now :0x%02x, pre_event : %d", get_event_now, pre_event);*/
-	if (event_fod && core_data->fod_status) {
+	if ((core_data->event_status & 0x88) == 0x88 && core_data->fod_status) {
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
 			core_data->fod_pressed = true;
 			ts_info("BTN_INFO press");
-		} else if (core_data->fod_pressed && !event_fod) {
+		} else if (core_data->fod_pressed && (core_data->event_status & 0x88) != 0x88) {
 		if (unlikely(!core_data->fod_test)) {
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
@@ -1155,26 +1153,24 @@ static irqreturn_t goodix_ts_threadirq_func(int irq, void *data)
 		goto handled;
 	}
 
-	if (atomic_read(&core_data->suspended)) {
-		mutex_lock(&goodix_modules.mutex);
-		list_for_each_entry(ext_module, &goodix_modules.head, list) {
-			if (!ext_module->funcs->irq_event)
-				continue;
-			r = ext_module->funcs->irq_event(core_data, ext_module);
-			ts_err("enter %s r=%d\n", __func__, r);
-			if (r == EVT_CANCEL_IRQEVT) {
-				/*ts_err("enter %s EVT_CANCEL_IRQEVT \n", __func__);*/
-				mutex_unlock(&goodix_modules.mutex);
-				goto handled;
-			}
+	mutex_lock(&goodix_modules.mutex);
+	list_for_each_entry(ext_module, &goodix_modules.head, list) {
+		if (!ext_module->funcs->irq_event)
+			continue;
+		r = ext_module->funcs->irq_event(core_data, ext_module);
+		/*ts_err("enter %s r=%d\n", __func__, r);*/
+		if (r == EVT_CANCEL_IRQEVT) {
+			ts_err("enter %s EVT_CANCEL_IRQEVT\n", __func__);
+			mutex_unlock(&goodix_modules.mutex);
+			goto handled;
 		}
-		mutex_unlock(&goodix_modules.mutex);
 	}
+	mutex_unlock(&goodix_modules.mutex);
 
 	/* read touch data from touch device */
 	r = ts_dev->hw_ops->event_handler(ts_dev, ts_event);
 	if (likely(r >= 0)) {
-		if (likely(ts_event->event_type == EVENT_TOUCH)) {
+		if (ts_event->event_type == EVENT_TOUCH) {
 			/* report touch */
 			goodix_ts_input_report(core_data->input_dev,
 					&ts_event->event_data.touch_data);
