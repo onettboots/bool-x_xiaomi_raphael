@@ -566,7 +566,7 @@ static int gf_open(struct inode *inode, struct file *filp)
 
 			rc = request_threaded_irq(gf_dev->irq, NULL, gf_irq,
 					IRQF_TRIGGER_RISING |
-					IRQF_ONESHOT | IRQF_PERF_AFFINE,
+					IRQF_ONESHOT,
 					"gf", gf_dev);
 			if (!rc) {
 				enable_irq_wake(gf_dev->irq);
