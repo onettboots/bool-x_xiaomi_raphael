@@ -772,9 +772,6 @@ KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
 KBUILD_CFLAGS	+= -march=armv8.2-a+dotprod -mcpu=cortex-a76+crypto+crc
 endif
 
-ifdef CONFIG_LTO_CLANG
-KBUILD_CFLAG	+= -fwhole-program-vtables
-endif
 ifdef CONFIG_LLVM_POLLY
 KBUILD_CFLAGS	+= -mllvm -polly \
 		   -mllvm -polly-ast-use-context \
