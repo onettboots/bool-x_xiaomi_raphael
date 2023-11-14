@@ -382,10 +382,9 @@ static int pidlist_array_load(struct cgroup *cgrp, enum cgroup_filetype type,
 	}
 	css_task_iter_end(&it);
 	length = n;
-	/* now sort & (if procs) strip out duplicates */
+	/* now sort & strip out duplicates (tgids or recycled thread PIDs) */
 	sort(array, length, sizeof(pid_t), cmppid, NULL);
-	if (type == CGROUP_FILE_PROCS)
-		length = pidlist_uniq(array, length);
+	length = pidlist_uniq(array, length);
 
 	l = cgroup_pidlist_find_create(cgrp, type);
 	if (!l) {
@@ -543,6 +542,15 @@ static ssize_t __cgroup1_procs_write(struct kernfs_open_file *of,
 		goto out_finish;
 
 	ret = cgroup_attach_task(cgrp, task, threadgroup);
+
+	/* This covers boosting for app launches and app transitions */
+	if (!ret && !threadgroup &&
+		!memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
+		task_is_zygote(task->parent)) {
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 100);
+		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 100);
+		cpu_input_boost_kick_max(100, false);
+	}
 
 out_finish:
 	cgroup_procs_write_finish(task);
