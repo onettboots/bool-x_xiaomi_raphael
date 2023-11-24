@@ -8542,6 +8542,70 @@ static u64 cpu_uclamp_ls_read_u64(struct cgroup_subsys_state *css,
 	return (u64) tg->latency_sensitive;
 }
 
+#ifdef CONFIG_UCLAMP_ASSIST
+struct uclamp_param {
+	char *name;
+	char uclamp_min[3];
+	char uclamp_max[3];
+	u64  uclamp_latency_sensitive;
+	u64  cpu_shares;
+};
+
+#ifdef CONFIG_FAIR_GROUP_SCHED
+static int cpu_shares_write_u64(struct cgroup_subsys_state *css,
+				struct cftype *cftype, u64 shareval);
+#endif
+
+static void uclamp_set(struct cgroup_subsys_state *css)
+{
+	int i;
+
+	static struct uclamp_param tgts[] = {
+		{"top-app",             "1", "max",  1, 20480},
+		{"rt",			"1", "max",  1, 20480},
+		{"nnapi-hal",		"0", "max",  1, 20480},
+       		{"foreground",          "0", "max",  0, 20480},
+                {"camera-daemon",       "0", "max",  0, 20480},
+                {"system",              "0", "max",  0, 20480},
+                {"dex2oat",             "0",  "60",  0,   512},
+        	{"background",          "0",  "50",  0,  1024},
+        	{"system-background",   "0",  "50",  0,  1024},
+	};
+
+        if(!css->cgroup->kn)
+                return;
+
+	for (i = 0; i < ARRAY_SIZE(tgts); i++) {
+		struct uclamp_param tgt = tgts[i];
+
+		if (!strcmp(css->cgroup->kn->name, tgt.name)) {
+			cpu_uclamp_write_wrapper(css, tgt.uclamp_min,
+						UCLAMP_MIN);
+			cpu_uclamp_write_wrapper(css, tgt.uclamp_max,
+						UCLAMP_MAX);
+			cpu_uclamp_ls_write_u64(css, NULL,
+						tgt.uclamp_latency_sensitive);
+
+#ifdef CONFIG_FAIR_GROUP_SCHED
+			cpu_shares_write_u64(css, NULL, tgt.cpu_shares);
+#endif
+
+#ifdef CONFIG_FAIR_GROUP_SCHED
+			pr_info("uclamp_assist: setting values for %s: uclamp_min=%s uclamp_max=%s"
+				"uclamp_latency_sensitive=%d cpu_shares=%d\n",
+				tgt.name, tgt.uclamp_min, tgt.uclamp_max, tgt.uclamp_latency_sensitive, tgt.cpu_shares);
+#else
+                        pr_info("uclamp_assist: setting values for %s: uclamp_min=%s uclamp_max=%s uclamp_latency_sensitive=%d\n"
+                                tgt.name, tgt.uclamp_min, tgt.uclamp_max, tgt.uclamp_latency_sensitive);
+#endif
+
+			return;			
+		}
+	}
+
+}
+#endif /* CONFIG_UCLAMP_ASSIST */
+
 #endif /* CONFIG_UCLAMP_TASK_GROUP */
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
