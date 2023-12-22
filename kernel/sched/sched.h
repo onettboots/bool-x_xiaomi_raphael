@@ -40,7 +40,6 @@
 #include "cpupri.h"
 #include "cpudeadline.h"
 #include "cpuacct.h"
-#include "features.h"
 
 #ifdef CONFIG_SCHED_DEBUG
 # define SCHED_WARN_ON(x)	WARN_ONCE(x, #x)
@@ -224,6 +223,11 @@ static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
 		rt_policy(policy) || dl_policy(policy);
+}
+
+static inline int task_has_idle_policy(struct task_struct *p)
+{
+	return idle_policy(p->policy);
 }
 
 static inline int task_has_rt_policy(struct task_struct *p)
@@ -940,9 +944,9 @@ struct rq {
 	struct walt_sched_stats walt_stats;
 
 	int cstate, wakeup_latency, wakeup_energy;
-	u64 window_start;
-	s64 cum_window_start;
-	unsigned long walt_flags;
+	u64			window_start;
+	u32			prev_window_size;
+	unsigned long		walt_flags;
 
 	u64 cur_irqload;
 	u64 avg_irqload;
@@ -1011,9 +1015,7 @@ struct rq {
 #endif
 
 #ifdef CONFIG_SMP
-#if SCHED_FEAT_TTWU_QUEUE
 	struct llist_head wake_list;
-#endif
 #endif
 
 #ifdef CONFIG_CPU_IDLE
@@ -1310,11 +1312,7 @@ queue_balance_callback(struct rq *rq,
 	rq->balance_callback = head;
 }
 
-#if SCHED_FEAT_TTWU_QUEUE
 extern void sched_ttwu_pending(void);
-#else
-static inline void sched_ttwu_pending(void) { }
-#endif
 
 #define rcu_dereference_check_sched_domain(p) \
 	rcu_dereference_check((p), \
@@ -1386,6 +1384,7 @@ struct sched_group_capacity {
 	unsigned long capacity;
 	unsigned long min_capacity; /* Min per-CPU capacity in group */
 	unsigned long max_capacity; /* Max per-CPU capacity in group */
+	unsigned long next_update;
 	int imbalance; /* XXX unrelated to capacity but shared group state */
 
 #ifdef CONFIG_SCHED_DEBUG
@@ -1534,7 +1533,34 @@ static inline void __set_task_cpu(struct task_struct *p, unsigned int cpu)
 
 #define const_debug __read_mostly
 
-#define sched_feat(x) SCHED_FEAT_##x
+extern const_debug unsigned int sysctl_sched_features;
+
+#define SCHED_FEAT(name, enabled)	\
+	__SCHED_FEAT_##name ,
+
+enum {
+#include "features.h"
+	__SCHED_FEAT_NR,
+};
+
+#undef SCHED_FEAT
+
+#if defined(CONFIG_SCHED_DEBUG) && defined(HAVE_JUMP_LABEL)
+#define SCHED_FEAT(name, enabled)					\
+static __always_inline bool static_branch_##name(struct static_key *key) \
+{									\
+	return static_key_##enabled(key);				\
+}
+
+#include "features.h"
+
+#undef SCHED_FEAT
+
+extern struct static_key sched_feat_keys[__SCHED_FEAT_NR];
+#define sched_feat(x) (static_branch_##x(&sched_feat_keys[__SCHED_FEAT_##x]))
+#else /* !(SCHED_DEBUG && HAVE_JUMP_LABEL) */
+#define sched_feat(x) !!(sysctl_sched_features & (1UL << __SCHED_FEAT_##x))
+#endif /* SCHED_DEBUG && HAVE_JUMP_LABEL */
 
 extern struct static_key_false sched_numa_balancing;
 extern struct static_key_false sched_schedstats;
@@ -3059,14 +3085,15 @@ extern void clear_top_tasks_bitmap(unsigned long *bitmap);
 #if defined(CONFIG_SCHED_TUNE)
 extern bool task_sched_boost(struct task_struct *p);
 extern int sync_cgroup_colocation(struct task_struct *p, bool insert);
-extern bool schedtune_task_colocated(struct task_struct *p);
+extern bool same_schedtune(struct task_struct *tsk1, struct task_struct *tsk2);
 extern void update_cgroup_boost_settings(void);
 extern void restore_cgroup_boost_settings(void);
 
 #else
-static inline bool schedtune_task_colocated(struct task_struct *p)
+static inline bool
+same_schedtune(struct task_struct *tsk1, struct task_struct *tsk2)
 {
-	return false;
+	return true;
 }
 
 static inline bool task_sched_boost(struct task_struct *p)
@@ -3330,9 +3357,9 @@ extern void sched_get_nr_running_avg(struct sched_avg_stats *stats);
 #ifdef CONFIG_SMP
 static inline void sched_irq_work_queue(struct irq_work *work)
 {
-	if (likely(cpu_online(raw_smp_processor_id())))
-		irq_work_queue(work);
-	else
-		irq_work_queue_on(work, cpumask_any(cpu_online_mask));
+        if (likely(cpu_online(raw_smp_processor_id())))
+                irq_work_queue(work);
+        else
+                irq_work_queue_on(work, cpumask_any(cpu_online_mask));
 }
 #endif

@@ -135,33 +135,8 @@ static unsigned long one_ul = 1;
 static unsigned long long_max = LONG_MAX;
 static int one_hundred = 100;
 static int one_thousand = 1000;
-
 #ifdef CONFIG_SCHED_WALT
 static int two_million = 2000000;
-#endif
-
-#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
-/*Huacai.Zhou@PSW.BSP.Kernel.Performance, 2018-04-28, add foreground task io opt*/
-unsigned int sysctl_fg_io_opt = 1;
-#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
-
-//#ifdef COLOROS_EDIT
-/*Tiren.Ma@ROM.Framework, 2019-12-10, add for improving ed task migration*/
-int sysctl_ed_task_enabled = 1;
-//#endif /*COLOROS_EDIT*/
-
-#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
-/*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add control ext4 fsync*/
-unsigned int sysctl_ext4_fsync_enable = 1;
-unsigned int ext4_fsync_enable_status = 0;
-#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
-#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
-/*jason.tang@TECH.BSP.Kernel.Storage, 2019-05-20, add to count flush*/
-unsigned long sysctl_blkdev_issue_flush_count = 0;
-#endif /*CONFIG_MACH_XIAOMI_RAPHAEL*/
-
-#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
-static int max_swappiness = 200;
 #endif
 #ifdef CONFIG_PRINTK
 static int ten_thousand = 10000;
@@ -417,23 +392,7 @@ static struct ctl_table kern_table[] = {
 		.mode           = 0644,
 		.proc_handler   = proc_dointvec,
 	},
-	{
-		.procname	= "sched_group_upmigrate",
-		.data		= &sysctl_sched_group_upmigrate_pct,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= walt_proc_update_handler,
-		.extra1		= &sysctl_sched_group_downmigrate_pct,
-	},
-	{
-		.procname	= "sched_group_downmigrate",
-		.data		= &sysctl_sched_group_downmigrate_pct,
-		.maxlen		= sizeof(unsigned int),
-		.mode		= 0644,
-		.proc_handler	= walt_proc_update_handler,
-		.extra1		= &zero,
-		.extra2		= &sysctl_sched_group_upmigrate_pct,
-	},
+#if 0
 	{
 		.procname	= "sched_boost",
 		.data		= &sysctl_sched_boost,
@@ -443,6 +402,16 @@ static struct ctl_table kern_table[] = {
 		.extra1		= &neg_three,
 		.extra2		= &three,
 	},
+#endif
+	{
+                .procname       = "sched_conservative_pl",
+                .data           = &sysctl_sched_conservative_pl,
+                .maxlen         = sizeof(unsigned int),
+                .mode           = 0644,
+                .proc_handler   = proc_dointvec_minmax,
+                .extra1         = &zero,
+                .extra2         = &one,
+        },
 	{
 		.procname	= "sched_many_wakeup_threshold",
 		.data		= &sysctl_sched_many_wakeup_threshold,
@@ -1530,13 +1499,6 @@ static struct ctl_table vm_table[] = {
 		.proc_handler	= proc_dointvec,
 	},
 	{
-		.procname       = "reap_mem_on_sigkill",
-		.data           = &sysctl_reap_mem_on_sigkill,
-		.maxlen         = sizeof(sysctl_reap_mem_on_sigkill),
-		.mode           = 0644,
-		.proc_handler   = proc_dointvec,
-	},
-	{
 		.procname	= "overcommit_ratio",
 		.data		= &sysctl_overcommit_ratio,
 		.maxlen		= sizeof(sysctl_overcommit_ratio),
@@ -1627,11 +1589,7 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &zero,
-#ifdef CONFIG_INCREASE_MAXIMUM_SWAPPINESS
-		.extra2         = &max_swappiness,
-#else
 		.extra2		= &one_hundred,
-#endif
 	},
 	{
 		.procname       = "want_old_faultaround_pte",
