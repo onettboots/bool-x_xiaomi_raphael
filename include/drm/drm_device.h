@@ -24,6 +24,17 @@ struct pci_dev;
 struct pci_controller;
 
 /**
+*AOD brightness, hight brightness level 60nit, low brightness level 5nit
+*/
+#define DOZE_MIN_BRIGHTNESS_LEVEL	5
+enum {
+	DOZE_BRIGHTNESS_INVALID = 0,
+	DOZE_BRIGHTNESS_HBM,
+	DOZE_BRIGHTNESS_LBM,
+	DOZE_BRIGHTNESS_TO_NORMAL,
+};
+
+/**
  * DRM device structure. This structure represent a complete card that
  * may contain multiple heads.
  */
@@ -66,27 +77,6 @@ struct drm_device {
 
 	struct mutex filelist_mutex;
 	struct list_head filelist;
-
-	/**
-	 * @filelist_internal:
-	 *
-	 * List of open DRM files for in-kernel clients. Protected by @filelist_mutex.
-	 */
-	struct list_head filelist_internal;
-
-	/**
-	 * @clientlist_mutex:
-	 *
-	 * Protects @clientlist access.
-	 */
-	struct mutex clientlist_mutex;
-
-	/**
-	 * @clientlist:
-	 *
-	 * List of in-kernel clients. Protected by @clientlist_mutex.
-	 */
-	struct list_head clientlist;
 
 	/** \name Memory management */
 	/*@{ */
@@ -208,6 +198,7 @@ struct drm_device {
 	int switch_power_state;
 	int doze_state;
 	int pre_state;
+	int doze_brightness;
 };
 
 #endif

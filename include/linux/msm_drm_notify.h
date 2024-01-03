@@ -18,15 +18,19 @@
 /* A hardware display blank change occurred */
 #define MSM_DRM_EVENT_BLANK			0x01
 /* A hardware display blank early change occurred */
-#define MSM_DRM_EARLY_EVENT_BLANK		0x02
+#define MSM_DRM_EARLY_EVENT_BLANK               0x02
 
 enum {
-	/* panel: power on */
-	MSM_DRM_BLANK_UNBLANK,
-	/* panel: power off */
-	MSM_DRM_BLANK_POWERDOWN,
-	/* panel: low power mode */
-	MSM_DRM_BLANK_LP,
+        /* panel: power on */
+        MSM_DRM_BLANK_UNBLANK,
+        MSM_DRM_BLANK_LP1,
+        MSM_DRM_BLANK_LP2,
+        MSM_DRM_BLANK_STANDBY,
+        MSM_DRM_BLANK_SUSPEND,
+        /* panel: power off */
+        MSM_DRM_BLANK_POWERDOWN,
+        /* panel: low power mode */
+        MSM_DRM_BLANK_LP,
 };
 
 enum msm_drm_display_id {

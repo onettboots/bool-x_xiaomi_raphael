@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -63,7 +63,6 @@ static const char * const clocks[] = {
 	"gmu_clk",
 	"ahb_clk",
 	"smmu_vote",
-	"apb_pclk",
 };
 
 static unsigned long ib_votes[KGSL_MAX_BUSLEVELS];
@@ -384,9 +383,6 @@ unsigned int kgsl_pwrctrl_adjust_pwrlevel(struct kgsl_device *device,
 	/* If a pwr constraint is expired, remove it */
 	if ((pwr->constraint.type != KGSL_CONSTRAINT_NONE) &&
 		(time_after(jiffies, pwr->constraint.expires))) {
-		/* Trace the constraint being un-set by the driver */
-		trace_kgsl_constraint(device, pwr->constraint.type,
-						old_level, 0);
 		/*Invalidate the constraint set */
 		pwr->constraint.expires = 0;
 		pwr->constraint.type = KGSL_CONSTRAINT_NONE;
@@ -480,6 +476,11 @@ void kgsl_pwrctrl_pwrlevel_change(struct kgsl_device *device,
 	kgsl_pwrctrl_pwrlevel_change_settings(device, 0);
 	kgsl_clk_set_rate(device, pwr->active_pwrlevel);
 	_isense_clk_set_rate(pwr, pwr->active_pwrlevel);
+
+	trace_kgsl_pwrlevel(device,
+			pwr->active_pwrlevel, pwrlevel->gpu_freq,
+			pwr->previous_pwrlevel,
+			pwr->pwrlevels[old_level].gpu_freq);
 
 	/*
 	 * Some targets do not support the bandwidth requirement of
@@ -597,8 +598,8 @@ static ssize_t kgsl_pwrctrl_thermal_pwrlevel_store(struct device *dev,
 
 	mutex_lock(&device->mutex);
 
-	if (level > pwr->num_pwrlevels - 1)
-		level = pwr->num_pwrlevels - 1;
+	if (level > pwr->num_pwrlevels - 2)
+		level = pwr->num_pwrlevels - 2;
 
 	pwr->thermal_pwrlevel = level;
 
@@ -676,8 +677,8 @@ static void kgsl_pwrctrl_min_pwrlevel_set(struct kgsl_device *device,
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 
 	mutex_lock(&device->mutex);
-	if (level > pwr->num_pwrlevels - 1)
-		level = pwr->num_pwrlevels - 1;
+	if (level > pwr->num_pwrlevels - 2)
+		level = pwr->num_pwrlevels - 2;
 
 	/* You can't set a minimum power level lower than the maximum */
 	if (level < pwr->max_pwrlevel)
@@ -2280,9 +2281,8 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 		}
 	}
 
-	pwr->bus_ib = kcalloc(bus_scale_table->num_usecases,
-			      sizeof(*pwr->bus_ib),
-			      GFP_KERNEL);
+	pwr->bus_ib = kzalloc(bus_scale_table->num_usecases *
+		sizeof(*pwr->bus_ib), GFP_KERNEL);
 	if (pwr->bus_ib == NULL) {
 		result = -ENOMEM;
 		goto error_cleanup_pcl;
@@ -2448,24 +2448,9 @@ void kgsl_idle_check(struct work_struct *work)
 			|| device->state ==  KGSL_STATE_NAP)) {
 
 		if (!atomic_read(&device->active_cnt)) {
-			spin_lock(&device->submit_lock);
-			if (device->submit_now) {
-				spin_unlock(&device->submit_lock);
-				goto done;
-			}
-			/* Don't allow GPU inline submission in SLUMBER */
-			if (requested_state == KGSL_STATE_SLUMBER)
-				device->slumber = true;
-			spin_unlock(&device->submit_lock);
-
 			ret = kgsl_pwrctrl_change_state(device,
 					device->requested_state);
 			if (ret == -EBUSY) {
-				if (requested_state == KGSL_STATE_SLUMBER) {
-					spin_lock(&device->submit_lock);
-					device->slumber = false;
-					spin_unlock(&device->submit_lock);
-				}
 				/*
 				 * If the GPU is currently busy, restore
 				 * the requested state and reschedule
@@ -2476,7 +2461,7 @@ void kgsl_idle_check(struct work_struct *work)
 				kgsl_schedule_work(&device->idle_check_ws);
 			}
 		}
-done:
+
 		if (!ret)
 			kgsl_pwrctrl_request_state(device, KGSL_STATE_NONE);
 
@@ -3004,13 +2989,6 @@ static void kgsl_pwrctrl_set_state(struct kgsl_device *device,
 {
 	device->state = state;
 	device->requested_state = KGSL_STATE_NONE;
-
-	spin_lock(&device->submit_lock);
-	if (state == KGSL_STATE_SLUMBER || state == KGSL_STATE_SUSPEND)
-		device->slumber = true;
-	else
-		device->slumber = false;
-	spin_unlock(&device->submit_lock);
 }
 
 static void kgsl_pwrctrl_request_state(struct kgsl_device *device,

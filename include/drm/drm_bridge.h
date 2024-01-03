@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016 Intel Corporation
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -236,6 +237,11 @@ struct drm_bridge_funcs {
 	 * The enable callback is optional.
 	 */
 	void (*enable)(struct drm_bridge *bridge);
+
+	void (*disp_param_set)(struct drm_bridge *bridge, int cmd);
+	ssize_t (*disp_param_get)(struct drm_bridge *bridge, char *buf);
+
+	int (*disp_get_panel_info)(struct drm_bridge *bridge, char *name);
 };
 
 /**
@@ -280,8 +286,8 @@ void drm_bridge_mode_set(struct drm_bridge *bridge,
 			struct drm_display_mode *mode,
 			struct drm_display_mode *adjusted_mode);
 void drm_bridge_pre_enable(struct drm_bridge *bridge);
-void drm_bridge_enable(struct drm_bridge *bridge);
 int dsi_bridge_interface_enable(int timeout);
+void drm_bridge_enable(struct drm_bridge *bridge);
 int drm_bridge_connector_init(struct drm_bridge *bridge,
 	struct drm_connector *connector);
 

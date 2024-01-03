@@ -5,6 +5,7 @@ config QCOM_KGSL
 	select GENERIC_ALLOCATOR
 	select FW_LOADER
 	select PM_DEVFREQ
+	select QCOM_SCM
 	select DEVFREQ_GOV_SIMPLE_ONDEMAND
 	select DEVFREQ_GOV_PERFORMANCE
 	select DEVFREQ_GOV_QCOM_ADRENO_TZ
@@ -24,11 +25,3 @@ config QCOM_ADRENO_DEFAULT_GOVERNOR
 config QCOM_KGSL_IOMMU
 	bool
 	default y if QCOM_KGSL && (MSM_IOMMU || ARM_SMMU)
-
-config QCOM_KGSL_CONTEXT_DEBUG
-	bool "Log kgsl context information for all processes"
-	depends on QCOM_KGSL
-	help
-	  When enabled, total number of KGSL contexts, number of attached and
-	  detached contexts are dumped into kernel log for all the processes.
-	  This gives insight about the number of contexts held by each process.

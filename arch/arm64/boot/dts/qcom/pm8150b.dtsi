@@ -389,7 +389,6 @@
 			#size-cells = <1>;
 			qcom,pmic-revid = <&pm8150b_revid>;
 			qcom,pmic-pbs = <&pm8150b_pbs1>;
-			qcom,soc-hi-res;
 			status = "okay";
 
 			qcom,fg-batt-soc@4000 {
@@ -566,7 +565,7 @@
 	pm8150b-wp-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150b_adc_tm ADC_AMUX_THM2_PU2>;
 		wake-capable-sensor;
 		trips {

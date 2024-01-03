@@ -15,6 +15,7 @@
 
 #include "sm8150-pmic-overlay.dtsi"
 #include "sm8150-sde-display.dtsi"
+//#include "cepheus-sm8150-camera-sensor-mtp.dtsi"
 #include "sm8150-thermal-overlay.dtsi"
 
 &qupv3_se12_2uart {
@@ -109,136 +110,55 @@
 	};
 };
 
-
-&dsi_sharp_4k_dsc_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
-	qcom,platform-te-gpio = <&tlmm 8 0>;
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_sharp_4k_dsc_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
-	qcom,platform-te-gpio = <&tlmm 8 0>;
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_sim_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+&dsi_samsung_fhd_ea8076_cmd {
+	qcom,panel-supply-entries = <&dsi_amoled_panel_pwr_external_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_sim_vid {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_dual_sim_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_dual_sim_vid {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_dual_nt35597_truly_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
-	qcom,platform-te-gpio = <&tlmm 8 0>;
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_dual_nt35597_truly_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
-	qcom,platform-te-gpio = <&tlmm 8 0>;
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_sim_dsc_375_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_dual_sim_dsc_375_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-	qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_nt35597_truly_dsc_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,mdss-dsi-bl-min-level = <2>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
+	//qcom,panel-mode-gpio = <&tlmm 7 0>;
 	qcom,platform-te-gpio = <&tlmm 8 0>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 };
 
-&dsi_nt35597_truly_dsc_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+&dsi_samsung_fhd_ea8076_f1_cmd {
+	qcom,panel-supply-entries = <&dsi_amoled_panel_pwr_external_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <2>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
+	//qcom,panel-mode-gpio = <&tlmm 7 0>;
 	qcom,platform-te-gpio = <&tlmm 8 0>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 };
 
-&dsi_sharp_1080_cmd {
-       qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-       qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-       qcom,mdss-dsi-bl-min-level = <1>;
-       qcom,mdss-dsi-bl-max-level = <4095>;
-       qcom,mdss-dsi-mode-sel-gpio-state = "dual_port";
-       qcom,panel-mode-gpio = <&tlmm 7 0>;
-       qcom,platform-te-gpio = <&tlmm 8 0>;
-       qcom,platform-reset-gpio = <&tlmm 6 0>;
-};
-
-&dsi_nt35695b_truly_fhd_cmd {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+&dsi_samsung_fhd_ea8076_f1mp_cmd {
+	qcom,panel-supply-entries = <&dsi_amoled_panel_pwr_external_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <2>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
-	qcom,panel-mode-gpio = <&tlmm 7 0>;
+	//qcom,panel-mode-gpio = <&tlmm 7 0>;
 	qcom,platform-te-gpio = <&tlmm 8 0>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 };
 
-&dsi_nt35695b_truly_fhd_video {
-	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
-	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
-	qcom,mdss-dsi-bl-min-level = <1>;
-	qcom,mdss-dsi-bl-max-level = <4095>;
+&dsi_samsung_fhd_ea8076_f1p2_2_cmd {
+	qcom,panel-supply-entries = <&dsi_amoled_panel_pwr_external_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <2>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
+	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
+	//qcom,panel-mode-gpio = <&tlmm 7 0>;
+	qcom,platform-te-gpio = <&tlmm 8 0>;
+	qcom,platform-reset-gpio = <&tlmm 6 0>;
+};
+
+&dsi_samsung_fhd_ea8076_f1p2_cmd {
+	qcom,panel-supply-entries = <&dsi_amoled_panel_pwr_external_supply>;
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	qcom,mdss-dsi-bl-min-level = <2>;
+	qcom,mdss-dsi-bl-max-level = <2047>;
 	qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
 	//qcom,panel-mode-gpio = <&tlmm 7 0>;
 	qcom,platform-te-gpio = <&tlmm 8 0>;
@@ -288,10 +208,6 @@
 	};
 };
 
-&dsi_nt35695b_truly_fhd_video_display {
-	qcom,dsi-display-active;
-};
-
 &ufsphy_mem {
 	compatible = "qcom,ufs-phy-qmp-v4";
 
@@ -308,7 +224,7 @@
 	vdd-hba-supply = <&ufs_phy_gdsc>;
 	vdd-hba-fixed-regulator;
 	vcc-supply = <&pm8150_l10>;
-        vcc-voltage-level = <2950000 2960000>;
+	vcc-voltage-level = <2950000 2960000>;
 	vccq2-supply = <&pm8150_s4>;
 	vcc-max-microamp = <750000>;
 	vccq2-max-microamp = <750000>;
@@ -335,6 +251,10 @@
 	cd-gpios = <&tlmm 96 GPIO_ACTIVE_LOW>;
 
 	status = "disabled";
+};
+
+&spmi_debug_bus {
+	status = "ok";
 };
 
 &pm8150l_wled {
@@ -377,28 +297,10 @@
         status = "ok";
 };
 
-&thermal_zones {
-	gpuss-1-usr {
-		status = "disabled";
-	};
-};
-
-&msm_gpu {
-	tzone-names = "gpuss-0-usr";
-};
-
 &usb2_phy1 {
         status = "ok";
 };
 
 &usb_qmp_phy {
         status = "ok";
-};
-
-&reserved_memory {
-		ramdump_fb_mem: ramdump_fb_region@af000000 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0 0xaf000000 0 0x1000000>;
-		};
 };

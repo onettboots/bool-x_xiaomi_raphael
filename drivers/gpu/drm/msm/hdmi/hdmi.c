@@ -161,10 +161,8 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 		hdmi->qfprom_mmio = NULL;
 	}
 
-	hdmi->hpd_regs = devm_kcalloc(&pdev->dev,
-				      config->hpd_reg_cnt,
-				      sizeof(hdmi->hpd_regs[0]),
-				      GFP_KERNEL);
+	hdmi->hpd_regs = devm_kzalloc(&pdev->dev, sizeof(hdmi->hpd_regs[0]) *
+			config->hpd_reg_cnt, GFP_KERNEL);
 	if (!hdmi->hpd_regs) {
 		ret = -ENOMEM;
 		goto fail;
@@ -184,10 +182,8 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 		hdmi->hpd_regs[i] = reg;
 	}
 
-	hdmi->pwr_regs = devm_kcalloc(&pdev->dev,
-				      config->pwr_reg_cnt,
-				      sizeof(hdmi->pwr_regs[0]),
-				      GFP_KERNEL);
+	hdmi->pwr_regs = devm_kzalloc(&pdev->dev, sizeof(hdmi->pwr_regs[0]) *
+			config->pwr_reg_cnt, GFP_KERNEL);
 	if (!hdmi->pwr_regs) {
 		ret = -ENOMEM;
 		goto fail;
@@ -207,10 +203,8 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 		hdmi->pwr_regs[i] = reg;
 	}
 
-	hdmi->hpd_clks = devm_kcalloc(&pdev->dev,
-				      config->hpd_clk_cnt,
-				      sizeof(hdmi->hpd_clks[0]),
-				      GFP_KERNEL);
+	hdmi->hpd_clks = devm_kzalloc(&pdev->dev, sizeof(hdmi->hpd_clks[0]) *
+			config->hpd_clk_cnt, GFP_KERNEL);
 	if (!hdmi->hpd_clks) {
 		ret = -ENOMEM;
 		goto fail;
@@ -229,10 +223,8 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 		hdmi->hpd_clks[i] = clk;
 	}
 
-	hdmi->pwr_clks = devm_kcalloc(&pdev->dev,
-				      config->pwr_clk_cnt,
-				      sizeof(hdmi->pwr_clks[0]),
-				      GFP_KERNEL);
+	hdmi->pwr_clks = devm_kzalloc(&pdev->dev, sizeof(hdmi->pwr_clks[0]) *
+			config->pwr_clk_cnt, GFP_KERNEL);
 	if (!hdmi->pwr_clks) {
 		ret = -ENOMEM;
 		goto fail;
@@ -254,10 +246,6 @@ static struct hdmi *msm_hdmi_init(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 
 	hdmi->workq = alloc_ordered_workqueue("msm_hdmi", 0);
-	if (!hdmi->workq) {
-		ret = -ENOMEM;
-		goto fail;
-	}
 
 	hdmi->i2c = msm_hdmi_i2c_init(hdmi);
 	if (IS_ERR(hdmi->i2c)) {
@@ -302,11 +290,6 @@ int msm_hdmi_modeset_init(struct hdmi *hdmi,
 	struct msm_drm_private *priv = dev->dev_private;
 	struct platform_device *pdev = hdmi->pdev;
 	int ret;
-
-	if (priv->num_bridges == ARRAY_SIZE(priv->bridges)) {
-		DRM_DEV_ERROR(dev->dev, "too many bridges\n");
-		return -ENOSPC;
-	}
 
 	hdmi->dev = dev;
 	hdmi->encoder = encoder;

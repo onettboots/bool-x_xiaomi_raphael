@@ -687,7 +687,7 @@ static int eb_select_context(struct i915_execbuffer *eb)
 static int eb_lookup_vmas(struct i915_execbuffer *eb)
 {
 	struct radix_tree_root *handles_vma = &eb->ctx->handles_vma;
-	struct drm_i915_gem_object *uninitialized_var(obj);
+	struct drm_i915_gem_object *obj;
 	unsigned int i;
 	int err;
 

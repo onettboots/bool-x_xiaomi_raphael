@@ -1,4 +1,4 @@
-/* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -77,13 +77,17 @@
 		<1612800>,
 		<1708800>,
 		<1804800>,
+		<1920000>,
 		<2016000>,
+		<2131200>,
 		<2227200>,
+		<2323200>,
 		<2419200>,
 		<2534400>,
 		<2649600>,
 		<2745600>,
-		<2841600>;
+		<2841600>,
+		<2956800>;
 };
 
 &mdss_mdp {
@@ -387,10 +391,10 @@
 	qcom,chipid = <0x06040001>;
 
 	/* Power level to start throttling */
-	qcom,throttle-pwrlevel = <0>;
+	qcom,throttle-pwrlevel = <2>;
 
 	/* Updated Bus Scale Settings */
-	qcom,msm-bus,num-cases = <12>;
+	qcom,msm-bus,num-cases = <13>;
 
 	/*
 	 * Value for vote is: (DDR freq) * 4 - 5
@@ -410,7 +414,8 @@
 		<26 512 0 5407000>,    // 8 bus=1353
 		<26 512 0 6215000>,    // 9 bus=1555
 		<26 512 0 7211000>,    // 10 bus=1804
-		<26 512 0 8363000>;    // 11 bus=2092
+		<26 512 0 8363000>,    // 11 bus=2092
+		<26 512 0 8532000>;    // 12 bus=2133
 
 	/delete-property/qcom,initial-pwrlevel;
 
@@ -438,7 +443,6 @@
 				qcom,bus-min = <10>;
 				qcom,bus-max = <11>;
 			};
-
 			qcom,gpu-pwrlevel@1 {
 				reg = <1>;
 				qcom,gpu-freq = <725000000>;
@@ -470,7 +474,7 @@
 				qcom,bus-min = <1>;
 				qcom,bus-max = <8>;
 			};
-
+  
 			qcom,gpu-pwrlevel@5 {
 				reg = <5>;
 				qcom,gpu-freq = <360000000>;
@@ -478,7 +482,6 @@
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
 			};
-
 			qcom,gpu-pwrlevel@6 {
 				reg = <6>;
 				qcom,gpu-freq = <270000000>;
@@ -486,7 +489,6 @@
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
 			};
-
 			qcom,gpu-pwrlevel@7 {
 				reg = <7>;
 				qcom,gpu-freq = <180000000>;
@@ -494,7 +496,6 @@
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
 			};
-
 			qcom,gpu-pwrlevel@8 {
 				reg = <8>;
 				qcom,gpu-freq = <0>;
@@ -541,7 +542,7 @@
 				qcom,bus-min = <1>;
 				qcom,bus-max = <8>;
 			};
-
+  
 			qcom,gpu-pwrlevel@4 {
 				reg = <4>;
 				qcom,gpu-freq = <360000000>;
@@ -803,6 +804,7 @@
 		BW_OPP_ENTRY(1555, 4); /* 5931 MB/s */
 		BW_OPP_ENTRY(1804, 4); /* 6881 MB/s */
 		BW_OPP_ENTRY(2092, 4); /* 7980 MB/s */
+		BW_OPP_ENTRY(2133, 4); /* 8136 MB/s */
 	};
 
 	suspendable_ddr_bw_opp_table: suspendable-ddr-bw-opp-table {
@@ -819,13 +821,14 @@
 		BW_OPP_ENTRY(1555, 4); /* 5931 MB/s */
 		BW_OPP_ENTRY(1804, 4); /* 6881 MB/s */
 		BW_OPP_ENTRY(2092, 4); /* 7980 MB/s */
+		BW_OPP_ENTRY(2133, 4); /* 8136 MB/s */
 	};
 };
 &cpu4_computemon {
 	qcom,core-dev-table =
 		< 1920000 MHZ_TO_MBPS( 200, 4) >,
 		< 2793600 MHZ_TO_MBPS(1017, 4) >,
-		< 3000000 MHZ_TO_MBPS(2092, 4) >;
+		< 3000000 MHZ_TO_MBPS(2133, 4) >;
 };
 
 &cpu0_llcc_ddr_latmon {
@@ -847,7 +850,7 @@
 		< 1612800 MHZ_TO_MBPS(1353, 4) >,
 		< 1804800 MHZ_TO_MBPS(1555, 4) >,
 		< 2649600 MHZ_TO_MBPS(1804, 4) >,
-		< 3000000 MHZ_TO_MBPS(2092, 4) >;
+		< 3000000 MHZ_TO_MBPS(2133, 4) >;
 };
 
 &cpu0_cpu_l3_latmon {
@@ -1182,56 +1185,56 @@
 
 		zone@0 {
 			reg = <0>;
-			qcom,silver-khz = <1785600>;
-			qcom,gold-khz = <2419200>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <2323200>;
 			qcom,prime-khz = <2841600>;
-			qcom,trip-deg = <60000>;
+			qcom,trip-deg = <65000>;
 		};
 
 		zone@1 {
 			reg = <1>;
-			qcom,silver-khz = <1785600>;
+			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <2323200>;
-			qcom,prime-khz = <2841600>;
-			qcom,trip-deg = <63000>;
+			qcom,prime-khz = <2534400>;
+			qcom,trip-deg = <68000>;
 		};
 
 		zone@2 {
 			reg = <2>;
-			qcom,silver-khz = <1785600>;
-			qcom,gold-khz = <2227200>;
-			qcom,prime-khz = <2745600>;
-			qcom,trip-deg = <65000>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <2016000>;
+			qcom,prime-khz = <2534400>;
+			qcom,trip-deg = <71000>;
 		};
 
 		zone@3 {
 			reg = <3>;
-			qcom,silver-khz = <1785600>;
-			qcom,gold-khz = <2131200>;
-			qcom,prime-khz = <2649600>;
-			qcom,trip-deg = <67000>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <2016000>;
+			qcom,prime-khz = <2534400>;
+			qcom,trip-deg = <73000>;
 		};
 
 		zone@4 {
 			reg = <4>;
-			qcom,silver-khz = <1785600>;
-			qcom,gold-khz = <2016000>;
-			qcom,prime-khz = <2534400>;
-			qcom,trip-deg = <69000>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1804800>;
+			qcom,prime-khz = <2227200>;
+			qcom,trip-deg = <74000>;
 		};
 
 		zone@5 {
 			reg = <5>;
-			qcom,silver-khz = <1785600>;
-			qcom,gold-khz = <1920000>;
-			qcom,prime-khz = <2419200>;
-			qcom,trip-deg = <72000>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1804800>;
+			qcom,prime-khz = <1804800>;
+			qcom,trip-deg = <75000>;
 		};
 
 		zone@6 {
 			reg = <6>;
 			qcom,silver-khz = <1708800>;
-			qcom,gold-khz = <1804800>;
+			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
 			qcom,trip-deg = <76000>;
 		};
@@ -1239,25 +1242,25 @@
 		zone@7 {
 			reg = <7>;
 			qcom,silver-khz = <1708800>;
-			qcom,gold-khz = <1804800>;
+			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <78000>;
+			qcom,trip-deg = <77000>;
 		};
 
 		zone@8 {
 			reg = <8>;
 			qcom,silver-khz = <1708800>;
-			qcom,gold-khz = <1401600>;
+			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <80000>;
+			qcom,trip-deg = <78000>;
 		};
 
 		zone@9 {
 			reg = <9>;
 			qcom,silver-khz = <1708800>;
-			qcom,gold-khz = <1401600>;
+			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <82000>;
+			qcom,trip-deg = <80000>;
 		};
 
 		zone@10 {
@@ -1265,14 +1268,14 @@
 			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <825600>;
 			qcom,prime-khz = <1804800>;
-			qcom,trip-deg = <83000>;
+			qcom,trip-deg = <82000>;
 		};
 
 		zone@11 {
 			reg = <11>;
 			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <825600>;
-			qcom,prime-khz = <940800>;
+			qcom,prime-khz = <1804800>;
 			qcom,trip-deg = <84000>;
 		};
 
@@ -1280,7 +1283,7 @@
 			reg = <12>;
 			qcom,silver-khz = <1708800>;
 			qcom,gold-khz = <825600>;
-			qcom,prime-khz = <940800>;
+			qcom,prime-khz = <1804800>;
 			qcom,trip-deg = <86000>;
 		};
 	};
