@@ -39,7 +39,9 @@ void memcpy_page_flushcache(char *to, struct page *page, size_t offset,
 unsigned long __copy_user_flushcache(void *to, const void __user *from,
 				     unsigned long n)
 {
-	unsigned long rc = __arch_copy_from_user(to, from, n);
+	unsigned long rc;
+
+	rc = raw_copy_from_user(to, from, n);
 
 	/* See above */
 	__clean_dcache_area_pop(to, n - rc);
