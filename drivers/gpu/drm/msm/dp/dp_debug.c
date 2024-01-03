@@ -14,10 +14,6 @@
 
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
 
-#if defined(CONFIG_ANDROID) && !defined(CONFIG_DEBUG_FS)
-#define CONFIG_DEBUG_FS
-#endif
-
 #include <linux/debugfs.h>
 #include <linux/slab.h>
 
@@ -1584,7 +1580,7 @@ static void dp_debug_set_sim_mode(struct dp_debug_private *debug, bool sim)
 		debug->dp_debug.sim_mode = false;
 		debug->dp_debug.mst_hpd_sim = false;
 
-		debug->panel->set_edid(debug->panel, 0, debug->edid_size);
+		debug->panel->set_edid(debug->panel, NULL, 0);
 		if (debug->edid) {
 			devm_kfree(debug->dev, debug->edid);
 			debug->edid = NULL;

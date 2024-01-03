@@ -1037,6 +1037,7 @@ reg_dmav1_setup_dspp_pa_hsicv17_apply(struct sde_hw_dspp *ctx,
 	return rc;
 }
 
+
 static inline void
 reg_dmav1_setup_dspp_pa_hsicv17_kcal(struct sde_hw_dspp *ctx, void *ctl)
 {
@@ -1170,7 +1171,7 @@ exit:
 void reg_dmav1_setup_dspp_pa_hsicv17(struct sde_hw_dspp *ctx, void *cfg)
 {
 	struct sde_hw_cp_cfg *hw_cfg = cfg;
-	struct sde_hw_kcal *kcal = sde_hw_kcal_get();
+    struct sde_hw_kcal *kcal = sde_hw_kcal_get();
 	u32 opcode = 0;
 	int rc;
 
@@ -1951,7 +1952,7 @@ static int reg_dmav1_setup_vig_igc_common(struct sde_hw_reg_dma_ops *dma_ops,
 				hw_cfg->len, sizeof(struct drm_msm_igc_lut));
 	}
 
-	data = kcalloc(VIG_1D_LUT_IGC_LEN, sizeof(u32), GFP_KERNEL);
+	data = kzalloc(VIG_1D_LUT_IGC_LEN * sizeof(u32), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
@@ -2215,7 +2216,7 @@ void reg_dmav1_setup_dma_igcv5(struct sde_hw_pipe *ctx, void *cfg,
 		return;
 	}
 
-	data = kcalloc(DMA_1D_LUT_IGC_LEN, sizeof(u32), GFP_KERNEL);
+	data = kzalloc(DMA_1D_LUT_IGC_LEN * sizeof(u32), GFP_KERNEL);
 	if (!data) {
 		DRM_ERROR("failed to allocate memory for igc\n");
 		return;

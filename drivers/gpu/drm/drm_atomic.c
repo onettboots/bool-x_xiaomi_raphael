@@ -32,9 +32,9 @@
 #include <drm/drm_print.h>
 #include <linux/cpu_input_boost.h>
 #include <linux/devfreq_boost.h>
-#include <linux/event_tracking.h>
 #include <linux/pm_qos.h>
 #include <linux/sync_file.h>
+#include <linux/sched/sysctl.h>
 
 #include "drm_crtc_internal.h"
 
@@ -2263,15 +2263,14 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
 
-#ifdef CONFIG_CPU_INPUT_BOOST
-	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-		//5000ms covers long scrolls after input boosting is no longer used
-		if (time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
-			devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
-			devfreq_boost_kick(DEVFREQ_MSM_LLCCBW);
-		}
+	/* Boost CPU and DDR when committing a new frame if sched_boost > 0 */
+	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) &&
+			sysctl_sched_boost) {
+		cpu_input_boost_kick();
+		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
+		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW);
 	}
-#endif
+
 	drm_modeset_acquire_init(&ctx, 0);
 
 	state = drm_atomic_state_alloc(dev);
@@ -2412,7 +2411,7 @@ int drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 	struct pm_qos_request req = {
 		.type = PM_QOS_REQ_AFFINE_CORES,
 		.cpus_affine = BIT(raw_smp_processor_id()) |
-			       *cpumask_bits(cpu_prime_mask)
+			       *cpumask_bits(cpu_lp_mask)
 	};
 	int ret;
 

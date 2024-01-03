@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -1144,7 +1145,11 @@ static void sde_kms_commit(struct msm_kms *kms,
 			sde_crtc_commit_kickoff(crtc, old_crtc_state);
 		}
 	}
-
+/*
+	for_each_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+		sde_crtc_fod_ui_ready(crtc, old_crtc_state);
+	}
+*/
 	SDE_ATRACE_END("sde_kms_commit");
 }
 
@@ -1231,7 +1236,9 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 	SDE_ATRACE_BEGIN("sde_kms_complete_commit");
 
 	for_each_crtc_in_state(old_state, crtc, old_crtc_state, i) {
+		SDE_ATRACE_BEGIN("sde_crtc_complete_commit");
 		sde_crtc_complete_commit(crtc, old_crtc_state);
+		SDE_ATRACE_END("sde_crtc_complete_commit");
 
 		/* complete secure transitions if any */
 		if (sde_kms->smmu_state.transition_type == POST_COMMIT)
@@ -1255,11 +1262,14 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 			SDE_EVT32(connector->base.id, c_conn->qsync_mode);
 		}
 
+		SDE_ATRACE_BEGIN("post_kickoff");
 		rc = c_conn->ops.post_kickoff(connector, &params);
+		SDE_ATRACE_END("post_kickoff");
 		if (rc) {
 			pr_err("Connector Post kickoff failed rc=%d\n",
 					 rc);
 		}
+		sde_connector_fod_notify(connector);
 	}
 
 	_sde_kms_drm_check_dpms(old_state, MSM_DRM_EVENT_BLANK);
@@ -1483,7 +1493,6 @@ static int _sde_kms_setup_displays(struct drm_device *dev,
 		.cont_splash_config = dsi_display_cont_splash_config,
 		.get_panel_vfp = dsi_display_get_panel_vfp,
 		.prepare_commit = dsi_conn_prepare_commit,
-		.get_qsync_min_fps = dsi_display_get_qsync_min_fps,
 	};
 	static const struct sde_connector_ops wb_ops = {
 		.post_init =    sde_wb_connector_post_init,
@@ -2838,7 +2847,7 @@ static int sde_kms_get_mixer_count(const struct msm_kms *kms,
 			mode->hdisplay > max_mixer_width) {
 		*num_lm = 2;
 		if ((mode_clock_hz >> 1) > max_mdp_clock_hz) {
-			SDE_DEBUG("[%s] clock %d exceeds max_mdp_clk %d\n",
+			SDE_DEBUG("[%s] clock %lld exceeds max_mdp_clk %lld\n",
 					mode->name, mode_clock_hz,
 					max_mdp_clock_hz);
 			return -EINVAL;
@@ -2885,7 +2894,9 @@ retry:
 	if (ret)
 		goto end;
 
-	drm_atomic_commit(state);
+	ret = drm_atomic_commit(state);
+	if (ret < 0)
+		DRM_ERROR("failed to commit atomic state, %d\n", ret);
 end:
 	if (state)
 		drm_atomic_state_put(state);
@@ -3737,7 +3748,7 @@ static int sde_kms_hw_init(struct msm_kms *kms)
 	sde_kms->hw_sid = sde_hw_sid_init(sde_kms->sid,
 				sde_kms->sid_len, sde_kms->catalog);
 	if (IS_ERR(sde_kms->hw_sid)) {
-		SDE_ERROR("failed to init sid %d\n", PTR_ERR(sde_kms->hw_sid));
+		SDE_ERROR("failed to init sid %ld\n", PTR_ERR(sde_kms->hw_sid));
 		sde_kms->hw_sid = NULL;
 		goto power_error;
 	}

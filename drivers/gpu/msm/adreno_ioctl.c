@@ -204,8 +204,11 @@ long adreno_ioctl_helper(struct kgsl_device_private *dev_priv,
 			break;
 	}
 
-	if (i == len)
+	if (i == len) {
+		KGSL_DRV_INFO(dev_priv->device,
+			"invalid ioctl code 0x%08X\n", cmd);
 		return -ENOIOCTLCMD;
+	}
 
 	if (WARN_ON(_IOC_SIZE(cmds[i].cmd) > sizeof(data))) {
 		if (__ratelimit(&_rs))

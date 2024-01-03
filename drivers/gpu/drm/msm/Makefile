@@ -9,7 +9,11 @@ ccflags-y += -Idrivers/gpu/drm/msm/hdmi
 ccflags-$(CONFIG_DRM_SDE_SHD) += -Idrivers/gpu/drm/msm/shd
 ccflags-$(CONFIG_DRM_SDE_SHP) += -Idrivers/gpu/drm/msm/shp
 
-ccflags-y += -O3
+ccflags-y += -Ofast
+ifeq ($(CONFIG_ANDROID),y)
+CONFIG_DEBUG_FS=y
+CFLAGS_sde_dbg.o += -DCONFIG_DEBUG_FS
+endif
 
 msm_drm-y := \
 	dp/dp_usbpd.o \
@@ -55,10 +59,11 @@ msm_drm-y := \
 	sde/sde_hw_ad4.o \
 	sde_edid_parser.o \
 	sde_hdcp_1x.o \
-	sde_hdcp_2x.o
+	sde_hdcp_2x.o \
+	xiaomi_frame_stat.o
 
- msm_drm-$(CONFIG_DEBUG_FS) += sde_dbg.o \
-	sde_dbg_evtlog.o
+msm_drm-$(CONFIG_DEBUG_FS) += sde_dbg.o \
+	sde_dbg_evtlog.o \
 
 msm_drm-$(CONFIG_DRM_MSM_KCAL_CTRL) += sde/sde_hw_kcal_ctrl.o
 
@@ -223,8 +228,9 @@ msm_drm-$(CONFIG_DRM_MSM) += \
 	msm_rd.o \
 	msm_ringbuffer.o \
 	msm_prop.o \
-	msm_fence.o
-
-msm_drm-$(CONFIG_DEBUG_FS) += msm_debugfs.o
+	msm_fence.o \
+	msm_debugfs.o
 
 obj-$(CONFIG_DRM_MSM)	+= msm_drm.o
+
+CFLAGS_sde_crtc.o += -Wframe-larger-than=8192

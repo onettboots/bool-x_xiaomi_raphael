@@ -1,6 +1,7 @@
 /*
  * TEE driver for goodix fingerprint sensor
  * Copyright (C) 2016 Goodix
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -13,6 +14,8 @@
  * GNU General Public License for more details.
  */
 #define pr_fmt(fmt)		KBUILD_MODNAME ": " fmt
+
+#define GOODIX_DRM_INTERFACE_WA
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -41,7 +44,9 @@
 #include <linux/cpufreq.h>
 #include <linux/pm_wakeup.h>
 #include <drm/drm_bridge.h>
+#ifndef GOODIX_DRM_INTERFACE_WA
 #include <linux/msm_drm_notify.h>
+#endif
 
 #include "gf_spi.h"
 
@@ -463,10 +468,13 @@ static long gf_compat_ioctl(struct file *filp,
 }
 #endif /*CONFIG_COMPAT*/
 
+#ifndef GOODIX_DRM_INTERFACE_WA
 static void notification_work(struct work_struct *work)
 {
+	pr_debug("%s unblank\n", __func__);
 	dsi_bridge_interface_enable(FP_UNLOCK_REJECTION_TIMEOUT);
 }
+#endif
 
 static irqreturn_t gf_irq(int irq, void *handle)
 {
@@ -664,13 +672,13 @@ static const struct file_operations gf_fops = {
 #endif
 };
 
+#ifndef GOODIX_DRM_INTERFACE_WA
 static void set_fingerprintd_nice(int nice)
 {
 	if(process)	{
 		set_user_nice(process, nice);
 	}
 }
-
 
 static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 		unsigned long val, void *data)
@@ -727,6 +735,7 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 static struct notifier_block goodix_noti_block = {
 	.notifier_call = goodix_fb_state_chg_callback,
 };
+#endif
 
 static struct class *gf_class;
 #if defined(USE_SPI_BUS)
@@ -753,7 +762,9 @@ static int gf_probe(struct platform_device *pdev)
 	gf_dev->device_available = 0;
 	gf_dev->fb_black = 0;
 	gf_dev->wait_finger_down = false;
+#ifndef GOODIX_DRM_INTERFACE_WA
 	INIT_WORK(&gf_dev->work, notification_work);
+#endif
 
 	if (gf_parse_dts(gf_dev))
 		goto error_hw;
@@ -816,8 +827,10 @@ static int gf_probe(struct platform_device *pdev)
 
 	spi_clock_set(gf_dev, 1000000);
 #endif
+#ifndef GOODIX_DRM_INTERFACE_WA
 	gf_dev->notifier = goodix_noti_block;
 	msm_drm_register_client(&gf_dev->notifier);
+#endif
 	gf_dev->irq = gf_irq_num(gf_dev);
 
 	wakeup_source_init(&fp_wakelock, "fp_wakelock");
@@ -864,7 +877,10 @@ static int gf_remove(struct platform_device *pdev)
 	if (gf_dev->irq)
 		free_irq(gf_dev->irq, gf_dev);
 
+#ifndef GOODIX_DRM_INTERFACE_WA
 	msm_drm_unregister_client(&gf_dev->notifier);
+#endif
+
 	if (gf_dev->input)
 		input_unregister_device(gf_dev->input);
 	input_free_device(gf_dev->input);
@@ -876,8 +892,6 @@ static int gf_remove(struct platform_device *pdev)
 	clear_bit(MINOR(gf_dev->devt), minors);
 	if (gf_dev->users == 0)
 		gf_cleanup(gf_dev);
-
-	msm_drm_unregister_client(&gf_dev->notifier);
 	mutex_unlock(&device_list_lock);
 
 	return 0;

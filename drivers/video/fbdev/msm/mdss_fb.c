@@ -1189,8 +1189,8 @@ static int mdss_fb_init_panel_modes(struct msm_fb_data_type *mfd,
 	list_for_each(pos, &pdata->timings_list)
 		num_timings++;
 
-	modedb = devm_kcalloc(fbi->dev, num_timings, sizeof(*modedb),
-			      GFP_KERNEL);
+	modedb = devm_kzalloc(fbi->dev, num_timings * sizeof(*modedb),
+			GFP_KERNEL);
 	if (!modedb)
 		return -ENOMEM;
 
@@ -3809,7 +3809,7 @@ static int __mdss_fb_display_thread(void *data)
 				mfd->index);
 
 	while (1) {
-		wait_event(mfd->commit_wait_q,
+		wait_event_interruptible(mfd->commit_wait_q,
 				(atomic_read(&mfd->commits_pending) ||
 				 kthread_should_stop()));
 

@@ -280,8 +280,6 @@ struct sde_fence_context *sde_fence_init(const char *name, uint32_t drm_id)
 	}
 
 #ifdef CONFIG_FENCE_DEBUG
-	kmem_fence_pool = KMEM_CACHE(sde_fence, SLAB_HWCACHE_ALIGN | SLAB_PANIC);
-
 	strlcpy(ctx->name, name, ARRAY_SIZE(ctx->name));
 #endif
 	ctx->drm_id = drm_id;

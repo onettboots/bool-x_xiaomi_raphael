@@ -1,5 +1,4 @@
 /* Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -84,11 +83,6 @@
 #define SCRATCH_RPTR_GPU_ADDR(dev, id) \
 	((dev)->scratch.gpuaddr + SCRATCH_RPTR_OFFSET(id))
 
-/* OFFSET to KMD postamble packets in scratch buffer */
-#define SCRATCH_POSTAMBLE_OFFSET (100 * sizeof(u64))
-#define SCRATCH_POSTAMBLE_ADDR(dev) \
-	((dev)->scratch.gpuaddr + SCRATCH_POSTAMBLE_OFFSET)
-
 /* Timestamp window used to detect rollovers (half of integer range) */
 #define KGSL_TIMESTAMP_WINDOW 0x80000000
 
@@ -144,7 +138,7 @@ struct kgsl_driver {
 	struct list_head pagetable_list;
 	spinlock_t ptlock;
 	struct mutex process_mutex;
-	rwlock_t proclist_lock;
+	spinlock_t proclist_lock;
 	struct mutex devlock;
 	struct {
 		atomic_long_t vmalloc;
@@ -559,18 +553,19 @@ static inline void kgsl_schedule_work(struct work_struct *work)
 	queue_work(kgsl_driver.workqueue, work);
 }
 
-static inline int
+static inline struct kgsl_mem_entry *
 kgsl_mem_entry_get(struct kgsl_mem_entry *entry)
 {
-	if (entry)
-		return kref_get_unless_zero(&entry->refcount);
-	return 0;
+	if (!IS_ERR_OR_NULL(entry) && kref_get_unless_zero(&entry->refcount))
+		return entry;
+
+	return NULL;
 }
 
 static inline void
 kgsl_mem_entry_put(struct kgsl_mem_entry *entry)
 {
-	if (entry)
+	if (!IS_ERR_OR_NULL(entry))
 		kref_put(&entry->refcount, kgsl_mem_entry_destroy);
 }
 

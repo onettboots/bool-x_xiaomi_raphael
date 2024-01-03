@@ -1,4 +1,5 @@
 /* Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -323,13 +324,6 @@ struct sde_connector_ops {
 	 */
 	int (*prepare_commit)(void *display,
 			struct msm_display_conn_params *params);
-	/**
-	 * get_qsync_min_fps - Get qsync min fps from qsync-min-fps-list
-	 * @display: Pointer to private display structure
-	 * @mode_fps: Fps value in dfps list
-	 * Returns: Qsync min fps value on success
-	 */
-	int (*get_qsync_min_fps)(void *display, u32 mode_fps);
 };
 
 /**
@@ -341,6 +335,20 @@ enum sde_connector_events {
 	SDE_CONN_EVENT_VID_FIFO_OVERFLOW, /* dsi fifo overflow error */
 	SDE_CONN_EVENT_CMD_FIFO_UNDERFLOW, /* dsi fifo underflow error */
 	SDE_CONN_EVENT_COUNT,
+};
+
+enum mi_dimlayer_type {
+        MI_DIMLAYER_NULL = 0x0,
+        MI_DIMLAYER_FOD_HBM_OVERLAY = 0x1,
+        MI_DIMLAYER_FOD_ICON = 0x2,
+        MI_DIMLAYER_AOD = 0x4,
+        MI_FOD_UNLOCK_SUCCESS = 0x8,
+        MI_DIMLAYER_MAX,
+};
+
+struct mi_dimlayer_state
+{
+        enum mi_dimlayer_type mi_dimlayer_type;
 };
 
 /**
@@ -421,6 +429,7 @@ struct sde_connector {
 	int dpms_mode;
 	int lp_mode;
 	int last_panel_power_mode;
+	int max_esd_check_power_mode;
 
 	struct msm_property_info property_info;
 	struct msm_property_data property_data[CONNECTOR_PROP_COUNT];
@@ -451,6 +460,7 @@ struct sde_connector {
 
 	bool last_cmd_tx_sts;
 	bool hdr_capable;
+	struct mi_dimlayer_state mi_dimlayer_state;
 };
 
 /**
@@ -914,5 +924,12 @@ int sde_connector_get_panel_vfp(struct drm_connector *connector,
  * @connector: Pointer to DRM connector object
  */
 int sde_connector_esd_status(struct drm_connector *connector);
+
+void sde_connector_mi_update_dimlayer_state(struct drm_connector *connector,
+        enum mi_dimlayer_type mi_dimlayer_type);
+
+int sde_connector_update_hbm(struct sde_connector *c_conn);
+
+void sde_connector_fod_notify(struct drm_connector *connector);
 
 #endif /* _SDE_CONNECTOR_H_ */

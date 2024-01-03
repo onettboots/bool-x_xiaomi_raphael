@@ -367,12 +367,8 @@ static int dsi_phy_settings_init(struct platform_device *pdev,
 	/* Actual timing values are dependent on panel */
 	timing->count_per_lane = phy->ver_info->timing_cfg_count;
 
-#ifdef CONFIG_DSI_FEATURES
-	phy->allow_phy_power_off = true;
-#else
 	phy->allow_phy_power_off = of_property_read_bool(pdev->dev.of_node,
 			"qcom,panel-allow-phy-poweroff");
-#endif
 
 	of_property_read_u32(pdev->dev.of_node,
 			"qcom,dsi-phy-regulator-min-datarate-bps",
@@ -1123,8 +1119,6 @@ int dsi_phy_set_clk_freq(struct msm_dsi_phy *phy,
  * @phy:          DSI PHY handle
  * @timing:       array holding timing params.
  * @size:         size of the array.
- * @commit:		  boolean to indicate if programming PHY HW registers is
- *				  required
  *
  * When PHY timing calculator is not implemented, this array will be used to
  * pass PHY timing information.
@@ -1132,7 +1126,7 @@ int dsi_phy_set_clk_freq(struct msm_dsi_phy *phy,
  * Return: error code.
  */
 int dsi_phy_set_timing_params(struct msm_dsi_phy *phy,
-			      u32 *timing, u32 size, bool commit)
+			      u32 *timing, u32 size)
 {
 	int rc = 0;
 
@@ -1145,39 +1139,8 @@ int dsi_phy_set_timing_params(struct msm_dsi_phy *phy,
 
 	if (phy->hw.ops.phy_timing_val)
 		rc = phy->hw.ops.phy_timing_val(&phy->cfg.timing, timing, size);
-
 	if (!rc)
 		phy->cfg.is_phy_timing_present = true;
-
-	if (phy->hw.ops.commit_phy_timing && commit)
-		phy->hw.ops.commit_phy_timing(&phy->hw, &phy->cfg.timing);
-
-	mutex_unlock(&phy->phy_lock);
-	return rc;
-}
-
-/* TODO: Deduplicate this ASAP */
-int dsi_phy_set_timing_params_commit(struct msm_dsi_phy *phy,
-				     u32 *timing, u32 size)
-{
-	int rc = 0;
-
-	if (!phy || !timing || !size) {
-		pr_err("Invalid params\n");
-		return -EINVAL;
-	};
-
-	mutex_lock(&phy->phy_lock);
-
-	if (phy->hw.ops.phy_timing_val)
-		rc = phy->hw.ops.phy_timing_val(&phy->cfg.timing, timing, size);
-	if (!rc)
-		phy->cfg.is_phy_timing_present = true;
-
-	if (phy->hw.ops.commit_phy_timing)
-		phy->hw.ops.commit_phy_timing(&phy->hw, &phy->cfg.timing);
-	else
-		pr_warn("WARNING: No function to commit PHY timing!!\n");
 
 	mutex_unlock(&phy->phy_lock);
 	return rc;

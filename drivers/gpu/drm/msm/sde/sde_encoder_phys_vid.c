@@ -1,4 +1,5 @@
 /* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -17,6 +18,7 @@
 #include "sde_formats.h"
 #include "dsi_display.h"
 #include "sde_trace.h"
+#include "xiaomi_frame_stat.h"
 
 #define SDE_DEBUG_VIDENC(e, fmt, ...) SDE_DEBUG("enc%d intf%d " fmt, \
 		(e) && (e)->base.parent ? \
@@ -546,7 +548,7 @@ static void sde_encoder_phys_vid_setup_timing_engine(
 exit:
 	if (phys_enc->parent_ops.get_qsync_fps)
 		phys_enc->parent_ops.get_qsync_fps(
-			phys_enc->parent, &qsync_min_fps, mode.vrefresh);
+				phys_enc->parent, &qsync_min_fps);
 
 	/* only panels which support qsync will have a non-zero min fps */
 	if (qsync_min_fps) {

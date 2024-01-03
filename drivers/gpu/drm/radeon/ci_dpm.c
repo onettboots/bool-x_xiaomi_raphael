@@ -5530,7 +5530,6 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 	u8 frev, crev;
 	u8 *power_state_offset;
 	struct ci_ps *ps;
-	int ret;
 
 	if (!atom_parse_data_header(mode_info->atom_context, index, NULL,
 				   &frev, &crev, &data_offset))
@@ -5547,9 +5546,8 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 		(mode_info->atom_context->bios + data_offset +
 		 le16_to_cpu(power_info->pplib.usNonClockInfoArrayOffset));
 
-	rdev->pm.dpm.ps = kcalloc(state_array->ucNumEntries,
-				  sizeof(struct radeon_ps),
-				  GFP_KERNEL);
+	rdev->pm.dpm.ps = kzalloc(sizeof(struct radeon_ps) *
+				  state_array->ucNumEntries, GFP_KERNEL);
 	if (!rdev->pm.dpm.ps)
 		return -ENOMEM;
 	power_state_offset = (u8 *)state_array->states;
@@ -5560,15 +5558,11 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 		non_clock_array_index = power_state->v2.nonClockInfoIndex;
 		non_clock_info = (struct _ATOM_PPLIB_NONCLOCK_INFO *)
 			&non_clock_info_array->nonClockInfo[non_clock_array_index];
-		if (!rdev->pm.power_state[i].clock_info) {
-			ret = -EINVAL;
-			goto err_free_ps;
-		}
+		if (!rdev->pm.power_state[i].clock_info)
+			return -EINVAL;
 		ps = kzalloc(sizeof(struct ci_ps), GFP_KERNEL);
-		if (ps == NULL) {
-			ret = -ENOMEM;
-			goto err_free_ps;
-		}
+		if (ps == NULL)
+			return -ENOMEM;
 		rdev->pm.dpm.ps[i].ps_priv = ps;
 		ci_parse_pplib_non_clock_info(rdev, &rdev->pm.dpm.ps[i],
 					      non_clock_info,
@@ -5608,12 +5602,6 @@ static int ci_parse_power_table(struct radeon_device *rdev)
 	}
 
 	return 0;
-
-err_free_ps:
-	for (i = 0; i < rdev->pm.dpm.num_ps; i++)
-		kfree(rdev->pm.dpm.ps[i].ps_priv);
-	kfree(rdev->pm.dpm.ps);
-	return ret;
 }
 
 static int ci_get_vbios_boot_values(struct radeon_device *rdev,
@@ -5691,26 +5679,25 @@ int ci_dpm_init(struct radeon_device *rdev)
 
 	ret = ci_get_vbios_boot_values(rdev, &pi->vbios_boot_state);
 	if (ret) {
-		kfree(rdev->pm.dpm.priv);
+		ci_dpm_fini(rdev);
 		return ret;
 	}
 
 	ret = r600_get_platform_caps(rdev);
 	if (ret) {
-		kfree(rdev->pm.dpm.priv);
+		ci_dpm_fini(rdev);
 		return ret;
 	}
 
 	ret = r600_parse_extended_power_table(rdev);
 	if (ret) {
-		kfree(rdev->pm.dpm.priv);
+		ci_dpm_fini(rdev);
 		return ret;
 	}
 
 	ret = ci_parse_power_table(rdev);
 	if (ret) {
-		kfree(rdev->pm.dpm.priv);
-		r600_free_extended_power_table(rdev);
+		ci_dpm_fini(rdev);
 		return ret;
 	}
 
@@ -5760,9 +5747,7 @@ int ci_dpm_init(struct radeon_device *rdev)
 	ci_set_private_data_variables_based_on_pptable(rdev);
 
 	rdev->pm.dpm.dyn_state.vddc_dependency_on_dispclk.entries =
-		kcalloc(4,
-			sizeof(struct radeon_clock_voltage_dependency_entry),
-			GFP_KERNEL);
+		kzalloc(4 * sizeof(struct radeon_clock_voltage_dependency_entry), GFP_KERNEL);
 	if (!rdev->pm.dpm.dyn_state.vddc_dependency_on_dispclk.entries) {
 		ci_dpm_fini(rdev);
 		return -ENOMEM;
