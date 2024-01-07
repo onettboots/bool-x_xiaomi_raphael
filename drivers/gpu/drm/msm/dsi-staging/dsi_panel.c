@@ -620,6 +620,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 {
 	int rc = 0;
 	struct mipi_dsi_device *dsi;
+	size_t num_params;
 
 	if (!panel || (bl_lvl > 0xffff)) {
 		pr_err("invalid params\n");
@@ -634,10 +635,11 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
 
+	num_params = panel->bl_config.bl_max_level > 0xFF ? 2 : 1;
 	if (panel->bl_config.dcs_type_ss)
-		rc = mipi_dsi_dcs_set_display_brightness_ss(dsi, bl_lvl);
+		rc = mipi_dsi_dcs_set_display_brightness_ss(dsi, bl_lvl, num_params);
 	else
-		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+		rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl, num_params);
 	if (rc < 0)
 		pr_err("failed to update dcs backlight:%d\n", bl_lvl);
 
@@ -4393,9 +4395,6 @@ int dsi_panel_get_mode(struct dsi_panel *panel,
 
 		if (mode->panel_mode == DSI_OP_VIDEO_MODE)
 			mode->priv_info->mdp_transfer_time_us = 0;
-		
-		mode->splash_dms = of_property_read_bool(child_np,
-				"qcom,mdss-dsi-splash-dms-switch-to-this-timing");
 	}
 	goto done;
 
