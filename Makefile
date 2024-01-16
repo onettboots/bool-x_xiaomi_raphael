@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 334
+SUBLEVEL = 336
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -794,12 +794,6 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= -mllvm -polly-run-dce
 endif
-endif
-
-ifdef CONFIG_INLINE_OPTIMIZATION
-KBUILD_CFLAGS	+= -mllvm -inline-threshold=2000
-KBUILD_CFLAGS	+= -mllvm -inlinehint-threshold=3000
-KBUILD_CFLAGS	+= -mllvm -unroll-threshold=1200
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
