@@ -391,6 +391,7 @@ endif
 
 # Make variables (CC, etc...)
 LD		= $(CROSS_COMPILE)ld
+CC		= $(CROSS_COMPILE)gcc
 LDGOLD		= $(CROSS_COMPILE)ld.gold
 LDLLD		= ld.lld
 CPP		= $(CC) -E
