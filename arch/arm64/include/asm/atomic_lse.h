@@ -597,4 +597,5 @@ __CMPXCHG_DBL(_mb, al, "memory")
 
 #undef __LL_SC_CMPXCHG_DBL
 #undef __CMPXCHG_DBL
+
 #endif	/* __ASM_ATOMIC_LSE_H */
