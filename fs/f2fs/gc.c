@@ -172,38 +172,38 @@ next:
 
 int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)
 {
-        const struct sched_param param = { .sched_priority = 0 };
-        struct f2fs_gc_kthread *gc_th;
-        dev_t dev = sbi->sb->s_bdev->bd_dev;
+	const struct sched_param param = { .sched_priority = 0 };
+	struct f2fs_gc_kthread *gc_th;
+	dev_t dev = sbi->sb->s_bdev->bd_dev;
 
-        gc_th = f2fs_kmalloc(sbi, sizeof(struct f2fs_gc_kthread), GFP_KERNEL);
-        if (!gc_th)
-                return -ENOMEM;
+	gc_th = f2fs_kmalloc(sbi, sizeof(struct f2fs_gc_kthread), GFP_KERNEL);
+	if (!gc_th)
+		return -ENOMEM;
 
-        gc_th->urgent_sleep_time = DEF_GC_THREAD_URGENT_SLEEP_TIME;
-        gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
-        gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
-        gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
+	gc_th->urgent_sleep_time = DEF_GC_THREAD_URGENT_SLEEP_TIME;
+	gc_th->min_sleep_time = DEF_GC_THREAD_MIN_SLEEP_TIME;
+	gc_th->max_sleep_time = DEF_GC_THREAD_MAX_SLEEP_TIME;
+	gc_th->no_gc_sleep_time = DEF_GC_THREAD_NOGC_SLEEP_TIME;
 
-        gc_th->gc_wake = false;
+	gc_th->gc_wake = false;
 
-        sbi->gc_thread = gc_th;
-        init_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);
-        init_waitqueue_head(&sbi->gc_thread->fggc_wq);
-        sbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,
-                        "f2fs_gc-%u:%u", MAJOR(dev), MINOR(dev));
-        if (IS_ERR(gc_th->f2fs_gc_task)) {
-                int err = PTR_ERR(gc_th->f2fs_gc_task);
+	sbi->gc_thread = gc_th;
+	init_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);
+	init_waitqueue_head(&sbi->gc_thread->fggc_wq);
+	sbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,
+			"f2fs_gc-%u:%u", MAJOR(dev), MINOR(dev));
+	if (IS_ERR(gc_th->f2fs_gc_task)) {
+		int err = PTR_ERR(gc_th->f2fs_gc_task);
 
-                kfree(gc_th);
-                sbi->gc_thread = NULL;
-                return err;
-        }
-        sched_setscheduler(sbi->gc_thread->f2fs_gc_task, SCHED_IDLE, &param);
-        set_task_ioprio(sbi->gc_thread->f2fs_gc_task,
-                        IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));
+		kfree(gc_th);
+		sbi->gc_thread = NULL;
+		return err;
+	}
+	sched_setscheduler(sbi->gc_thread->f2fs_gc_task, SCHED_IDLE, &param);
+	set_task_ioprio(sbi->gc_thread->f2fs_gc_task,
+			IOPRIO_PRIO_VALUE(IOPRIO_CLASS_IDLE, 0));
 
-        return 0;
+	return 0;
 }
 
 void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)
@@ -1392,6 +1392,7 @@ static int move_data_block(struct inode *inode, block_t bidx,
 		dec_page_count(fio.sbi, F2FS_DIRTY_META);
 
 	set_page_writeback(fio.encrypted_page);
+	ClearPageError(page);
 
 	fio.op = REQ_OP_WRITE;
 	fio.op_flags = REQ_SYNC;
@@ -1806,7 +1807,7 @@ int f2fs_gc(struct f2fs_sb_info *sbi, struct f2fs_gc_control *gc_control)
 	struct cp_control cpc;
 	struct gc_inode_list gc_list = {
 		.ilist = LIST_HEAD_INIT(gc_list.ilist),
-		.iroot = RADIX_TREE_INIT(GFP_NOFS),
+		.iroot = RADIX_TREE_INIT(gc_list.iroot, GFP_NOFS),
 	};
 	unsigned int skipped_round = 0, round = 0;
 	unsigned int upper_secs;
@@ -2009,7 +2010,7 @@ static int free_segment_range(struct f2fs_sb_info *sbi,
 	for (segno = start; segno <= end; segno += sbi->segs_per_sec) {
 		struct gc_inode_list gc_list = {
 			.ilist = LIST_HEAD_INIT(gc_list.ilist),
-			.iroot = RADIX_TREE_INIT(GFP_NOFS),
+			.iroot = RADIX_TREE_INIT(gc_list.iroot, GFP_NOFS),
 		};
 
 		do_garbage_collect(sbi, segno, &gc_list, FG_GC, true);

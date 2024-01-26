@@ -1173,7 +1173,7 @@ static void __init_discard_policy(struct f2fs_sb_info *sbi,
 			dpolicy->granularity = MIN_DISCARD_GRANULARITY;
 			if (atomic_read(&dcc->discard_cmd_cnt))
 				dpolicy->max_interval =
-					DEF_MAX_DISCARD_URGENT_ISSUE_TIME;
+					dcc->min_discard_issue_time;
 		}
 	} else if (discard_type == DPOLICY_FORCE) {
 		dpolicy->min_interval = dcc->min_discard_issue_time;
@@ -3495,6 +3495,7 @@ void f2fs_do_write_meta_page(struct f2fs_sb_info *sbi, struct page *page,
 		fio.op_flags &= ~REQ_META;
 
 	set_page_writeback(page);
+	ClearPageError(page);
 	f2fs_submit_page_write(&fio);
 
 	stat_inc_meta_count(sbi, page->index);

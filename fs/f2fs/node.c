@@ -633,7 +633,7 @@ static void f2fs_ra_node_pages(struct page *parent, int start, int n)
 
 	/* Then, try readahead for siblings of the desired node */
 	end = start + n;
-	end = min(end, NIDS_PER_BLOCK);
+	end = min(end, (int)NIDS_PER_BLOCK);
 	for (i = start; i < end; i++) {
 		nid = get_nid(parent, i, false);
 		f2fs_ra_node_page(sbi, nid);
@@ -1522,7 +1522,7 @@ static struct page *last_fsync_dnode(struct f2fs_sb_info *sbi, nid_t ino)
 	struct page *last_page = NULL;
 	int nr_pages;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	index = 0;
 
 	while ((nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
@@ -1650,6 +1650,7 @@ static int __write_node_page(struct page *page, bool atomic, bool *submitted,
 	}
 
 	set_page_writeback(page);
+	ClearPageError(page);
 
 	fio.old_blkaddr = ni.blk_addr;
 	f2fs_do_write_node_page(nid, &fio);
@@ -1744,7 +1745,7 @@ int f2fs_fsync_node_pages(struct f2fs_sb_info *sbi, struct inode *inode,
 			return PTR_ERR_OR_ZERO(last_page);
 	}
 retry:
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 	index = 0;
 
 	while ((nr_pages = pagevec_lookup_tag(&pvec, NODE_MAPPING(sbi), &index,
@@ -1891,7 +1892,7 @@ void f2fs_flush_inline_data(struct f2fs_sb_info *sbi)
 	struct pagevec pvec;
 	int nr_pages;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 	while ((nr_pages = pagevec_lookup_tag(&pvec,
 			NODE_MAPPING(sbi), &index, PAGECACHE_TAG_DIRTY))) {
@@ -1941,7 +1942,7 @@ int f2fs_sync_node_pages(struct f2fs_sb_info *sbi,
 	int ret = 0;
 	int nr_pages, done = 0;
 
-	pagevec_init(&pvec, 0);
+	pagevec_init(&pvec);
 
 next_step:
 	index = 0;
@@ -2078,6 +2079,8 @@ int f2fs_wait_on_node_pages_writeback(struct f2fs_sb_info *sbi,
 		spin_unlock_irqrestore(&sbi->fsync_node_lock, flags);
 
 		f2fs_wait_on_page_writeback(page, NODE, true, false);
+		if (TestClearPageError(page))
+			ret = -EIO;
 
 		put_page(page);
 
