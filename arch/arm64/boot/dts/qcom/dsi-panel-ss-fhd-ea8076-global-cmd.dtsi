@@ -233,6 +233,7 @@
 				qcom,display-topology = <1 0 1>;
 				qcom,default-topology-index = <0>;
 			};
+<<<<<<< HEAD
 			timing@1{
 				qcom,mdss-dsi-panel-width = <1080>;
 				qcom,mdss-dsi-panel-height = <2340>;
@@ -360,6 +361,9 @@
 				qcom,display-topology = <1 0 1>;
 				qcom,default-topology-index = <0>;
 			};
+=======
+
+>>>>>>> parent of eaca59294001 (dtsi 66hz stock freq)
 		};
 	};
 };
