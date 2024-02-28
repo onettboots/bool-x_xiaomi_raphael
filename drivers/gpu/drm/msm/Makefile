@@ -194,6 +194,7 @@ msm_drm-$(CONFIG_DRM_MSM) += \
 	sde/sde_hw_reg_dma_v1.o \
 	sde/sde_hw_dsc.o \
 	sde/sde_hw_ds.o \
+	sde/mi_disp_notifier.o \
 	sde/sde_hw_qdss.o
 
 msm_drm-$(CONFIG_DRM_SDE_WB) += sde/sde_wb.o \
