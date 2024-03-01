@@ -64,12 +64,19 @@
 
 #define MAX_PERPH_COUNT       2
 
+#define BCL_IRQ_L0       0x1
+#define BCL_IRQ_L1       0x2
+#define BCL_IRQ_L2       0x4
+
 enum bcl_dev_type {
 	BCL_IBAT_LVL0,
 	BCL_IBAT_LVL1,
 	BCL_VBAT_LVL0,
 	BCL_VBAT_LVL1,
 	BCL_VBAT_LVL2,
+	BCL_LVL0,
+        BCL_LVL1,
+        BCL_LVL2,
 	BCL_TYPE_MAX,
 };
 
@@ -767,42 +774,6 @@ static void bcl_probe_ibat(struct platform_device *pdev,
 {
 	bcl_ibat_init(pdev, BCL_IBAT_LVL0, bcl_perph);
 	bcl_ibat_init(pdev, BCL_IBAT_LVL1, bcl_perph);
-}
-
-static void bcl_lvl_init(struct platform_device *pdev,
-	enum bcl_dev_type type, int sts_bit_idx, struct bcl_device *bcl_perph)
-{
-	struct bcl_peripheral_data *lbat = &bcl_perph->param[type];
-
-	mutex_init(&lbat->state_trans_lock);
-	lbat->type = type;
-	lbat->dev = bcl_perph;
-	lbat->status_bit_idx = sts_bit_idx;
-	bcl_fetch_trip(pdev, type, lbat, bcl_handle_irq);
-	if (lbat->irq_num <= 0)
-		return;
-
-	lbat->ops.get_temp = bcl_read_lbat;
-	lbat->ops.set_trips = bcl_set_lbat;
-
-	lbat->tz_dev = thermal_zone_of_sensor_register(&pdev->dev,
-				type, lbat, &lbat->ops);
-	if (IS_ERR(lbat->tz_dev)) {
-		pr_debug("lbat:[%s] register failed. err:%ld\n",
-				bcl_int_names[type],
-				PTR_ERR(lbat->tz_dev));
-		lbat->tz_dev = NULL;
-		return;
-	}
-	thermal_zone_device_update(lbat->tz_dev, THERMAL_DEVICE_UP);
-}
-
-static void bcl_probe_lvls(struct platform_device *pdev,
-					struct bcl_device *bcl_perph)
-{
-	bcl_lvl_init(pdev, BCL_LVL0, BCL_IRQ_L0, bcl_perph);
-	bcl_lvl_init(pdev, BCL_LVL1, BCL_IRQ_L1, bcl_perph);
-	bcl_lvl_init(pdev, BCL_LVL2, BCL_IRQ_L2, bcl_perph);
 }
 
 #ifdef CONFIG_MACH_XIAOMI

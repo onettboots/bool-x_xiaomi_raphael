@@ -64,6 +64,7 @@ static atomic_t in_suspend;
 static bool power_off_triggered;
 
 static struct thermal_governor *def_governor;
+static struct workqueue_struct *thermal_passive_wq;
 
 #if defined(CONFIG_QTI_THERMAL) && defined(CONFIG_MACH_XIAOMI)
 static atomic_t switch_mode = ATOMIC_INIT(-1);
@@ -974,8 +975,6 @@ struct class thermal_class = {
 #ifdef CONFIG_MACH_XIAOMI
 EXPORT_SYMBOL_GPL(thermal_class);
 #endif
-
-static struct device thermal_message_dev;
 
 static inline
 void print_bind_err_msg(struct thermal_zone_device *tz,
@@ -1943,56 +1942,41 @@ static void destroy_thermal_message_node(void)
 static int __init thermal_init(void)
 {
 	int result;
-
 	mutex_init(&poweroff_lock);
 	thermal_passive_wq = alloc_workqueue("thermal_passive_wq",
-						WQ_UNBOUND | WQ_FREEZABLE,
+						WQ_HIGHPRI | WQ_UNBOUND
+						| WQ_FREEZABLE,
 						THERMAL_MAX_ACTIVE);
 	if (!thermal_passive_wq) {
 		result = -ENOMEM;
 		goto error;
 	}
-
 	result = thermal_register_governors();
 	if (result)
 		goto destroy_wq;
-
 	result = class_register(&thermal_class);
 	if (result)
 		goto unregister_governors;
-
 	result = of_parse_thermal_zones();
 	if (result)
-		goto exit_zone_parse;
-
+		goto unregister_class;
 	result = register_pm_notifier(&thermal_pm_nb);
 	if (result)
 		pr_warn("Thermal: Can not register suspend notifier, return %d\n",
 			result);
-
-	result = create_thermal_message_node();
-	if (result)
-		pr_warn("Thermal: create thermal message node failed, return %d\n",
-			result);
-#ifdef CONFIG_DEBUG_FS
 	thermal_debug_init();
-#endif
-
 #ifdef CONFIG_MACH_XIAOMI
 	result = of_parse_thermal_message();
 	if (result)
 		pr_warn("Thermal: Can not parse thermal message node, return %d\n",
 			result);
-
 	result = create_thermal_message_node();
 	if (result)
 		pr_warn("Thermal: create thermal message node failed, return %d\n",
 			result);
 #endif
-
 	return 0;
-
-exit_zone_parse:
+unregister_class:
 	class_unregister(&thermal_class);
 unregister_governors:
 	thermal_unregister_governors();
@@ -2006,7 +1990,6 @@ error:
 	mutex_destroy(&poweroff_lock);
 	return result;
 }
-
 static void thermal_exit(void)
 {
 	unregister_pm_notifier(&thermal_pm_nb);
@@ -2017,29 +2000,60 @@ static void thermal_exit(void)
 	destroy_thermal_message_node();
 #endif
 	class_unregister(&thermal_class);
-#ifdef CONFIG_DEBUG_FS
 	thermal_debug_exit();
-#endif
 	thermal_unregister_governors();
 	ida_destroy(&thermal_tz_ida);
 	ida_destroy(&thermal_cdev_ida);
 	mutex_destroy(&thermal_list_lock);
 	mutex_destroy(&thermal_governor_lock);
 }
-
 static int __init thermal_netlink_init(void)
 {
 	int ret = 0;
-
 	ret = genetlink_init();
 	if (!ret)
 		goto exit_netlink;
-
 	thermal_exit();
 exit_netlink:
 	return ret;
 }
-
 subsys_initcall(thermal_init);
 fs_initcall(thermal_netlink_init);
-module_exit(thermal_exit);
+#else
+static int __init thermal_init(void)
+{
+	int result;
+	mutex_init(&poweroff_lock);
+	result = thermal_register_governors();
+	if (result)
+		goto error;
+	result = class_register(&thermal_class);
+	if (result)
+		goto unregister_governors;
+	result = genetlink_init();
+	if (result)
+		goto unregister_class;
+	result = of_parse_thermal_zones();
+	if (result)
+		goto exit_netlink;
+	result = register_pm_notifier(&thermal_pm_nb);
+	if (result)
+		pr_warn("Thermal: Can not register suspend notifier, return %d\n",
+			result);
+	return 0;
+exit_netlink:
+	genetlink_exit();
+unregister_class:
+	class_unregister(&thermal_class);
+unregister_governors:
+	thermal_unregister_governors();
+error:
+	ida_destroy(&thermal_tz_ida);
+	ida_destroy(&thermal_cdev_ida);
+	mutex_destroy(&thermal_list_lock);
+	mutex_destroy(&thermal_governor_lock);
+	mutex_destroy(&poweroff_lock);
+	return result;
+}
+fs_initcall(thermal_init);
+#endif

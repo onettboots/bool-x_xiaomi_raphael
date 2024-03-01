@@ -117,9 +117,7 @@ struct cpufreq_cooling_device {
 	struct time_in_idle *idle_time;
 	get_static_t plat_get_static_power;
 	struct cpu_cooling_ops *plat_ops;
-#ifdef CONFIG_MI_THERMAL_CPU_THROTTLE
 	struct thermal_cooling_device *cdev;
-#endif
 };
 
 static atomic_t in_suspend;
