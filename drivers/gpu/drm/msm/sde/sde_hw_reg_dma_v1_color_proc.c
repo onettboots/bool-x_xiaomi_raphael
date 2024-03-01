@@ -13,6 +13,7 @@
 #include "sde_reg_dma.h"
 #include "sde_hw_reg_dma_v1_color_proc.h"
 #include "sde_hw_color_proc_common_v4.h"
+#include "sde_hw_kcal_ctrl.h"
 #include "sde_hw_ctl.h"
 #include "sde_hw_sspp.h"
 #include "sde_hwio.h"
@@ -1036,7 +1037,6 @@ reg_dmav1_setup_dspp_pa_hsicv17_apply(struct sde_hw_dspp *ctx,
 	return rc;
 }
 
-
 static inline void
 reg_dmav1_setup_dspp_pa_hsicv17_kcal(struct sde_hw_dspp *ctx, void *ctl)
 {
@@ -1053,6 +1053,7 @@ void reg_dmav1_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 	struct sde_hw_reg_dma_ops *dma_ops;
 	struct sde_reg_dma_kickoff_cfg kick_off;
 	struct sde_hw_cp_cfg *hw_cfg = cfg;
+	struct sde_hw_kcal *kcal = sde_hw_kcal_get();
 	struct sde_reg_dma_setup_ops_cfg dma_write_cfg;
 	struct drm_msm_pcc *pcc_cfg;
 	struct drm_msm_pcc_coeff *coeffs = NULL;
@@ -1124,6 +1125,10 @@ void reg_dmav1_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 		data[i + 3] = coeffs->r;
 		data[i + 6] = coeffs->g;
 		data[i + 9] = coeffs->b;
+
+		if (kcal->enabled)
+			sde_hw_kcal_pcc_adjust(data, i);
+
 		data[i + 12] = coeffs->rg;
 		data[i + 15] = coeffs->rb;
 		data[i + 18] = coeffs->gb;
@@ -1156,6 +1161,8 @@ void reg_dmav1_setup_dspp_pccv4(struct sde_hw_dspp *ctx, void *cfg)
 	if (rc)
 		DRM_ERROR("failed to kick off ret %d\n", rc);
 
+	if (kcal->enabled)
+		reg_dmav1_setup_dspp_pa_hsicv17_kcal(ctx, hw_cfg->ctl);
 exit:
 	kfree(data);
 }
@@ -1170,6 +1177,9 @@ void reg_dmav1_setup_dspp_pa_hsicv17(struct sde_hw_dspp *ctx, void *cfg)
 	struct sde_hw_kcal *kcal = sde_hw_kcal_get();
 	u32 reg = 0, opcode = 0, local_opcode = 0;
 	int rc;
+
+	if (kcal->enabled)
+		return;
 
 	opcode = SDE_REG_READ(&ctx->hw, ctx->cap->sblk->hsic.base);
 
