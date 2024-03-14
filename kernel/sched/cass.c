@@ -33,13 +33,13 @@ struct cass_cpu_cand {
 };
 
 static __always_inline
-unsigned long cass_cpu_util(int cpu, bool sync)
+unsigned long cass_cpu_util(int cpu, int this_cpu, bool sync)
 {
 	struct cfs_rq *cfs_rq = &cpu_rq(cpu)->cfs;
 	unsigned long util = READ_ONCE(cfs_rq->avg.util_avg);
 
 	/* Deduct @current's util from this CPU if this is a sync wake */
-	if (sync && cpu == smp_processor_id())
+	if (sync && cpu == this_cpu)
 		sub_positive(&util, task_util(current));
 
 	if (sched_feat(UTIL_EST))
@@ -53,7 +53,7 @@ unsigned long cass_cpu_util(int cpu, bool sync)
 static __always_inline
 bool cass_cpu_better(const struct cass_cpu_cand *a,
 		     const struct cass_cpu_cand *b,
-		     int prev_cpu, bool sync)
+		     int this_cpu, int prev_cpu, bool sync)
 {
 #define cass_cmp(a, b) ({ res = (a) - (b); })
 #define cass_eq(a, b) ({ res = (a) == (b); })
@@ -64,8 +64,7 @@ bool cass_cpu_better(const struct cass_cpu_cand *a,
 		goto done;
 
 	/* Prefer the current CPU for sync wakes */
-	if (sync && (cass_eq(a->cpu, smp_processor_id()) ||
-		     !cass_cmp(b->cpu, smp_processor_id())))
+	if (sync && (cass_eq(a->cpu, this_cpu) || !cass_cmp(b->cpu, this_cpu)))
 		goto done;
 
 	/* Prefer the CPU with higher capacity */
@@ -95,6 +94,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 {
 	/* Initialize @best such that @best always has a valid CPU at the end */
 	struct cass_cpu_cand cands[2], *best = cands, *curr;
+	int this_cpu = raw_smp_processor_id();
 	struct cpuidle_state *idle_state;
 	bool has_idle = false;
 	unsigned long p_util;
@@ -119,7 +119,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		 * For sync wakes, treat the current CPU as idle if @current is the
 		 * only running task.
 		 */
-		if ((sync && cpu == smp_processor_id() && rq->nr_running == 1) || idle_cpu(cpu)) {
+		if ((sync && cpu == this_cpu && rq->nr_running == 1) || idle_cpu(cpu)) {
 			/* Discard any previous non-idle candidate */
 			if (!has_idle)
 				best = curr;
@@ -142,7 +142,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		}
 
 		/* Get this CPU's utilization, possibly without @current */
-		curr->util = cass_cpu_util(cpu, sync);
+		curr->util = cass_cpu_util(cpu, this_cpu, sync);
 
 		/*
 		 * Add @p's utilization to this CPU if it's not @p's CPU, to
@@ -167,7 +167,7 @@ static int cass_best_cpu(struct task_struct *p, int prev_cpu, bool sync)
 		 * cidx still needs to be changed to the other candidate slot.
 		 */
 		if (best == curr ||
-		    cass_cpu_better(curr, best, prev_cpu, sync)) {
+		    cass_cpu_better(curr, best, this_cpu, prev_cpu, sync)) {
 			best = curr;
 			cidx ^= 1;
 		}
