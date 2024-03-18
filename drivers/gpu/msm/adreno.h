@@ -1,5 +1,5 @@
 /* Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -264,9 +264,6 @@ struct adreno_gpudev;
 /* Time to allow preemption to complete (in ms) */
 #define ADRENO_PREEMPT_TIMEOUT 10000
 
-#define PREEMPT_SCRATCH_ADDR(dev, id) \
-	((dev)->preempt.scratch.gpuaddr + (id * sizeof(u64)))
-
 #define ADRENO_INT_BIT(a, _bit) (((a)->gpucore->gpudev->int_bits) ? \
 		(adreno_get_int(a, _bit) < 0 ? 0 : \
 		BIT(adreno_get_int(a, _bit))) : 0)
@@ -303,7 +300,6 @@ enum adreno_preempt_states {
  * skipsaverestore: To skip saverestore during L1 preemption (for 6XX)
  * usesgmem: enable GMEM save/restore across preemption (for 6XX)
  * count: Track the number of preemptions triggered
- * @postamble_len: Number of dwords in KMD postamble pm4 packet
  */
 struct adreno_preemption {
 	atomic_t state;
@@ -315,7 +311,6 @@ struct adreno_preemption {
 	bool skipsaverestore;
 	bool usesgmem;
 	unsigned int count;
-	u32 postamble_len;
 };
 
 
@@ -437,12 +432,13 @@ struct adreno_gpu_core {
 	unsigned int cx_ipeak_gpu_freq;
 };
 
-
+#ifdef CONFIG_CORESIGHT
 enum gpu_coresight_sources {
 	GPU_CORESIGHT_GX = 0,
 	GPU_CORESIGHT_CX = 1,
 	GPU_CORESIGHT_MAX,
 };
+#endif
 
 /**
  * struct adreno_device - The mothership structure for all adreno related info
@@ -482,7 +478,6 @@ enum gpu_coresight_sources {
  * @dispatcher: Container for adreno GPU dispatcher
  * @pwron_fixup: Command buffer to run a post-power collapse shader workaround
  * @pwron_fixup_dwords: Number of dwords in the command buffer
- * @pwr_on_work: Work struct for turning on the GPU
  * @busy_data: Struct holding GPU VBIF busy stats
  * @ram_cycles_lo: Number of DDR clock cycles for the monitor session (Only
  * DDR channel 0 read cycles in case of GBIF)
@@ -562,7 +557,6 @@ struct adreno_device {
 	struct adreno_dispatcher dispatcher;
 	struct kgsl_memdesc pwron_fixup;
 	unsigned int pwron_fixup_dwords;
-	struct work_struct pwr_on_work;
 	struct adreno_busy_data busy_data;
 	unsigned int ram_cycles_lo;
 	unsigned int ram_cycles_lo_ch1_read;
@@ -856,6 +850,7 @@ struct adreno_vbif_snapshot_registers {
 	const int count;
 };
 
+#ifdef CONFIG_CORESIGHT
 /**
  * struct adreno_coresight_register - Definition for a coresight (tracebus)
  * debug register
@@ -909,7 +904,7 @@ struct adreno_coresight {
 	void (*write)(struct kgsl_device *device,
 		unsigned int offsetwords, unsigned int value);
 };
-
+#endif /* CONFIG_CORESIGHT */
 
 struct adreno_irq_funcs {
 	void (*func)(struct adreno_device *, int);
@@ -1124,9 +1119,6 @@ extern unsigned int *adreno_ft_regs;
 extern unsigned int adreno_ft_regs_num;
 extern unsigned int *adreno_ft_regs_val;
 
-extern struct adreno_gpudev adreno_a3xx_gpudev;
-extern struct adreno_gpudev adreno_a4xx_gpudev;
-extern struct adreno_gpudev adreno_a5xx_gpudev;
 extern struct adreno_gpudev adreno_a6xx_gpudev;
 
 extern int adreno_wake_nice;
@@ -1167,12 +1159,14 @@ void adreno_fault_skipcmd_detached(struct adreno_device *adreno_dev,
 					 struct adreno_context *drawctxt,
 					 struct kgsl_drawobj *drawobj);
 
+#ifdef CONFIG_CORESIGHT
 int adreno_coresight_init(struct adreno_device *adreno_dev);
 
 void adreno_coresight_start(struct adreno_device *adreno_dev);
 void adreno_coresight_stop(struct adreno_device *adreno_dev);
 
 void adreno_coresight_remove(struct adreno_device *adreno_dev);
+#endif
 
 bool adreno_hw_isidle(struct adreno_device *adreno_dev);
 
@@ -1671,7 +1665,7 @@ static inline void adreno_set_protected_registers(
 	*index = *index + 1;
 }
 
-#if 0
+#ifdef CONFIG_DEBUG_FS
 void adreno_debugfs_init(struct adreno_device *adreno_dev);
 void adreno_context_debugfs_init(struct adreno_device *adreno_dev,
 				struct adreno_context *ctx);

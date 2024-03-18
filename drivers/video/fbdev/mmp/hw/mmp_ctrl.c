@@ -525,9 +525,7 @@ static int mmphw_probe(struct platform_device *pdev)
 		ret = -ENOENT;
 		goto failed;
 	}
-	ret = clk_prepare_enable(ctrl->clk);
-	if (ret)
-		goto failed;
+	clk_prepare_enable(ctrl->clk);
 
 	/* init global regs */
 	ctrl_set_default(ctrl);

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2021-2022, Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -51,7 +52,6 @@
 #include "msm_kms.h"
 #include "sde_wb.h"
 #include "sde_dbg.h"
-#include <drm/drm_client.h>
 
 /*
  * MSM driver version:
@@ -64,7 +64,6 @@
 #define MSM_VERSION_PATCHLEVEL	0
 
 static DEFINE_MUTEX(msm_release_lock);
-
 atomic_t resume_pending;
 wait_queue_head_t resume_wait_q;
 static struct kmem_cache *kmem_vblank_work_pool;
@@ -87,7 +86,6 @@ static void msm_fb_output_poll_changed(struct drm_device *dev)
 static void msm_drm_display_thread_priority_worker(struct kthread_work *work)
 {
 	struct task_struct *task = current->group_leader;
-
 	sched_set_fifo(task);
 }
 
@@ -325,7 +323,6 @@ static int msm_drm_uninit(struct device *dev)
 	drm_mode_config_cleanup(ddev);
 
 	if (priv->registered) {
-		drm_client_dev_unregister(ddev);
 		drm_dev_unregister(ddev);
 		priv->registered = false;
 	}
@@ -508,16 +505,6 @@ static int msm_component_bind_all(struct device *dev,
 static int msm_power_enable_wrapper(void *handle, void *client, bool enable)
 {
 	return sde_power_resource_enable(handle, client, enable);
-}
-
-static void msm_drm_pm_unreq(struct work_struct *work)
-{
-	struct msm_drm_private *priv = container_of(to_delayed_work(work),
-						    typeof(*priv),
-						    pm_unreq_dwork);
-
-pm_qos_update_request(&priv->pm_irq_req, PM_QOS_DEFAULT_VALUE);
-	atomic_set_release(&priv->pm_req_set, 0);
 }
 
 static ssize_t idle_encoder_mask_store(struct device *device,
@@ -706,9 +693,6 @@ static int msm_drm_init(struct device *dev, struct drm_driver *drv)
 
 	INIT_LIST_HEAD(&priv->client_event_list);
 	INIT_LIST_HEAD(&priv->inactive_list);
-
-	priv->pm_req_set = (atomic_t)ATOMIC_INIT(0);
-	INIT_DELAYED_WORK(&priv->pm_unreq_dwork, msm_drm_pm_unreq);
 
 	ret = sde_power_resource_init(pdev, &priv->phandle);
 	if (ret) {
@@ -1209,14 +1193,9 @@ static void msm_irq_preinstall(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = dev->dev_private;
 	struct msm_kms *kms = priv->kms;
-	struct sde_kms *sde_kms = to_sde_kms(kms);
 
 	BUG_ON(!kms);
 	kms->funcs->irq_preinstall(kms);
-	priv->pm_irq_req.type = PM_QOS_REQ_AFFINE_IRQ;
-	priv->pm_irq_req.irq = sde_kms->irq_num;
-	pm_qos_add_request(&priv->pm_irq_req, PM_QOS_CPU_DMA_LATENCY,
-			   PM_QOS_DEFAULT_VALUE);
 }
 
 static int msm_irq_postinstall(struct drm_device *dev)
@@ -1235,8 +1214,6 @@ static void msm_irq_uninstall(struct drm_device *dev)
 
 	BUG_ON(!kms);
 	kms->funcs->irq_uninstall(kms);
-	flush_delayed_work(&priv->pm_unreq_dwork);
-	pm_qos_remove_request(&priv->pm_irq_req);
 }
 
 static int msm_enable_vblank(struct drm_device *dev, unsigned int pipe)

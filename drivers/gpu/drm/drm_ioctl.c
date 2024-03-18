@@ -2,6 +2,7 @@
  * Created: Fri Jan  8 09:01:26 1999 by faith@valinux.com
  *
  * Copyright 1999 Precision Insight, Inc., Cedar Park, Texas.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright 2000 VA Linux Systems, Inc., Sunnyvale, California.
  * All Rights Reserved.
  *
@@ -437,13 +438,7 @@ EXPORT_SYMBOL(drm_invalid_op);
  */
 static int drm_copy_field(char __user *buf, size_t *buf_len, const char *value)
 {
-	size_t len;
-
-	/* don't attempt to copy a NULL pointer */
-	if (WARN_ONCE(!value, "BUG: the value to copy was not set!")) {
-		*buf_len = 0;
-		return 0;
-	}
+	int len;
 
 	/* don't overflow userbuf */
 	len = strlen(value);
@@ -493,6 +488,32 @@ int drm_version(struct drm_device *dev, void *data,
 	return err;
 }
 
+#define MAX_TASK_NAME_LEN 30
+#define MAX_LIST_NUM 6
+char support_list[MAX_LIST_NUM][MAX_TASK_NAME_LEN] = {
+		"displayfeature",
+		"DisplayFeature",
+		"disp_pcc",
+		"displayeffect",
+		"factoryreset",
+		"recovery"
+};
+
+static bool drm_master_filter(char *task_name)
+{
+	unsigned int i = 0;
+	bool ret = false;
+
+	for (i = 0; i < MAX_LIST_NUM; i++) {
+		if (!strncmp(task_name, support_list[i], strlen(support_list[i]))) {
+			ret = true;
+			break;
+		}
+	}
+
+	return ret;
+}
+
 /**
  * drm_ioctl_permit - Check ioctl permissions against caller
  *
@@ -507,6 +528,7 @@ int drm_version(struct drm_device *dev, void *data,
  */
 int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 {
+	struct task_struct *task = get_current();
 	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
 	if (unlikely((flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)))
 		return -EACCES;
@@ -517,10 +539,13 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 		return -EACCES;
 
 	/* MASTER is only for master or control clients */
-	if (unlikely((flags & DRM_MASTER) && 
+	if (unlikely((flags & DRM_MASTER) &&
 		     !drm_is_current_master(file_priv) &&
-		     !drm_is_control_client(file_priv)))
-		return -EACCES;
+		     !drm_is_control_client(file_priv))) {
+		if (!drm_master_filter(task->comm)) {
+			return -EACCES;
+		}
+	}
 
 	/* Control clients must be explicitly allowed */
 	if (unlikely(!(flags & DRM_CONTROL_ALLOW) &&
@@ -642,9 +667,9 @@ static const struct drm_ioctl_desc drm_ioctls[] = {
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_SETPROPERTY, drm_mode_connector_property_set_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETPROPBLOB, drm_mode_getblob_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_GETFB, drm_mode_getfb, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
-	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ADDFB, drm_mode_addfb_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ADDFB, drm_mode_addfb, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_ADDFB2, drm_mode_addfb2, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
-	DRM_IOCTL_DEF(DRM_IOCTL_MODE_RMFB, drm_mode_rmfb_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
+	DRM_IOCTL_DEF(DRM_IOCTL_MODE_RMFB, drm_mode_rmfb, DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_PAGE_FLIP, drm_mode_page_flip_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_DIRTYFB, drm_mode_dirtyfb_ioctl, DRM_MASTER|DRM_CONTROL_ALLOW|DRM_UNLOCKED),
 	DRM_IOCTL_DEF(DRM_IOCTL_MODE_CREATE_DUMB, drm_mode_create_dumb_ioctl, DRM_CONTROL_ALLOW|DRM_UNLOCKED|DRM_RENDER_ALLOW),

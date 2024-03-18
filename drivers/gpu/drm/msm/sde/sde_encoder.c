@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -1893,7 +1894,7 @@ static int _sde_encoder_update_rsc_client(
 	struct msm_mode_info mode_info;
 	int wait_vblank_crtc_id = SDE_RSC_INVALID_CRTC_ID;
 	int wait_count = 0;
-	struct drm_crtc *primary_crtc;
+	struct drm_crtc *primary_crtc = NULL;
 	int pipe = -1;
 	int rc = 0;
 	int wait_refcount = 0;
@@ -3566,6 +3567,7 @@ static void sde_encoder_underrun_callback(struct drm_encoder *drm_enc,
 		atomic_read(&phy_enc->underrun_cnt));
 
 	SDE_DBG_CTRL("stop_ftrace");
+	SDE_ERROR("underrun: %d\n", atomic_read(&phy_enc->underrun_cnt));
 	SDE_DBG_CTRL("panic_underrun");
 
 	SDE_ATRACE_END("encoder_underrun_callback");
@@ -3701,12 +3703,10 @@ static void sde_encoder_frame_done_callback(
 
 static void sde_encoder_get_qsync_fps_callback(
 	struct drm_encoder *drm_enc,
-	u32 *qsync_fps, u32 vrr_fps)
+	u32 *qsync_fps)
 {
 	struct msm_display_info *disp_info;
 	struct sde_encoder_virt *sde_enc;
-	int rc = 0;
-	struct sde_connector *sde_conn;
 
 	if (!qsync_fps)
 		return;
@@ -3720,31 +3720,7 @@ static void sde_encoder_get_qsync_fps_callback(
 	sde_enc = to_sde_encoder_virt(drm_enc);
 	disp_info = &sde_enc->disp_info;
 	*qsync_fps = disp_info->qsync_min_fps;
-
-	/**
-	 * If "dsi-supported-qsync-min-fps-list" is defined, get
-	 * the qsync min fps corresponding to the fps in dfps list
-	 */
-	if (disp_info->has_qsync_min_fps_list) {
-
-		if (!sde_enc->cur_master ||
-			!(sde_enc->disp_info.capabilities &
-				MSM_DISPLAY_CAP_VID_MODE)) {
-			SDE_ERROR("invalid qsync settings %b\n",
-				!sde_enc->cur_master);
-			return;
-		}
-		sde_conn = to_sde_connector(sde_enc->cur_master->connector);
-
-		if (sde_conn->ops.get_qsync_min_fps)
-			rc = sde_conn->ops.get_qsync_min_fps(sde_conn->display,
-				vrr_fps);
-		if (rc <= 0) {
-			SDE_ERROR("invalid qsync min fps %d\n", rc);
-			return;
-		}
-		*qsync_fps = rc;
-	}
+	pr_debug("[%s] the qsync min fps is %d, disp_info is %p",__func__, disp_info->qsync_min_fps, disp_info);
 }
 
 int sde_encoder_idle_request(struct drm_encoder *drm_enc)
@@ -4744,6 +4720,12 @@ int sde_encoder_prepare_for_kickoff(struct drm_encoder *drm_enc,
 		sde_configure_qdss(sde_enc, sde_enc->cur_master->hw_qdss,
 				sde_enc->cur_master, sde_kms->qdss_enabled);
 
+	if (sde_enc->cur_master && sde_enc->cur_master->connector) {
+		struct sde_connector *c_conn;
+		c_conn = to_sde_connector(sde_enc->cur_master->connector);
+		sde_connector_update_hbm(c_conn);
+	}
+
 end:
 	SDE_ATRACE_END("sde_encoder_prepare_for_kickoff");
 	return ret;
@@ -4844,9 +4826,11 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 	}
 
 	/*
-	 * Trigger a panel reset if this is the first kickoff
+	 * Trigger a panel reset if this is the first kickoff and the refresh
+	 * rate is not 60 Hz
 	 */
-	if (cmpxchg(&first_run, true, false)) {
+	if (cmpxchg(&first_run, true, false) &&
+	    sde_enc->crtc->mode.vrefresh != 60) {
 		struct sde_connector *conn = container_of(phys->connector, struct sde_connector, base);
 		struct drm_event event = {
 			.type = DRM_EVENT_PANEL_DEAD,
@@ -4957,6 +4941,16 @@ void sde_encoder_prepare_commit(struct drm_encoder *drm_enc)
 					ctl->ops.clear_pending_flush)
 				ctl->ops.clear_pending_flush(ctl);
 		}
+	}
+
+	if (sde_enc->cur_master && sde_enc->cur_master->connector) {
+		rc = sde_connector_prepare_commit(
+				  sde_enc->cur_master->connector);
+		if (rc)
+			SDE_ERROR_ENC(sde_enc,
+				      "prepare commit failed conn %d rc %d\n",
+				      sde_enc->cur_master->connector->base.id,
+				      rc);
 	}
 
 	if (sde_enc->cur_master && sde_enc->cur_master->connector) {
@@ -5479,7 +5473,7 @@ static const struct drm_encoder_funcs sde_encoder_funcs = {
 		.late_register = sde_encoder_late_register,
 		.early_unregister = sde_encoder_early_unregister,
 };
-
+struct msm_display_info *g_msm_display_info;
 struct drm_encoder *sde_encoder_init_with_ops(
 		struct drm_device *dev,
 		struct msm_display_info *disp_info,
@@ -5492,6 +5486,7 @@ struct drm_encoder *sde_encoder_init_with_ops(
 	int drm_enc_mode = DRM_MODE_ENCODER_NONE;
 	char name[SDE_NAME_SIZE];
 	int ret = 0, i, intf_index = INTF_MAX;
+	static int j = 0;
 	struct sde_encoder_phys *phys = NULL;
 
 	sde_enc = kzalloc(sizeof(*sde_enc), GFP_KERNEL);
@@ -5570,7 +5565,11 @@ struct drm_encoder *sde_encoder_init_with_ops(
 			sde_encoder_esd_trigger_work_handler);
 
 	memcpy(&sde_enc->disp_info, disp_info, sizeof(*disp_info));
-
+	if( 0 == j) {
+		g_msm_display_info = &sde_enc->disp_info;
+	}
+	j++;
+	pr_info("[%s] g_msm_display_info is %p",__func__, g_msm_display_info);
 	SDE_DEBUG_ENC(sde_enc, "created\n");
 
 	return drm_enc;

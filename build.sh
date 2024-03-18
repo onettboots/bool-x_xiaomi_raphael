@@ -20,7 +20,7 @@ export SUBARCH=arm64
 export ARCH=arm64
 export CC=$HOME/toolchains/boolx-clang/bin/clang
 
-VER="V1.6-PickAcrut-LGC"
+VER="V1.6-PickAcrut-LGC-Hyper"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
@@ -44,7 +44,7 @@ function clean_all {
 }
 function make_config {
 		echo
-		make CC=$HOME/toolchains/boolx-clang/bin/clang O=out raphael_defconfig
+		make CC=$HOME/toolchains/boolx-clang/bin/clang O=out raphael-hyper_defconfig
 }
 function make_menuconfig {
 		echo

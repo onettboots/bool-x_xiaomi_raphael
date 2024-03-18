@@ -317,7 +317,7 @@ static int kgsl_pool_get_retry_order(unsigned int order)
  * Return total page count on success and negative value on failure
  */
 int kgsl_pool_alloc_page(int *page_size, struct page **pages,
-			unsigned int pages_len, unsigned int *align, struct device *dev)
+			unsigned int pages_len, unsigned int *align)
 {
 	int j;
 	int pcount = 0;
@@ -345,6 +345,7 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			} else
 				return -ENOMEM;
 		}
+		_kgsl_pool_zero_page(page, order);
 		goto done;
 	}
 
@@ -364,6 +365,7 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			page = alloc_pages(gfp_mask, order);
 			if (page == NULL)
 				return -ENOMEM;
+			_kgsl_pool_zero_page(page, order);
 			goto done;
 		}
 	}
@@ -393,11 +395,11 @@ int kgsl_pool_alloc_page(int *page_size, struct page **pages,
 			} else
 				return -ENOMEM;
 		}
+
+		_kgsl_pool_zero_page(page, order);
 	}
 
 done:
-	_kgsl_pool_zero_page(page, order);
-
 	for (j = 0; j < (*page_size >> PAGE_SHIFT); j++) {
 		p = nth_page(page, j);
 		pages[pcount] = p;

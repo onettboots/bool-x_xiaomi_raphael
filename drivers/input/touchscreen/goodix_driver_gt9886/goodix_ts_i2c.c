@@ -129,6 +129,9 @@ static int goodix_parse_dt_resolution(struct device_node *node,
 	if (r)
 		err = -ENOENT;
 
+	board_data->swap_axis = of_property_read_bool(node,
+			"goodix,swap-axis");
+
 	board_data->x2x = of_property_read_bool(node,
 			"goodix,x2x");
 
@@ -263,6 +266,24 @@ static int goodix_parse_dt(struct device_node *node,
 			return r;
 	}
 
+	/*get pen-enable switch and pen keys, must after "key map"*/
+	board_data->pen_enable = of_property_read_bool(node, "goodix,pen-enable");
+	if (board_data->pen_enable) {
+		prop = of_find_property(node, "goodix,key-of-pen", NULL);
+		if (prop && prop->length) {
+			if (prop->length / sizeof(u32) > GOODIX_PEN_MAX_KEY) {
+				ts_err("Size of key-of-pen is invalid");
+				return r;
+			}
+			r = of_property_read_u32_array(node,
+				"goodix,key-of-pen",
+				&board_data->panel_key_map[board_data->panel_max_key],
+				prop->length / sizeof(u32));
+			if (r)
+				return r;
+			board_data->panel_max_key += (prop->length / sizeof(u32));
+		}
+	}
 	ts_info("***key:%d, %d, %d, %d, %d",
 			board_data->panel_key_map[0],
 			board_data->panel_key_map[1],
@@ -1559,10 +1580,15 @@ static void goodix_swap_coords(struct goodix_ts_device *dev,
 		struct goodix_ts_coords *coords,
 		int touch_num)
 {
-	int i;
+	int i, temp;
 	struct goodix_ts_board_data *bdata = dev->board_data;
 
 	for (i = 0; i < touch_num; i++) {
+		if (bdata->swap_axis) {
+			temp = coords->x;
+			coords->x = coords->y;
+			coords->y = temp;
+		}
 		if (bdata->x2x)
 			coords->x = bdata->panel_max_x - coords->x;
 		if (bdata->y2y)
@@ -1776,6 +1802,9 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 	touch_data->have_key = (coord_sta >> 4) & 0x01;
 	if (unlikely(touch_data->have_key)) {
 		touch_data->key_value = buffer[touch_num * BYTES_PER_COORD + 2];
+		if (dev->board_data->pen_enable)
+			touch_data->key_value = (touch_data->key_value & 0x0f) |
+				((touch_data->key_value & 0xf0) >> (4 - dev->board_data->tp_key_num));
 	}
 	/*ts_info("$$$$$$coord_sta:0x%02x, have_key:%d, key_value:0x%02x",
 			coord_sta, touch_data->have_key, touch_data->key_value);*/
@@ -1796,10 +1825,15 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 				2 + BYTES_PER_COORD * max_touch_num,
 				touch_num);
 
+
+	/*clear buffer*/
+	memset(touch_data->coords, 0x00, sizeof(touch_data->coords));
+	memset(touch_data->pen_coords, 0x00, sizeof(touch_data->pen_coords));
+
 	if (likely(touch_num >= 1)) {
 		/*"0 ~ touch_num - 2" is finger, "touch_num - 1" may be a finger or a pen*/
 		/*process "0 ~ touch_num -2"*/
-		for (i = 0; i < touch_num; i++) {
+		for (i = 0; i < touch_num - 1; i++) {
 			coords->id = buffer[i * BYTES_PER_COORD + 2] & 0x0f;
 			coords->x = buffer[i * BYTES_PER_COORD + 3] |
 							(buffer[i * BYTES_PER_COORD + 4] << 8);
@@ -1812,14 +1846,48 @@ static int goodix_touch_handler(struct goodix_ts_device *dev,
 			coords->area = buffer[i * BYTES_PER_COORD + 9];
 			coords++;
 		}
-		if (likely(i < max_touch_num)) {
-			// Report data end
-			coords->id = 0;
-		}
+
+		/*process "touch_num - 1", it may be a finger or a pen*/
+		/*it's a pen*/
+		i = touch_num - 1;
+		//ts_err("%s:i=%d touch_num=%d\n",__func__,i,touch_num);
+		if (unlikely(touch_num >= 1 && buffer[i * BYTES_PER_COORD + 2] >= 0x80)) {
+			if (dev->board_data->pen_enable) {/*pen_enable*/
+				touch_data->pen_down = true;
+				/*change pen's trace ID, let it equal to "panel_max_id - 1"*/
+				/*touch_data->pen_coords[0].id = dev->board_data->panel_max_id - 1;*/
+				touch_data->pen_coords[0].id = dev->board_data->panel_max_id * 2;
+				touch_data->pen_coords[0].x = buffer[i * BYTES_PER_COORD + 3] |
+					(buffer[i * BYTES_PER_COORD + 4] << 8);
+				touch_data->pen_coords[0].y = buffer[i * BYTES_PER_COORD + 5] |
+					(buffer[i * BYTES_PER_COORD + 6] << 8);
+				touch_data->pen_coords[0].w = 6;
+				touch_data->pen_coords[0].p =
+					buffer[i * BYTES_PER_COORD + 7] |
+					(buffer[i * BYTES_PER_COORD + 8] << 8);
+				}
+			} else {/*it's a finger*/
+					coords->id = buffer[i * BYTES_PER_COORD + 2] & 0x0f;
+					coords->x = buffer[i * BYTES_PER_COORD + 3] |
+									(buffer[i * BYTES_PER_COORD + 4] << 8);
+					coords->y = buffer[i * BYTES_PER_COORD + 5] |
+									(buffer[i * BYTES_PER_COORD + 6] << 8);
+					coords->w = coords->p / 16;
+					coords->p = buffer[i * BYTES_PER_COORD + 7] |
+							(buffer[i * BYTES_PER_COORD + 8] << 8);
+					coords->overlapping_area = buffer[8];
+					coords->area = buffer[i * BYTES_PER_COORD + 9];
+					/*ts_debug("EF:[%d](%d, %d)", coords->id, coords->x, coords->y);*/
+					if (touch_data->pen_down == true) {
+						touch_data->pen_down = false;
+						/*ts_info("***pen leave");*/
+				}
+			}
 	}
 
 	/*swap coord*/
 	goodix_swap_coords(dev, &touch_data->coords[0], touch_num);
+	goodix_swap_coords(dev, &touch_data->pen_coords[0], 1);
 
 	touch_data->touch_num = touch_num;
 	/* mark this event as touch event */

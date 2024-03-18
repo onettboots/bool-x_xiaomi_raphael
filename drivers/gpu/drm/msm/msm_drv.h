@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Copyright (C) 2013 Red Hat
  * Author: Rob Clark <robdclark@gmail.com>
  *
@@ -26,7 +27,6 @@
 #include <linux/component.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
-#include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/list.h>
@@ -108,7 +108,6 @@ enum msm_mdp_plane_property {
 	/* range properties */
 	PLANE_PROP_ZPOS = PLANE_PROP_BLOBCOUNT,
 	PLANE_PROP_FOD,
-	PLANE_PROP_DCDIM,
 	PLANE_PROP_ALPHA,
 	PLANE_PROP_COLOR_FILL,
 	PLANE_PROP_H_DECIMATE,
@@ -170,6 +169,7 @@ enum msm_mdp_crtc_property {
 	CRTC_PROP_CAPTURE_OUTPUT,
 
 	CRTC_PROP_IDLE_PC_STATE,
+	CRCT_PROP_MI_FOD_SYNC_INFO,
 
 	/* total # of properties */
 	CRTC_PROP_COUNT
@@ -503,7 +503,6 @@ struct msm_mode_info {
  *				 used instead of panel TE in cmd mode panels
  * @roi_caps:           Region of interest capability info
  * @qsync_min_fps	Minimum fps supported by Qsync feature
- * @has_qsync_min_fps_list True if dsi-supported-qsync-min-fps-list exits
  * @te_source		vsync source pin information
  */
 struct msm_display_info {
@@ -528,8 +527,6 @@ struct msm_display_info {
 	struct msm_roi_caps roi_caps;
 
 	uint32_t qsync_min_fps;
-	bool has_qsync_min_fps_list;	
-
 	uint32_t te_source;
 };
 
@@ -709,9 +706,6 @@ struct msm_drm_private {
 	bool shutdown_in_progress;
 
 	struct msm_idle idle;
-	struct pm_qos_request pm_irq_req;
-	struct delayed_work pm_unreq_dwork;
-	atomic_t pm_req_set;
 };
 
 /* get struct msm_kms * from drm_device * */

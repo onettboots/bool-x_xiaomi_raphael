@@ -29,7 +29,6 @@
 };
 
 &slpi_tlmm {
-	clocks =  <&clock_virt_scc SCC_QUPV3_S_HCLK_CLK>;
 	status = "ok";
 };
 

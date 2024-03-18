@@ -2,6 +2,7 @@
  * MIPI DSI Bus
  *
  * Copyright (C) 2012-2013, Samsung Electronics, Co., Ltd.
+ * Copyright (C) 2021 XiaoMi, Inc.
  * Andrzej Hajda <a.hajda@samsung.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -305,7 +306,6 @@ static int mipi_dsi_remove_device_fn(struct device *dev, void *priv)
 {
 	struct mipi_dsi_device *dsi = to_mipi_dsi_device(dev);
 
-	mipi_dsi_detach(dsi);
 	mipi_dsi_device_unregister(dsi);
 
 	return 0;
@@ -1046,45 +1046,6 @@ int mipi_dsi_dcs_set_tear_scanline(struct mipi_dsi_device *dsi, u16 scanline)
 EXPORT_SYMBOL(mipi_dsi_dcs_set_tear_scanline);
 
 /**
- * mipi_dsi_dcs_set_display_brightness_ss() - sets the brightness value of the
- * display for ss type displays
- * @dsi: DSI peripheral device
- * @brightness: brightness value
- * @num_params: Number of parameters (bytes) to encode brightness value in. The
- *              MIPI specification states that one parameter shall be sent for
- *              devices that support 8-bit brightness levels. For devices that
- *              support brightness levels wider than 8-bit, two parameters
- *              shall be sent.
- *
- * Return: 0 on success or a negative error code on failure.
- */
-
-int mipi_dsi_dcs_set_display_brightness_ss(struct mipi_dsi_device *dsi,
-					u16 brightness, size_t num_params)
-{
-	u8 payload[2];
-	ssize_t err;
-
-	switch (num_params) {
-	case 1:
-		payload[0] = brightness & 0xff;
-		break;
-	case 2:
-		payload[0] = brightness >> 8;
-		payload[1] = brightness & 0xff;
-		break;
-	default:
-		return -EINVAL;
-	}
-	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
-				 payload, num_params);
-	if (err < 0)
-		return err;
-
-	return 0;
-}
-
-/**
  * mipi_dsi_dcs_set_display_brightness() - sets the brightness value of the
  *    display
  * @dsi: DSI peripheral device
@@ -1122,6 +1083,33 @@ int mipi_dsi_dcs_set_display_brightness(struct mipi_dsi_device *dsi,
 	return 0;
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness);
+
+int mipi_dsi_dcs_set_display_brightness_ss(struct mipi_dsi_device *dsi,
+					u16 brightness, size_t num_params)
+{
+	u8 payload[2];
+	ssize_t err;
+
+	switch (num_params) {
+	case 1:
+		payload[0] = brightness & 0xff;
+		break;
+	case 2:
+		payload[0] = brightness >> 8;
+		payload[1] = brightness & 0xff;
+		break;
+	default:
+		return -EINVAL;
+	}
+	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
+				 payload, num_params);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness_ss);
+
 
 /**
  * mipi_dsi_dcs_get_display_brightness() - gets the current brightness value
@@ -1166,58 +1154,6 @@ int mipi_dsi_dcs_get_display_brightness(struct mipi_dsi_device *dsi,
 	return 0;
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_get_display_brightness);
-
-/**
- * mipi_dsi_dcs_set_display_brightness_large() - sets the 16-bit brightness value
- *    of the display
- * @dsi: DSI peripheral device
- * @brightness: brightness value
- *
- * Return: 0 on success or a negative error code on failure.
- */
-int mipi_dsi_dcs_set_display_brightness_large(struct mipi_dsi_device *dsi,
-					     u16 brightness)
-{
-	u8 payload[2] = { brightness >> 8, brightness & 0xff };
-	ssize_t err;
-
-	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
-				 payload, sizeof(payload));
-	if (err < 0)
-		return err;
-
-	return 0;
-}
-EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness_large);
-
-/**
- * mipi_dsi_dcs_get_display_brightness_large() - gets the current 16-bit
- *    brightness value of the display
- * @dsi: DSI peripheral device
- * @brightness: brightness value
- *
- * Return: 0 on success or a negative error code on failure.
- */
-int mipi_dsi_dcs_get_display_brightness_large(struct mipi_dsi_device *dsi,
-					     u16 *brightness)
-{
-	u8 brightness_be[2];
-	ssize_t err;
-
-	err = mipi_dsi_dcs_read(dsi, MIPI_DCS_GET_DISPLAY_BRIGHTNESS,
-				brightness_be, sizeof(brightness_be));
-	if (err <= 0) {
-		if (err == 0)
-			err = -ENODATA;
-
-		return err;
-	}
-
-	*brightness = (brightness_be[0] << 8) | brightness_be[1];
-
-	return 0;
-}
-EXPORT_SYMBOL(mipi_dsi_dcs_get_display_brightness_large);
 
 static int mipi_dsi_drv_probe(struct device *dev)
 {
