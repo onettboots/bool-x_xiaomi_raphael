@@ -20,7 +20,7 @@ export SUBARCH=arm64
 export ARCH=arm64
 export CC=$HOME/toolchains/boolx-clang/bin/clang
 
-VER="V1.5-Pickacak-LGC-losfod"
+VER="V1.7-Pickasal-LGC-losfod"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
