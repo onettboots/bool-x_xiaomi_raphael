@@ -296,6 +296,7 @@ struct dsi_panel {
 	bool in_aod; /* set  DISPPARAM_DOZE_BRIGHTNESS_HBM/LBM only in AOD */
 	int doze_brightness;
 	bool is_tddi_flag;
+	bool tddi_doubleclick_flag;
 	bool panel_dead_flag;
 	bool panel_max_frame_rate;
 
