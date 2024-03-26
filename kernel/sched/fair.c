@@ -758,34 +758,24 @@ static u64 __sched_period(unsigned long nr_running)
  */
 static u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
-	unsigned int nr_running = cfs_rq->nr_running;
-	u64 slice;
+        u64 slice = __sched_period(cfs_rq->nr_running + !se->on_rq);
 
-	if (sched_feat(ALT_PERIOD))
-		nr_running = rq_of(cfs_rq)->cfs.h_nr_running;
+        for_each_sched_entity(se) {
+                struct load_weight *load;
+                struct load_weight lw;
 
-	slice = __sched_period(nr_running + !se->on_rq);
+                cfs_rq = cfs_rq_of(se);
+                load = &cfs_rq->load;
 
-	for_each_sched_entity(se) {
-		struct load_weight *load;
-		struct load_weight lw;
+                if (unlikely(!se->on_rq)) {
+                        lw = cfs_rq->load;
 
-		cfs_rq = cfs_rq_of(se);
-		load = &cfs_rq->load;
-
-		if (unlikely(!se->on_rq)) {
-			lw = cfs_rq->load;
-
-			update_load_add(&lw, se->load.weight);
-			load = &lw;
-		}
-		slice = __calc_delta(slice, se->load.weight, load);
-	}
-
-	if (sched_feat(BASE_SLICE))
-		slice = max(slice, (u64)sysctl_sched_min_granularity);
-
-	return slice;
+                        update_load_add(&lw, se->load.weight);
+                        load = &lw;
+                }
+                slice = __calc_delta(slice, se->load.weight, load);
+        }
+        return slice;
 }
 
 /*
