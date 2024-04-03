@@ -19,6 +19,8 @@
 #include "sde_encoder.h"
 #include <linux/backlight.h>
 #include <linux/string.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
 #include "sde_crtc.h"
@@ -620,6 +622,12 @@ void sde_connector_update_hbm(struct drm_connector *connector)
 	status = cstate->fod_dim_layer != NULL;
 	if (atomic_xchg(&effective_status, status) == status)
 		return;
+
+	if (status) {
+                cpu_input_boost_kick_max(1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200, true);
+        }
 
 	mutex_lock(&display->panel->panel_lock);
 	dsi_panel_set_fod_hbm(display->panel, status);
