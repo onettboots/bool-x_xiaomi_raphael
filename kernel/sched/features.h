@@ -12,6 +12,16 @@
  */
 #define SCHED_FEAT_START_DEBIT 1
 
+#define SCHED_FEAT_PLACE_LAG 0
+/*
+ * Give new tasks half a slice to ease into the competition.
+ */
+#define SCHED_FEAT_PLACE_DEADLINE_INITIAL 1
+/*
+ 7* Inhibit (wakeup) preemption until the current task has either matched the
+ * 0-lag point or until is has exhausted it's slice.
+ */
+
 /*
  * Prefer to schedule the task we woke last (assuming it failed
  * wakeup-preemption), since its likely going to consume data we
