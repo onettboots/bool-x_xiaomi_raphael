@@ -97,7 +97,6 @@
 #include <linux/simple_lmk.h>
 #include <linux/devfreq_boost.h>
 #include <linux/cpu_input_boost.h>
-#include <linux/irq.h>
 #include <linux/event_tracking.h>
 
 #include <asm/pgtable.h>
