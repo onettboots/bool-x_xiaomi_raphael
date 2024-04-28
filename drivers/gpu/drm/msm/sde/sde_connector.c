@@ -19,6 +19,8 @@
 #include "sde_encoder.h"
 #include <linux/backlight.h>
 #include <linux/string.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
 #include "sde_crtc.h"
@@ -625,6 +627,12 @@ static inline void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn
 	status = sde_connector_is_fod_enabled(c_conn);
 	if (status == dsi_panel_get_fod_ui(panel))
 		return;
+
+	if (status) {
+                cpu_input_boost_kick_max(1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200, true);
+        }
 
 	dsi_panel_set_fod_hbm(panel, status);
 
