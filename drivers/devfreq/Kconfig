@@ -294,6 +294,7 @@ config DEVFREQ_MSM_CPUBW_BOOST_FREQ
 	help
 	  CPUBW boost frequency for the MSM DDR bus.
 
+
 config DEVFREQ_MSM_LLCCBW_BOOST_FREQ
 	int "Boost freq for llccbw device"
 	default "0"
