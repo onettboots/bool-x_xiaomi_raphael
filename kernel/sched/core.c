@@ -1517,8 +1517,6 @@ static void __init init_uclamp(void)
 			      uclamp_none(clamp_id), false);
 	}
 
-	init_task.uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
-
 	/* System defaults allow max clamp values for both indexes */
 	uclamp_se_set(&uc_max, uclamp_none(UCLAMP_MAX), false);
 	for_each_clamp_id(clamp_id) {
