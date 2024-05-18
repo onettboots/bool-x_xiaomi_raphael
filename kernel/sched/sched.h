@@ -2640,10 +2640,7 @@ static inline bool uclamp_is_used(void)
 {
 	return static_branch_likely(&sched_uclamp_used);
 }
-inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
-			     enum uclamp_id clamp_id);
-inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
-			     enum uclamp_id clamp_id);
+
 #else /* CONFIG_UCLAMP_TASK */
 static inline
 unsigned long uclamp_rq_util_with(struct rq *rq, unsigned long util,
@@ -2657,8 +2654,6 @@ static inline bool uclamp_is_used(void)
 	return false;
 }
 
-static inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
-				    enum uclamp_id clamp_id) {}
 #endif /* CONFIG_UCLAMP_TASK */
 
 #ifdef CONFIG_SCHED_WALT
