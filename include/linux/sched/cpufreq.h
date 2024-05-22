@@ -17,8 +17,6 @@
 #define SCHED_CPUFREQ_EARLY_DET (1U << 6)
 #define SCHED_CPUFREQ_CONTINUE (1U << 8)
 
-#define SCHED_CPUFREQ_RT_DL	(SCHED_CPUFREQ_RT | SCHED_CPUFREQ_DL)
-
 #ifdef CONFIG_CPU_FREQ
 struct cpufreq_policy;
 
