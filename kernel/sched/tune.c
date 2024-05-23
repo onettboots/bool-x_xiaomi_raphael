@@ -521,12 +521,6 @@ prefer_idle_write(struct cgroup_subsys_state *css, struct cftype *cft,
 	    u64 prefer_idle)
 {
 	struct schedtune *st = css_st(css);
-
-	if (!strcmp(css->cgroup->kn->name, "top-app"))
-		prefer_idle = 1;
-	else
-		prefer_idle = 0;
-
 	st->prefer_idle = !!prefer_idle;
 
 	return 0;
