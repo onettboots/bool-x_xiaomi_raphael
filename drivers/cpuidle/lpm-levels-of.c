@@ -1,4 +1,4 @@
-/* Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2014-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -361,6 +361,17 @@ static int parse_cluster_params(struct device_node *node,
 	if (ret)
 		goto fail;
 
+	key = "qcom,disable-prediction";
+	c->lpm_prediction = !(of_property_read_bool(node, key));
+
+	if (c->lpm_prediction) {
+		key = "qcom,clstr-tmr-add";
+		ret = of_property_read_u32(node, key, &c->tmr_add);
+		if (ret || c->tmr_add < TIMER_ADD_LOW ||
+					c->tmr_add > TIMER_ADD_HIGH)
+			c->tmr_add = DEFAULT_TIMER_ADD;
+	}
+
 	/* Set default_level to 0 as default */
 	c->default_level = 0;
 
@@ -578,6 +589,32 @@ static int parse_cpu_levels(struct device_node *node, struct lpm_cluster *c)
 	if (ret)
 		goto failed;
 
+	cpu->ipi_prediction = !(of_property_read_bool(node,
+					"qcom,disable-ipi-prediction"));
+
+	cpu->lpm_prediction = !(of_property_read_bool(node,
+					"qcom,disable-prediction"));
+
+	if (cpu->lpm_prediction) {
+		key = "qcom,ref-stddev";
+		ret = of_property_read_u32(node, key, &cpu->ref_stddev);
+		if (ret || cpu->ref_stddev < STDDEV_LOW ||
+					cpu->ref_stddev > STDDEV_HIGH)
+			cpu->ref_stddev = DEFAULT_STDDEV;
+
+		key = "qcom,tmr-add";
+		ret = of_property_read_u32(node, key, &cpu->tmr_add);
+		if (ret || cpu->tmr_add < TIMER_ADD_LOW ||
+					cpu->tmr_add > TIMER_ADD_HIGH)
+			cpu->tmr_add = DEFAULT_TIMER_ADD;
+
+		key = "qcom,ref-premature-cnt";
+		ret = of_property_read_u32(node, key, &cpu->ref_premature_cnt);
+		if (ret || cpu->ref_premature_cnt < PREMATURE_CNT_LOW ||
+				cpu->ref_premature_cnt > PREMATURE_CNT_HIGH)
+			cpu->ref_premature_cnt = DEFAULT_PREMATURE_CNT;
+	}
+
 	key = "parse_cpu";
 	ret = parse_cpu(node, cpu);
 	if (ret)
@@ -629,11 +666,10 @@ struct lpm_cluster *parse_cluster(struct device_node *node,
 	if (ret)
 		return NULL;
 
-	INIT_LIST_HEAD(&c->list);
 	INIT_LIST_HEAD(&c->child);
 	INIT_LIST_HEAD(&c->cpu);
 	c->parent = parent;
-	raw_spin_lock_init(&c->sync_lock);
+	spin_lock_init(&c->sync_lock);
 	c->min_child_level = NR_LPM_LEVELS;
 
 	for_each_child_of_node(node, n) {
