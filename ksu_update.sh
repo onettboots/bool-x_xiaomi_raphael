@@ -25,7 +25,7 @@ let CURRENT=KSU_VERSION+KSU_GIT_VERSION
 
 cd $dir
 echo ""
-curver=$(cat drivers/kernelsu/kernel/dksu)
+curver=$(cat drivers/staging/kernelsu/kernel/dksu)
 echo "Old DKSU_VERSION is $curver"
 echo""
 OLD_VER="-DKSU_VERSION=$curver"
