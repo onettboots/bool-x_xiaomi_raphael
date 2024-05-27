@@ -25,7 +25,7 @@ $(eval KSU_VERSION=$(shell expr 10000 + $(KSU_GIT_VERSION) + 200))
 $(info -- KernelSU version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else # If there is no .git file, the default version will be passed.
-ccflags-y += -DKSU_VERSION=11464
+ccflags-y += -DKSU_VERSION=11868
 endif
 
 ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
