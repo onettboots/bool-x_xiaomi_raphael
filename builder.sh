@@ -18,8 +18,8 @@ TARGET_IMAGE="Image.gz-dtb"
 TARGET_DTBO="dtbo.img"
 
 # Toolchains
-CLANG_VERSION="clang-r510928" # https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+/refs/heads/main/clang-r510928/
-CLANG_LOC="/home/pwnrazr/dev-stuff/${CLANG_VERSION}"
+CLANG_VERSION="boolx-clang" # https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+/refs/heads/main/clang-r510928/
+CLANG_LOC="$HOME/toolchains/${CLANG_VERSION}"
 CLANG="${CLANG_LOC}/bin:$PATH"
 CT_BIN="${CLANG}/bin/"
 CT="${CT_BIN}/clang"
@@ -60,7 +60,7 @@ function parse_parameters()
 	BUILD_CLEAN=false
 	BUILD_LTO=true
 	BUILD_FULL_LTO=false
-	BUILD_KSU=false
+	BUILD_KSU=true
 	# Use verbose for bug fixing
 	VERBOSE=true
 	RELEASE=false
