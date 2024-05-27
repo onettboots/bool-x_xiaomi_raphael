@@ -17,7 +17,6 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -52,11 +51,9 @@ fun AboutCard() {
 }
 
 @Composable
-fun AboutDialog(showAboutDialog: MutableState<Boolean>) {
-    if (showAboutDialog.value) {
-        Dialog(onDismissRequest = { showAboutDialog.value = false }) {
-            AboutCard()
-        }
+fun AboutDialog(dismiss: () -> Unit) {
+    Dialog(onDismissRequest = { dismiss() }) {
+        AboutCard()
     }
 }
 
