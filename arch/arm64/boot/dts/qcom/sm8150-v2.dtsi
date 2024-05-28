@@ -465,15 +465,15 @@
 
 			qcom,gpu-pwrlevel@4 {
 				reg = <4>;
-				qcom,gpu-freq = <480000000>;
-				qcom,bus-freq = <8>;
+				qcom,gpu-freq = <360000000>;
+				qcom,bus-freq = <1>;
 				qcom,bus-min = <1>;
-				qcom,bus-max = <8>;
+				qcom,bus-max = <1>;
 			};
 
 			qcom,gpu-pwrlevel@5 {
 				reg = <5>;
-				qcom,gpu-freq = <360000000>;
+				qcom,gpu-freq = <270000000>;
 				qcom,bus-freq = <1>;
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
@@ -481,7 +481,7 @@
 
 			qcom,gpu-pwrlevel@6 {
 				reg = <6>;
-				qcom,gpu-freq = <270000000>;
+				qcom,gpu-freq = <180000000>;
 				qcom,bus-freq = <1>;
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
@@ -489,14 +489,6 @@
 
 			qcom,gpu-pwrlevel@7 {
 				reg = <7>;
-				qcom,gpu-freq = <180000000>;
-				qcom,bus-freq = <1>;
-				qcom,bus-min = <1>;
-				qcom,bus-max = <1>;
-			};
-
-			qcom,gpu-pwrlevel@8 {
-				reg = <8>;
 				qcom,gpu-freq = <0>;
 				qcom,bus-freq = <0>;
 				qcom,bus-min = <0>;
@@ -536,38 +528,30 @@
 
 			qcom,gpu-pwrlevel@3 {
 				reg = <3>;
-				qcom,gpu-freq = <480000000>;
-				qcom,bus-freq = <8>;
-				qcom,bus-min = <1>;
-				qcom,bus-max = <8>;
-			};
-
-			qcom,gpu-pwrlevel@4 {
-				reg = <4>;
 				qcom,gpu-freq = <360000000>;
 				qcom,bus-freq = <1>;
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
 			};
 
-			qcom,gpu-pwrlevel@5 {
-				reg = <5>;
+			qcom,gpu-pwrlevel@4 {
+				reg = <4>;
 				qcom,gpu-freq = <270000000>;
 				qcom,bus-freq = <1>;
 				qcom,bus-min = <1>;
 				qcom,bus-max = <1>;
 			};
 
-			qcom,gpu-pwrlevel@6 {
-                                reg = <6>;
+			qcom,gpu-pwrlevel@5 {
+                                reg = <5>;
                                 qcom,gpu-freq = <180000000>;
                                 qcom,bus-freq = <1>;
                                 qcom,bus-min = <1>;
                                 qcom,bus-max = <1>;
                         };
 
-			qcom,gpu-pwrlevel@7 {
-				reg = <7>;
+			qcom,gpu-pwrlevel@6 {
+				reg = <6>;
 				qcom,gpu-freq = <0>;
 				qcom,bus-freq = <0>;
 				qcom,bus-min = <0>;
