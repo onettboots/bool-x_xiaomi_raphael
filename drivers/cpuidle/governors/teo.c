@@ -450,6 +450,44 @@ static int teo_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
 	if (idx > constraint_idx)
 		idx = constraint_idx;
 
+	/*
+	 * Skip the timers check if state 0 is the current candidate one,
+	 * because an immediate non-timer wakeup is expected in that case.
+	 */
+	if (!idx)
+		goto out_tick;
+
+	/*
+	 * If state 0 is a polling one, check if the target residency of
+	 * the current candidate state is low enough and skip the timers
+	 * check in that case too.
+	 */
+	if ((drv->states[0].flags & CPUIDLE_FLAG_POLLING) &&
+	    drv->states[idx].target_residency < RESIDENCY_THRESHOLD_US)
+		goto out_tick;
+
+	cpu_data->sleep_length_ns = tick_nohz_get_sleep_length(&delta_tick);
+	duration_us = ktime_to_us(cpu_data->sleep_length_ns);
+
+	/*
+	 * If the closest expected timer is before the terget residency of the
+	 * candidate state, a shallower one needs to be found.
+	 */
+	if (drv->states[idx].target_residency > duration_us) {
+		i = teo_find_shallower_state(drv, dev, idx, duration_us);
+		if (teo_state_ok(i, drv))
+			idx = i;
+	}
+
+	/*
+	 * If the selected state's target residency is below the tick length
+	 * and intercepts occurring before the tick length are the majority of
+	 * total wakeup events, do not stop the tick.
+	 */
+	if (drv->states[idx].target_residency < TICK_USEC &&
+	    tick_intercept_sum > cpu_data->total / 2 + cpu_data->total / 8)
+		duration_us = TICK_USEC / 2;
+
 end:
 	/*
 	 * Don't stop the tick if the selected state is a polling one or if the
