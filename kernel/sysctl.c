@@ -141,6 +141,10 @@ static unsigned long zero_ul;
 static unsigned long one_ul = 1;
 static unsigned long long_max = LONG_MAX;
 static int one_hundred = 100;
+static int two_hundred = 200;
+#ifdef CONFIG_OPLUS_MM_HACKS
+extern int direct_vm_swappiness;
+#endif /* CONFIG_OPLUS_MM_HACKS */
 static int one_thousand = 1000;
 #ifdef CONFIG_SCHED_WALT
 __maybe_unused static int two_million = 2000000;
@@ -1623,6 +1627,17 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &zero,
 		.extra2		= &one_hundred,
 	},
+#ifdef CONFIG_OPLUS_MM_HACKS
+        {
+                .procname       = "direct_swappiness",
+                .data           = &direct_vm_swappiness,
+                .maxlen         = sizeof(direct_vm_swappiness),
+                .mode           = 0444,
+                .proc_handler   = proc_dointvec_minmax,
+                .extra1         = &zero,
+                .extra2         = &two_hundred,
+        },
+#endif /* CONFIG_OPLUS_MM_HACKS */
 	{
 		.procname       = "want_old_faultaround_pte",
 		.data           = &want_old_faultaround_pte,
@@ -1909,27 +1924,6 @@ static struct ctl_table vm_table[] = {
 		.extra2		= &one,
 	},
 #endif
-	{
-		.procname	= "anon_min_kbytes",
-		.data		= &sysctl_anon_min_kbytes,
-		.maxlen		= sizeof(unsigned long),
-		.mode		= 0644,
-		.proc_handler	= proc_doulongvec_minmax,
-	},
-	{
-		.procname	= "clean_low_kbytes",
-		.data		= &sysctl_clean_low_kbytes,
-		.maxlen		= sizeof(unsigned long),
-		.mode		= 0644,
-		.proc_handler	= proc_doulongvec_minmax,
-	},
-	{
-		.procname	= "clean_min_kbytes",
-		.data		= &sysctl_clean_min_kbytes,
-		.maxlen		= sizeof(unsigned long),
-		.mode		= 0644,
-		.proc_handler	= proc_doulongvec_minmax,
-	},
 	{
 		.procname	= "user_reserve_kbytes",
 		.data		= &sysctl_user_reserve_kbytes,

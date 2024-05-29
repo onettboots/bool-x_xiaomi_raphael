@@ -364,30 +364,33 @@ static void __lru_cache_activate_page(struct page *page)
 #ifdef CONFIG_LRU_GEN
 static void page_inc_refs(struct page *page)
 {
-	unsigned long new_flags, old_flags = READ_ONCE(page->flags);
+	unsigned long refs;
+	unsigned long old_flags, new_flags;
 
 	if (PageUnevictable(page))
 		return;
 
-	if (!PageReferenced(page)) {
-		SetPageReferenced(page);
-		return;
-	}
-
-	if (!PageWorkingset(page)) {
-		SetPageWorkingset(page);
-		return;
-	}
-
 	/* see the comment on MAX_NR_TIERS */
 	do {
-		new_flags = old_flags & LRU_REFS_MASK;
-		if (new_flags == LRU_REFS_MASK)
-			break;
+		new_flags = old_flags = READ_ONCE(page->flags);
 
-		new_flags += BIT(LRU_REFS_PGOFF);
-		new_flags |= old_flags & ~LRU_REFS_MASK;
-	} while (!try_cmpxchg(&page->flags, &old_flags, new_flags));
+		if (!(new_flags & BIT(PG_referenced))) {
+			new_flags |= BIT(PG_referenced);
+			continue;
+		}
+
+		if (!(new_flags & BIT(PG_workingset))) {
+			new_flags |= BIT(PG_workingset);
+			continue;
+		}
+
+		refs = new_flags & LRU_REFS_MASK;
+		refs = min(refs + BIT(LRU_REFS_PGOFF), LRU_REFS_MASK);
+
+		new_flags &= ~LRU_REFS_MASK;
+		new_flags |= refs;
+	} while (new_flags != old_flags &&
+		 cmpxchg(&page->flags, old_flags, new_flags) != old_flags);
 }
 #else
 static void page_inc_refs(struct page *page)
@@ -528,7 +531,8 @@ void __lru_cache_add_active_or_unevictable(struct page *page,
 	VM_BUG_ON_PAGE(PageLRU(page), page);
 
 	if (likely((vma_flags & (VM_LOCKED | VM_SPECIAL)) != VM_LOCKED)) {
-		SetPageActive(page);
+		if (!lru_gen_enabled())
+			SetPageActive(page);
 		lru_cache_add(page);
 		return;
 	}
@@ -768,9 +772,10 @@ static DEFINE_PER_CPU(struct work_struct, lru_add_drain_work);
 
 void lru_add_drain_all_cpuslocked(void)
 {
+	static seqcount_t seqcount = SEQCNT_ZERO(seqcount);
 	static DEFINE_MUTEX(lock);
 	static struct cpumask has_work;
-	int cpu;
+	int cpu, seq;
 
 	/*
 	 * Make sure nobody triggers this path before mm_percpu_wq is fully
@@ -779,7 +784,19 @@ void lru_add_drain_all_cpuslocked(void)
 	if (WARN_ON(!mm_percpu_wq))
 		return;
 
+	seq = raw_read_seqcount_latch(&seqcount);
+
 	mutex_lock(&lock);
+
+	/*
+	 * Piggyback on drain started and finished while we waited for lock:
+	 * all pages pended at the time of our enter were drained from vectors.
+	 */
+	if (__read_seqcount_retry(&seqcount, seq))
+		goto done;
+
+	raw_write_seqcount_latch(&seqcount);
+
 	cpumask_clear(&has_work);
 
 	for_each_online_cpu(cpu) {
@@ -800,6 +817,7 @@ void lru_add_drain_all_cpuslocked(void)
 	for_each_cpu(cpu, &has_work)
 		flush_work(&per_cpu(lru_add_drain_work, cpu));
 
+done:
 	mutex_unlock(&lock);
 }
 
@@ -985,11 +1003,11 @@ EXPORT_SYMBOL(__pagevec_lru_add);
  * @pvec:	Where the resulting entries are placed
  * @mapping:	The address_space to search
  * @start:	The starting entry index
- * @nr_entries:	The maximum number of entries
+ * @nr_pages:	The maximum number of pages
  * @indices:	The cache indices corresponding to the entries in @pvec
  *
  * pagevec_lookup_entries() will search for and return a group of up
- * to @nr_entries pages and shadow entries in the mapping.  All
+ * to @nr_pages pages and shadow entries in the mapping.  All
  * entries are placed in @pvec.  pagevec_lookup_entries() takes a
  * reference against actual pages in @pvec.
  *
@@ -1091,9 +1109,12 @@ void __init swap_setup(void)
 	if (megs < 16)
 		page_cluster = 2;
 	else
-		page_cluster = 3;
+		page_cluster = 0;
 	/*
 	 * Right now other parts of the system means that we
 	 * _really_ don't want to cluster much more
 	 */
+#ifdef CONFIG_OPLUS_MM_HACKS
+	page_cluster = 0;
+#endif /* CONFIG_OPLUS_MM_HACKS */
 }

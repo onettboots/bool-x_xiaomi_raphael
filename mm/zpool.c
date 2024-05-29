@@ -199,7 +199,7 @@ struct zpool *zpool_create_pool(const char *type, const char *name, gfp_t gfp,
 
 /**
  * zpool_destroy_pool() - Destroy a zpool
- * @pool	The zpool to destroy.
+ * @zpool:	The zpool to destroy.
  *
  * Implementations must guarantee this to be thread-safe,
  * however only when destroying different pools.  The same
@@ -222,7 +222,7 @@ void zpool_destroy_pool(struct zpool *zpool)
 
 /**
  * zpool_get_type() - Get the type of the zpool
- * @pool	The zpool to check
+ * @zpool:	The zpool to check
  *
  * This returns the type of the pool.
  *
@@ -236,11 +236,27 @@ const char *zpool_get_type(struct zpool *zpool)
 }
 
 /**
+ * zpool_malloc_support_movable() - Check if the zpool support
+ * allocate movable memory
+ * @zpool:	The zpool to check
+ *
+ * This returns if the zpool support allocate movable memory.
+ *
+ * Implementations must guarantee this to be thread-safe.
+ *
+ * Returns: true if if the zpool support allocate movable memory, false if not
+ */
+bool zpool_malloc_support_movable(struct zpool *zpool)
+{
+	return zpool->driver->malloc_support_movable;
+}
+
+/**
  * zpool_malloc() - Allocate memory
- * @pool	The zpool to allocate from.
- * @size	The amount of memory to allocate.
- * @gfp		The GFP flags to use when allocating memory.
- * @handle	Pointer to the handle to set
+ * @zpool:	The zpool to allocate from.
+ * @size:	The amount of memory to allocate.
+ * @gfp:	The GFP flags to use when allocating memory.
+ * @handle:	Pointer to the handle to set
  *
  * This allocates the requested amount of memory from the pool.
  * The gfp flags will be used when allocating memory, if the
@@ -259,8 +275,8 @@ int zpool_malloc(struct zpool *zpool, size_t size, gfp_t gfp,
 
 /**
  * zpool_free() - Free previously allocated memory
- * @pool	The zpool that allocated the memory.
- * @handle	The handle to the memory to free.
+ * @zpool:	The zpool that allocated the memory.
+ * @handle:	The handle to the memory to free.
  *
  * This frees previously allocated memory.  This does not guarantee
  * that the pool will actually free memory, only that the memory
@@ -278,9 +294,9 @@ void zpool_free(struct zpool *zpool, unsigned long handle)
 
 /**
  * zpool_shrink() - Shrink the pool size
- * @pool	The zpool to shrink.
- * @pages	The number of pages to shrink the pool.
- * @reclaimed	The number of pages successfully evicted.
+ * @zpool:	The zpool to shrink.
+ * @pages:	The number of pages to shrink the pool.
+ * @reclaimed:	The number of pages successfully evicted.
  *
  * This attempts to shrink the actual memory size of the pool
  * by evicting currently used handle(s).  If the pool was
@@ -301,11 +317,11 @@ int zpool_shrink(struct zpool *zpool, unsigned int pages,
 
 /**
  * zpool_map_handle() - Map a previously allocated handle into memory
- * @pool	The zpool that the handle was allocated from
- * @handle	The handle to map
- * @mm		How the memory should be mapped
+ * @zpool:	The zpool that the handle was allocated from
+ * @handle:	The handle to map
+ * @mapmode:	How the memory should be mapped
  *
- * This maps a previously allocated handle into memory.  The @mm
+ * This maps a previously allocated handle into memory.  The @mapmode
  * param indicates to the implementation how the memory will be
  * used, i.e. read-only, write-only, read-write.  If the
  * implementation does not support it, the memory will be treated
@@ -329,8 +345,8 @@ void *zpool_map_handle(struct zpool *zpool, unsigned long handle,
 
 /**
  * zpool_unmap_handle() - Unmap a previously mapped handle
- * @pool	The zpool that the handle was allocated from
- * @handle	The handle to unmap
+ * @zpool:	The zpool that the handle was allocated from
+ * @handle:	The handle to unmap
  *
  * This unmaps a previously mapped handle.  Any locks or other
  * actions that the implementation took in zpool_map_handle()
@@ -342,9 +358,33 @@ void zpool_unmap_handle(struct zpool *zpool, unsigned long handle)
 	zpool->driver->unmap(zpool->pool, handle);
 }
 
+ /**
+ * zpool_compact() - try to run compaction over zpool
+ * @pool       The zpool to compact
+ *
+ * Returns: the number of migrated pages
+ */
+unsigned long zpool_compact(struct zpool *zpool)
+{
+	return zpool->driver->compact ? zpool->driver->compact(zpool->pool) : 0;
+}
+
+
+/**
+ * zpool_get_num_compacted() - get the number of migrated/compacted pages
+ * @pool       The zpool to get compaction statistic for
+ *
+ * Returns: the total number of migrated pages for the pool
+ */
+unsigned long zpool_get_num_compacted(struct zpool *zpool)
+{
+	return zpool->driver->get_num_compacted ?
+		zpool->driver->get_num_compacted(zpool->pool) : 0;
+}
+
 /**
  * zpool_get_total_size() - The total size of the pool
- * @pool	The zpool to check
+ * @zpool:	The zpool to check
  *
  * This returns the total size in bytes of the pool.
  *
@@ -353,6 +393,18 @@ void zpool_unmap_handle(struct zpool *zpool, unsigned long handle)
 u64 zpool_get_total_size(struct zpool *zpool)
 {
 	return zpool->driver->total_size(zpool->pool);
+}
+
+/**
+ * zpool_huge_class_size() - get size for the "huge" class
+ * @pool	The zpool to check
+ *
+ * Returns: size of the huge class
+ */
+size_t zpool_huge_class_size(struct zpool *zpool)
+{
+	return zpool->driver->huge_class_size ?
+		zpool->driver->huge_class_size(zpool->pool) : 0;
 }
 
 MODULE_LICENSE("GPL");

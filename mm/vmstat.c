@@ -1095,7 +1095,6 @@ const char * const vmstat_text[] = {
 	"nr_dirtied",
 	"nr_written",
 	"nr_kernel_misc_reclaimable",
-	"nr_ion_heap",
 	"nr_unreclaimable_pages",
 
 	/* enum writeback_stat_item counters */
@@ -1719,7 +1718,7 @@ static const struct file_operations vmstat_file_operations = {
 
 #ifdef CONFIG_SMP
 static DEFINE_PER_CPU(struct delayed_work, vmstat_work);
-int sysctl_stat_interval __read_mostly = CONFIG_VMSTAT_INTERVAL * HZ;
+int sysctl_stat_interval __read_mostly = HZ;
 
 #ifdef CONFIG_PROC_FS
 static void refresh_vm_stats(struct work_struct *work)
@@ -1834,13 +1833,13 @@ static bool need_update(int cpu)
  */
 void quiet_vmstat(void)
 {
-	if (system_state != SYSTEM_RUNNING)
+	if (unlikely(system_state != SYSTEM_RUNNING))
 		return;
 
 	if (!delayed_work_pending(this_cpu_ptr(&vmstat_work)))
 		return;
 
-	if (!need_update(smp_processor_id()))
+	if (likely(!need_update(smp_processor_id())))
 		return;
 
 	/*

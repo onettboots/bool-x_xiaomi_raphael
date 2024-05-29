@@ -100,6 +100,7 @@ unsigned long vm_dirty_bytes;
  * The interval between `kupdate'-style writebacks
  */
 unsigned int dirty_writeback_interval; /* centiseconds */
+
 EXPORT_SYMBOL_GPL(dirty_writeback_interval);
 
 /*
@@ -1530,7 +1531,7 @@ static inline void wb_dirty_limits(struct dirty_throttle_control *dtc)
 	 */
 	dtc->wb_thresh = __wb_calc_thresh(dtc);
 	dtc->wb_bg_thresh = dtc->thresh ?
-		div64_u64(dtc->wb_thresh * dtc->bg_thresh, dtc->thresh) : 0;
+		div_u64((u64)dtc->wb_thresh * dtc->bg_thresh, dtc->thresh) : 0;
 
 	/*
 	 * In order to avoid the stacked BDI deadlock we need

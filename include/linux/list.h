@@ -151,6 +151,23 @@ static inline void list_replace_init(struct list_head *old,
 }
 
 /**
+ * list_swap - replace entry1 with entry2 and re-add entry1 at entry2's position
+ * @entry1: the location to place entry2
+ * @entry2: the location to place entry1
+ */
+static inline void list_swap(struct list_head *entry1,
+			     struct list_head *entry2)
+{
+	struct list_head *pos = entry2->prev;
+
+	list_del(entry2);
+	list_replace(entry1, entry2);
+	if (pos == entry1)
+		pos = entry2;
+	list_add(entry1, pos);
+}
+
+/**
  * list_del_init - deletes entry from list and reinitialize it.
  * @entry: the element to delete from the list.
  */
@@ -181,6 +198,17 @@ static inline void list_move_tail(struct list_head *list,
 {
 	__list_del_entry(list);
 	list_add_tail(list, head);
+}
+
+/**
+ * list_is_first -- tests whether @ list is the first entry in list @head
+ * @list: the entry to test
+ * @head: the head of the list
+ */
+static inline int list_is_first(const struct list_head *list,
+					const struct list_head *head)
+{
+	return list->prev == head;
 }
 
 /**

@@ -146,7 +146,7 @@ int __add_to_swap_cache(struct page *page, swp_entry_t entry, void **shadowp)
 		}
 
 		__radix_tree_replace(&address_space->page_tree, node, slot,
-                                     page + i, NULL);
+				     page + i, NULL);
 
 		if (shadowp) {
 			VM_BUG_ON(i);
@@ -220,7 +220,7 @@ void __delete_from_swap_cache(struct page *page, void *shadow)
 			continue;
 
 		__radix_tree_replace(&address_space->page_tree,
-                                     node, slot, shadow, NULL);
+				     node, slot, shadow, NULL);
 		set_page_private(page + i, 0);
 	}
 	ClearPageSwapCache(page);
@@ -697,7 +697,7 @@ int init_swap_address_space(unsigned int type, unsigned long nr_pages)
 	unsigned int i, nr;
 
 	nr = DIV_ROUND_UP(nr_pages, SWAP_ADDRESS_SPACE_PAGES);
-	spaces = kvzalloc(sizeof(struct address_space) * nr, GFP_KERNEL);
+	spaces = kvcalloc(nr, sizeof(struct address_space), GFP_KERNEL);
 	if (!spaces)
 		return -ENOMEM;
 	for (i = 0; i < nr; i++) {
@@ -819,6 +819,12 @@ struct page *swap_vma_readahead(swp_entry_t fentry, gfp_t gfp_mask,
 	bool page_allocated;
 	struct vma_swap_readahead ra_info = {0,};
 
+	/* Moto huangzq2: don't readahead sync io pages */
+	if (swap_slot_has_sync_io(fentry)) {
+		ra_info.win = 1;
+		goto skip;
+	}
+
 	swap_ra_info(vmf, &ra_info);
 	if (ra_info.win == 1)
 		goto skip;
@@ -833,6 +839,9 @@ struct page *swap_vma_readahead(swp_entry_t fentry, gfp_t gfp_mask,
 			continue;
 		entry = pte_to_swp_entry(pentry);
 		if (unlikely(non_swap_entry(entry)))
+			continue;
+		/* Moto huangzq2: don't readahead sync io pages */
+		if (swap_slot_has_sync_io(entry))
 			continue;
 		page = __read_swap_cache_async(entry, gfp_mask, vma,
 					       vmf->address, &page_allocated);
