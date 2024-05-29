@@ -128,69 +128,6 @@ config SPARSEMEM_VMEMMAP
 	 pfn_to_page and page_to_pfn operations.  This is the most
 	 efficient option when sufficient kernel resources are available.
 
-config ANON_MIN_KBYTES
-	int "Default value for vm.anon_min_kbytes"
-	depends on SYSCTL
-	range 0 4294967295
-	default 0
-	help
-	  This option sets the default value for vm.anon_min_kbytes sysctl knob.
-
-	  The vm.anon_min_kbytes sysctl knob provides *hard* protection of
-	  anonymous pages. The anonymous pages on the current node won't be
-	  reclaimed under any conditions when their amount is below
-	  vm.anon_min_kbytes. This knob may be used to prevent excessive swap
-	  thrashing when anonymous memory is low (for example, when memory is
-	  going to be overfilled by compressed data of zram module).
-
-	  Setting this value too high (close to MemTotal) can result in
-	  inability to swap and can lead to early OOM under memory pressure.
-
-config CLEAN_LOW_KBYTES
-	int "Default value for vm.clean_low_kbytes"
-	depends on SYSCTL
-	range 0 4294967295
-	default 0
-	help
-	  This option sets the default value for vm.clean_low_kbytes sysctl knob.
-
-	  The vm.clean_low_kbytes sysctl knob provides *best-effort*
-	  protection of clean file pages. The file pages on the current node
-	  won't be reclaimed under memory pressure when the amount of clean file
-	  pages is below vm.clean_low_kbytes *unless* we threaten to OOM.
-	  Protection of clean file pages using this knob may be used when
-	  swapping is still possible to
-	    - prevent disk I/O thrashing under memory pressure;
-	    - improve performance in disk cache-bound tasks under memory
-	      pressure.
-
-	  Setting it to a high value may result in a early eviction of anonymous
-	  pages into the swap space by attempting to hold the protected amount
-	  of clean file pages in memory.
-
-config CLEAN_MIN_KBYTES
-	int "Default value for vm.clean_min_kbytes"
-	depends on SYSCTL
-	range 0 4294967295
-	default 0
-	help
-	  This option sets the default value for vm.clean_min_kbytes sysctl knob.
-
-	  The vm.clean_min_kbytes sysctl knob provides *hard* protection of
-	  clean file pages. The file pages on the current node won't be
-	  reclaimed under memory pressure when the amount of clean file pages is
-	  below vm.clean_min_kbytes. Hard protection of clean file pages using
-	  this knob may be used to
-	    - prevent disk I/O thrashing under memory pressure even with no free
-	      swap space;
-	    - improve performance in disk cache-bound tasks under memory
-	      pressure;
-	    - avoid high latency and prevent livelock in near-OOM conditions.
-
-	  Setting it to a high value may result in a early out-of-memory condition
-	  due to the inability to reclaim the protected amount of clean file pages
-	  when other types of pages cannot be reclaimed.
-
 config HAVE_MEMBLOCK
 	bool
 
@@ -634,9 +571,8 @@ config MEM_SOFT_DIRTY
 config ZSWAP
 	bool "Compressed cache for swap pages (EXPERIMENTAL)"
 	depends on FRONTSWAP && CRYPTO=y
-	select CRYPTO_LZ4
+	select CRYPTO_LZO
 	select ZPOOL
-	select BTREE
 	default n
 	help
 	  A lightweight compressed cache for swap pages.  It takes
@@ -691,19 +627,6 @@ config ZSMALLOC
 	  returned by an alloc().  This handle must be mapped in order to
 	  access the allocated space.
 
-config PGTABLE_MAPPING
-	bool "Use page table mapping to access object in zsmalloc"
-	depends on ZSMALLOC
-	help
-	  By default, zsmalloc uses a copy-based object mapping method to
-	  access allocations that span two pages. However, if a particular
-	  architecture (ex, ARM) performs VM mapping faster than copying,
-	  then you should select this. This causes zsmalloc to use page table
-	  mapping rather than copying for object mapping.
-
-	  You can check speed with zsmalloc benchmark:
-	  https://github.com/spartacus06/zsmapbench
-
 config ZSMALLOC_STAT
 	bool "Export zsmalloc statistics"
 	depends on ZSMALLOC
@@ -732,15 +655,6 @@ config MAX_STACK_SIZE_MB
 
 	  A sane initial value is 80 MB.
 
-config BALANCE_ANON_FILE_RECLAIM
-	bool "During reclaim treat anon and file backed pages equally"
-	depends on SWAP
-	help
-	  When performing memory reclaim treat anonymous and file backed pages
-	  equally.
-	  Swapping anonymous pages out to memory can be efficient enough to justify
-	  treating anonymous and file backed pages equally.
-
 # For architectures that support deferred memory initialisation
 config ARCH_SUPPORTS_DEFERRED_STRUCT_PAGE_INIT
 	bool
@@ -762,10 +676,18 @@ config DEFERRED_STRUCT_PAGE_INIT
 	  lifetime of the system until these kthreads finish the
 	  initialisation.
 
+config PAGE_IDLE_FLAG
+	bool
+	select PAGE_EXTENSION if !64BIT
+	help
+	  This adds PG_idle and PG_young flags to 'struct page'.  PTE Accessed
+	  bit writers can set the state of the bit in the flags so that PTE
+	  Accessed bit readers may avoid disturbance.
+
 config IDLE_PAGE_TRACKING
 	bool "Enable idle page tracking"
 	depends on SYSFS && MMU
-	select PAGE_EXTENSION if !64BIT
+	select PAGE_IDLE_FLAG
 	help
 	  This feature allows to estimate the amount of user pages that have
 	  not been touched during a given period of time. This information can
@@ -860,10 +782,6 @@ config PERCPU_STATS
 	  information includes global and per chunk statistics, which can
 	  be used to help understand percpu memory usage.
 
-config VMSTAT_INTERVAL
-	int "Default interval in seconds to update vmstat"
-	default 0
-
 config ARCH_SUPPORTS_SPECULATIVE_PAGE_FAULT
        def_bool n
 
@@ -920,26 +838,23 @@ config FORCE_ALLOC_FROM_DMA_ZONE
 
 	  If unsure, say "n".
 
-config VMSTAT_INTERVAL
-	int "Default interval in seconds to update vmstat"
-	default 1
-
-config KZEROD
-	bool "Support kzerod"
+config OPLUS_MM_HACKS
+	bool "Enable oplus memory management hacks"
 	default n
-	depends on !NEED_MULTIPLE_NODES
 	help
-	  Support kzerod kernel thread which does prezeroing of free pages.
+	  Improves memory management drastically as these hacks are used in Oplus devices.
+	  Tested on devices made by OEMs like Motorola and Samsung.
+
+	  If unsure, say "n".
 
 # multi-gen LRU {
 config LRU_GEN
 	bool "Multi-Gen LRU"
 	depends on MMU
-	# make sure page->flags has enough spare bits
-	depends on 64BIT || !SPARSEMEM || SPARSEMEM_VMEMMAP
+	# the following options can use up the spare bits in page flags
+	depends on !MAXSMP && (64BIT || !SPARSEMEM || SPARSEMEM_VMEMMAP)
 	help
-	  A high performance LRU implementation to overcommit memory. See
-	  Documentation/admin-guide/mm/multigen_lru.rst for details.
+	  A high performance LRU implementation to overcommit memory.
 
 config LRU_GEN_ENABLED
 	bool "Enable by default"
@@ -956,3 +871,4 @@ config LRU_GEN_STATS
 
 	  This option has a per-memcg and per-node memory overhead.
 # }
+

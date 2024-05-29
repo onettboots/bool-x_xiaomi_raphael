@@ -1175,6 +1175,7 @@ void __page_add_new_anon_rmap(struct page *page,
 /**
  * page_add_file_rmap - add pte mapping to a file page
  * @page: the page to add the mapping to
+ * @compound: charge the page as compound or small page
  *
  * The caller needs to hold the pte lock.
  */
@@ -1348,7 +1349,7 @@ static bool try_to_unmap_one(struct page *page, struct vm_area_struct *vma,
 	struct page *subpage;
 	bool ret = true;
 	unsigned long start = address, end;
-	enum ttu_flags flags = (enum ttu_flags)(long)arg;
+	enum ttu_flags flags = (enum ttu_flags)arg;
 
 	/*
 	 * When racing against e.g. zap_pte_range() on another cpu,

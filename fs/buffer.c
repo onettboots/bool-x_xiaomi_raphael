@@ -604,18 +604,18 @@ EXPORT_SYMBOL(mark_buffer_dirty_inode);
  * The caller must hold lock_page_memcg().
  */
 void __set_page_dirty(struct page *page, struct address_space *mapping,
-			     int warn)
+                             int warn)
 {
-	unsigned long flags;
+        unsigned long flags;
 
-	spin_lock_irqsave(&mapping->tree_lock, flags);
-	if (page->mapping) {	/* Race with truncate? */
-		WARN_ON_ONCE(warn && !PageUptodate(page));
-		account_page_dirtied(page, mapping);
-		radix_tree_tag_set(&mapping->page_tree,
-				page_index(page), PAGECACHE_TAG_DIRTY);
-	}
-	spin_unlock_irqrestore(&mapping->tree_lock, flags);
+        spin_lock_irqsave(&mapping->tree_lock, flags);
+        if (page->mapping) {    /* Race with truncate? */
+                WARN_ON_ONCE(warn && !PageUptodate(page));
+                account_page_dirtied(page, mapping);
+                radix_tree_tag_set(&mapping->page_tree,
+                                page_index(page), PAGECACHE_TAG_DIRTY);
+        }
+        spin_unlock_irqrestore(&mapping->tree_lock, flags);
 }
 EXPORT_SYMBOL_GPL(__set_page_dirty);
 

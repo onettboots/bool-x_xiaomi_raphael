@@ -52,11 +52,7 @@ void end_swap_bio_write(struct bio *bio)
 {
 	struct page *page = bio->bi_io_vec[0].bv_page;
 
-#ifdef CONFIG_VBSWAP
-	if (likely(bio->bi_status)) {
-#else
 	if (bio->bi_status) {
-#endif
 		SetPageError(page);
 		/*
 		 * We failed to write the page out to swap-space.
@@ -67,16 +63,30 @@ void end_swap_bio_write(struct bio *bio)
 		 * Also clear PG_reclaim to avoid rotate_reclaimable_page()
 		 */
 		set_page_dirty(page);
-#ifndef CONFIG_VBSWAP
 		pr_alert_ratelimited("Write-error on swap-device (%u:%u:%llu)\n",
 			 MAJOR(bio_dev(bio)),
 			 MINOR(bio_dev(bio)),
 			 (unsigned long long)bio->bi_iter.bi_sector);
-#endif
 		ClearPageReclaim(page);
 	}
 	end_page_writeback(page);
 	bio_put(bio);
+}
+
+/* Moto huangzq2: check sync_io state on swap entry */
+bool swap_slot_has_sync_io(swp_entry_t entry)
+{
+	struct swap_info_struct *sis;
+	struct gendisk *disk;
+
+	sis = swp_swap_info(entry);
+	disk = sis->bdev->bd_disk;
+	if (disk->fops->ioctl) {
+		return disk->fops->ioctl(sis->bdev, 0,
+			SWP_SYNCHRONOUS_IO, swp_offset(entry)) == 1;
+	}
+
+	return false;
 }
 
 static void swap_slot_free_notify(struct page *page)
@@ -267,13 +277,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 		end_page_writeback(page);
 		goto out;
 	}
-#ifdef CONFIG_VBSWAP
-	set_page_dirty(page);
-	ClearPageReclaim(page);
-	unlock_page(page);
-#else
 	ret = __swap_writepage(page, wbc, end_swap_bio_write);
-#endif
 out:
 	return ret;
 }
@@ -367,6 +371,7 @@ int swap_readpage(struct page *page, bool synchronous)
 	struct swap_info_struct *sis = page_swap_info(page);
 	blk_qc_t qc;
 	struct gendisk *disk;
+	bool workingset = PageWorkingset(page);
 	unsigned long pflags;
 
 	VM_BUG_ON_PAGE(!PageSwapCache(page) && !synchronous, page);
@@ -378,7 +383,8 @@ int swap_readpage(struct page *page, bool synchronous)
 	 * or the submitting cgroup IO-throttled, submission can be a
 	 * significant part of overall IO time.
 	 */
-	psi_memstall_enter(&pflags);
+	if (workingset)
+		psi_memstall_enter(&pflags);
 
 	if (frontswap_load(page) == 0) {
 		SetPageUptodate(page);
