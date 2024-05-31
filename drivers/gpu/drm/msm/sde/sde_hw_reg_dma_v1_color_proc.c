@@ -665,7 +665,6 @@ void reg_dmav1_setup_dspp_gcv18(struct sde_hw_dspp *ctx, void *cfg)
 	struct sde_reg_dma_setup_ops_cfg dma_write_cfg;
 	int rc, i = 0;
 	u32 reg;
-	u32 *addr[GC_TBL_NUM];
 
 	rc = reg_dma_dspp_check(ctx, cfg, GC);
 	if (rc)
@@ -697,9 +696,6 @@ void reg_dmav1_setup_dspp_gcv18(struct sde_hw_dspp *ctx, void *cfg)
 		return;
 	}
 
-	addr[0] = lut_cfg->c0;
-	addr[1] = lut_cfg->c1;
-	addr[2] = lut_cfg->c2;
 	for (i = 0; i < GC_TBL_NUM; i++) {
 		reg = 0;
 		REG_DMA_SETUP_OPS(dma_write_cfg,
@@ -715,7 +711,7 @@ void reg_dmav1_setup_dspp_gcv18(struct sde_hw_dspp *ctx, void *cfg)
 		REG_DMA_SETUP_OPS(dma_write_cfg,
 			ctx->cap->sblk->gc.base + GC_C0_OFF +
 			(i * sizeof(u32) * 2),
-			addr[i],
+			lut_cfg->c0 + (ARRAY_SIZE(lut_cfg->c0) * i),
 			PGC_TBL_LEN * sizeof(u32),
 			REG_BLK_WRITE_INC, 0, 0, 0);
 		rc = dma_ops->setup_payload(&dma_write_cfg);
@@ -801,7 +797,7 @@ void reg_dmav1_setup_dspp_igcv31(struct sde_hw_dspp *ctx, void *cfg)
 	struct sde_hw_cp_cfg *hw_cfg = cfg;
 	struct sde_reg_dma_setup_ops_cfg dma_write_cfg;
 	int rc, i = 0, j = 0;
-	u32 *addr[IGC_TBL_NUM];
+	u32 *addr = NULL;
 	u32 offset = 0;
 	u32 reg;
 
@@ -835,20 +831,18 @@ void reg_dmav1_setup_dspp_igcv31(struct sde_hw_dspp *ctx, void *cfg)
 		return;
 	}
 
-	addr[0] = lut_cfg->c0;
-	addr[1] = lut_cfg->c1;
-	addr[2] = lut_cfg->c2;
 	for (i = 0; i < IGC_TBL_NUM; i++) {
+		addr = lut_cfg->c0 + (i * ARRAY_SIZE(lut_cfg->c0));
 		offset = IGC_C0_OFF + (i * sizeof(u32));
 
 		for (j = 0; j < IGC_TBL_LEN; j++) {
-			addr[i][j] &= IGC_DATA_MASK;
-			addr[i][j] |= IGC_DSPP_SEL_MASK(ctx->idx - 1);
+			addr[j] &= IGC_DATA_MASK;
+			addr[j] |= IGC_DSPP_SEL_MASK(ctx->idx - 1);
 			if (j == 0)
-				addr[i][j] |= IGC_INDEX_UPDATE;
+				addr[j] |= IGC_INDEX_UPDATE;
 		}
 
-		REG_DMA_SETUP_OPS(dma_write_cfg, offset, addr[i],
+		REG_DMA_SETUP_OPS(dma_write_cfg, offset, addr,
 			IGC_TBL_LEN * sizeof(u32),
 			REG_BLK_WRITE_INC, 0, 0, 0);
 		rc = dma_ops->setup_payload(&dma_write_cfg);
@@ -1170,9 +1164,13 @@ exit:
 
 void reg_dmav1_setup_dspp_pa_hsicv17(struct sde_hw_dspp *ctx, void *cfg)
 {
+	struct sde_hw_reg_dma_ops *dma_ops;
+	struct sde_reg_dma_kickoff_cfg kick_off;
 	struct sde_hw_cp_cfg *hw_cfg = cfg;
+	struct sde_reg_dma_setup_ops_cfg dma_write_cfg;
+	struct drm_msm_pa_hsic *hsic_cfg;
     struct sde_hw_kcal *kcal = sde_hw_kcal_get();
-	u32 opcode = 0;
+	u32 reg = 0, opcode = 0, local_opcode = 0;
 	int rc;
 
 	if (kcal->enabled)
@@ -1199,10 +1197,94 @@ void reg_dmav1_setup_dspp_pa_hsicv17(struct sde_hw_dspp *ctx, void *cfg)
 		return;
 	}
 
-	rc = reg_dmav1_setup_dspp_pa_hsicv17_apply(ctx,
-		hw_cfg->payload, hw_cfg->ctl);
+	hsic_cfg = hw_cfg->payload;
+
+	dma_ops = sde_reg_dma_get_ops();
+	dma_ops->reset_reg_dma_buf(dspp_buf[HSIC][ctx->idx]);
+
+	REG_DMA_INIT_OPS(dma_write_cfg, dspp_mapping[ctx->idx],
+		HSIC, dspp_buf[HSIC][ctx->idx]);
+
+	REG_DMA_SETUP_OPS(dma_write_cfg, 0, NULL, 0, HW_BLK_SELECT, 0, 0, 0);
+	rc = dma_ops->setup_payload(&dma_write_cfg);
+	if (rc) {
+		DRM_ERROR("write decode select failed ret %d\n", rc);
+		return;
+	}
+
+	if (hsic_cfg->flags & PA_HSIC_HUE_ENABLE) {
+		reg = hsic_cfg->hue & PA_HUE_MASK;
+		REG_DMA_SETUP_OPS(dma_write_cfg,
+			ctx->cap->sblk->hsic.base + PA_HUE_OFF,
+			&reg, sizeof(reg), REG_SINGLE_WRITE, 0, 0, 0);
+		rc = dma_ops->setup_payload(&dma_write_cfg);
+		if (rc) {
+			DRM_ERROR("hsic hue write failed ret %d\n", rc);
+			return;
+		}
+		local_opcode |= PA_HUE_EN;
+	}
+
+	if (hsic_cfg->flags & PA_HSIC_SAT_ENABLE) {
+		reg = hsic_cfg->saturation & PA_SAT_MASK;
+		REG_DMA_SETUP_OPS(dma_write_cfg,
+			ctx->cap->sblk->hsic.base + PA_SAT_OFF,
+			&reg, sizeof(reg), REG_SINGLE_WRITE, 0, 0, 0);
+		rc = dma_ops->setup_payload(&dma_write_cfg);
+		if (rc) {
+			DRM_ERROR("hsic saturation write failed ret %d\n", rc);
+			return;
+		}
+		local_opcode |= PA_SAT_EN;
+	}
+
+	if (hsic_cfg->flags & PA_HSIC_VAL_ENABLE) {
+		reg = hsic_cfg->value & PA_VAL_MASK;
+		REG_DMA_SETUP_OPS(dma_write_cfg,
+			ctx->cap->sblk->hsic.base + PA_VAL_OFF,
+			&reg, sizeof(reg), REG_SINGLE_WRITE, 0, 0, 0);
+		rc = dma_ops->setup_payload(&dma_write_cfg);
+		if (rc) {
+			DRM_ERROR("hsic value write failed ret %d\n", rc);
+			return;
+		}
+		local_opcode |= PA_VAL_EN;
+	}
+
+	if (hsic_cfg->flags & PA_HSIC_CONT_ENABLE) {
+		reg = hsic_cfg->contrast & PA_CONT_MASK;
+		REG_DMA_SETUP_OPS(dma_write_cfg,
+			ctx->cap->sblk->hsic.base + PA_CONT_OFF,
+			&reg, sizeof(reg), REG_SINGLE_WRITE, 0, 0, 0);
+		rc = dma_ops->setup_payload(&dma_write_cfg);
+		if (rc) {
+			DRM_ERROR("hsic contrast write failed ret %d\n", rc);
+			return;
+		}
+		local_opcode |= PA_CONT_EN;
+	}
+
+	if (local_opcode) {
+		local_opcode |= PA_EN;
+	} else {
+		DRM_ERROR("Invalid hsic config 0x%x\n", local_opcode);
+		return;
+	}
+
+	REG_DMA_SETUP_OPS(dma_write_cfg,
+		ctx->cap->sblk->hsic.base, &local_opcode, sizeof(local_opcode),
+		REG_SINGLE_MODIFY, 0, 0, REG_DMA_PA_MODE_HSIC_MASK);
+	rc = dma_ops->setup_payload(&dma_write_cfg);
+	if (rc) {
+		DRM_ERROR("setting opcode failed ret %d\n", rc);
+		return;
+	}
+
+	REG_DMA_SETUP_KICKOFF(kick_off, hw_cfg->ctl, dspp_buf[HSIC][ctx->idx],
+			REG_DMA_WRITE, DMA_CTL_QUEUE0, WRITE_IMMEDIATE);
+	rc = dma_ops->kick_off(&kick_off);
 	if (rc)
-		DRM_ERROR("hsic application failed ret %d\n", rc);
+		DRM_ERROR("failed to kick off ret %d\n", rc);
 }
 
 void reg_dmav1_setup_dspp_sixzonev17(struct sde_hw_dspp *ctx, void *cfg)
@@ -1945,7 +2027,6 @@ static int reg_dmav1_setup_vig_igc_common(struct sde_hw_reg_dma_ops *dma_ops,
 	u32 lut_sel = 0, lut_enable = 0;
 	u32 *data = NULL, *data_ptr = NULL;
 	u32 igc_base = ctx->cap->sblk->igc_blk[0].base - REG_DMA_VIG_SWI_DIFF;
-	u32 *addr[IGC_TBL_NUM];
 
 	if (hw_cfg->len != sizeof(struct drm_msm_igc_lut)) {
 		DRM_ERROR("invalid size of payload len %d exp %zd\n",
@@ -1963,9 +2044,6 @@ static int reg_dmav1_setup_vig_igc_common(struct sde_hw_reg_dma_ops *dma_ops,
 	if (lut_enable)
 		lut_sel = (~lut_sel) && BIT(0);
 
-	addr[0] = igc_lut->c0;
-	addr[1] = igc_lut->c1;
-	addr[2] = igc_lut->c2;
 	for (i = 0; i < IGC_TBL_NUM; i++) {
 		/* write 0 to the index register */
 		index = 0;
@@ -1978,7 +2056,7 @@ static int reg_dmav1_setup_vig_igc_common(struct sde_hw_reg_dma_ops *dma_ops,
 		}
 
 		offset = igc_base + 0x1B4 + i * sizeof(u32);
-		data_ptr = addr[i];
+		data_ptr = igc_lut->c0 + (ARRAY_SIZE(igc_lut->c0) * i);
 		for (j = 0; j < VIG_1D_LUT_IGC_LEN; j++)
 			data[j] = (data_ptr[2 * j] & mask) |
 				(data_ptr[2 * j + 1] & mask) << 16;

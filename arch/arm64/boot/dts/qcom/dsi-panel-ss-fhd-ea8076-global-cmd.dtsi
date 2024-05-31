@@ -1,5 +1,5 @@
 /* Copyright (c) 2015, The Linux Foundation. All rights reserved.
- * Copyright (C) 2019 XiaoMi, Inc.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -57,6 +57,7 @@
 			17000 15500 30000 8000 3000>;
 		qcom,mdss-dsi-panel-peak-brightness = <4300000>;
 		qcom,mdss-dsi-panel-blackness-level = <3230>;
+
 		qcom,mdss-dsi-panel-fod-dimlayer-enabled;
 
 		qcom,dispparam-enabled;
@@ -68,16 +69,6 @@
 
 		qcom,disp-doze-backlight-threshold = <8>;
 		qcom,disp-fod-off-dimming-delay = <85>;
-		
-		qcom,mdss-dsi-t-clk-post = <26>;
-		qcom,mdss-dsi-t-clk-pre = <30>;
-		qcom,panel-supply-entries = <26>;
-		qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
-		qcom,mdss-dsi-bl-min-level = <2>;
-		qcom,mdss-dsi-bl-max-level = <2047>;
-		qcom,mdss-dsi-mode-sel-gpio-state = "single_port";
-		qcom,platform-te-gpio = <&tlmm 8 0x00>;
-		qcom,platform-reset-gpio = <&tlmm 6 0x00>;
 
 		qcom,elvss_dimming_check_enable;
 		qcom,mdss-dsi-panel-elvss-dimming-read-length = <1>;

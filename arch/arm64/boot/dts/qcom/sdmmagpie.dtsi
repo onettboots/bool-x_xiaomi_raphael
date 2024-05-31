@@ -1,4 +1,4 @@
-/* Copyright (c) 2018-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1117,7 +1117,6 @@
 
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
-		qca,bt-sw-ctrl-gpio = <&tlmm 73 0>; /* SW_CTRL */
 		qca,bt-vdd-io-supply = <&pm6150_l10>;
 		qca,bt-vdd-core-supply = <&pm6150l_l2>;
 		qca,bt-vdd-pa-supply = <&pm6150l_l10>;
@@ -2827,7 +2826,6 @@
 
 	llcc_bw_opp_table: llcc-bw-opp-table {
 		compatible = "operating-points-v2";
-		BW_OPP_ENTRY( 150, 16); /*  2288 MB/s */
 		BW_OPP_ENTRY( 300, 16); /*  4577 MB/s */
 		BW_OPP_ENTRY( 466, 16); /*  7110 MB/s */
 		BW_OPP_ENTRY( 600, 16); /*  9155 MB/s */

@@ -30,12 +30,8 @@
 #include <drm/drm_atomic.h>
 #include <drm/drm_mode.h>
 #include <drm/drm_print.h>
-#include <linux/cpu_input_boost.h>
-#include <linux/devfreq_boost.h>
-#include <linux/event_tracking.h>
 #include <linux/pm_qos.h>
 #include <linux/sync_file.h>
-#include <linux/sched/sysctl.h>
 
 #include "drm_crtc_internal.h"
 
@@ -1100,21 +1096,9 @@ drm_atomic_get_connector_state(struct drm_atomic_state *state,
 		struct __drm_connnectors_state *c;
 		int alloc = max(index + 1, config->num_connector);
 
-		if (state->connectors_preallocated) {
-			state->connectors_preallocated = false;
-			c = kmalloc(alloc * sizeof(*state->connectors),
-				    GFP_KERNEL);
-			if (!c)
-				return ERR_PTR(-ENOMEM);
-			memcpy(c, state->connectors,
-			       sizeof(*state->connectors) * state->num_connector);
-		} else {
-			c = krealloc(state->connectors,
-				     alloc * sizeof(*state->connectors),
-				     GFP_KERNEL);
-			if (!c)
-				return ERR_PTR(-ENOMEM);
-		}
+		c = krealloc(state->connectors, alloc * sizeof(*state->connectors), GFP_KERNEL);
+		if (!c)
+			return ERR_PTR(-ENOMEM);
 
 		state->connectors = c;
 		memset(&state->connectors[state->num_connector], 0,
@@ -2264,14 +2248,6 @@ static int __drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
 
-	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
-		//5000ms covers long scrolls after input boosting is no longer used
-		if (time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
-			devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
-			devfreq_boost_kick(DEVFREQ_MSM_LLCCBW);
-		}
-	}
-
 	drm_modeset_acquire_init(&ctx, 0);
 
 	state = drm_atomic_state_alloc(dev);
@@ -2404,21 +2380,18 @@ int drm_mode_atomic_ioctl(struct drm_device *dev, void *data,
 	 * Optimistically assume the current task won't migrate to another CPU
 	 * and restrict the current CPU to shallow idle states so that it won't
 	 * take too long to finish running the ioctl whenever the ioctl runs a
-	 * command that sleeps, such as for an "atomic" commit. Apply this
-	 * restriction to the prime CPU as well in anticipation of it processing
-	 * the DRM IRQ and any other display commit work, so that it wakes up
-	 * now if it's in a deep idle state.
+	 * command that sleeps, such as for an "atomic" commit.
 	 */
 	struct pm_qos_request req = {
-		.type = PM_QOS_REQ_AFFINE_CORES,
-		.cpus_affine = BIT(raw_smp_processor_id()) |
-			       *cpumask_bits(cpu_lp_mask)
-	};
-	int ret;
+                .type = PM_QOS_REQ_AFFINE_CORES,
+                .cpus_affine = BIT(raw_smp_processor_id()) |
+                               *cpumask_bits(cpu_prime_mask)
+        };
+        int ret;
 
-	pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
-	ret = __drm_mode_atomic_ioctl(dev, data, file_priv);
-	pm_qos_remove_request(&req);
+        pm_qos_add_request(&req, PM_QOS_CPU_DMA_LATENCY, 100);
+        ret = __drm_mode_atomic_ioctl(dev, data, file_priv);
+        pm_qos_remove_request(&req);
 
-	return ret;
+        return ret;
 }

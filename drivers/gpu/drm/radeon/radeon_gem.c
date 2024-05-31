@@ -378,7 +378,6 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 	struct radeon_device *rdev = dev->dev_private;
 	struct drm_radeon_gem_set_domain *args = data;
 	struct drm_gem_object *gobj;
-	struct radeon_bo *robj;
 	int r;
 
 	/* for now if someone requests domain CPU -
@@ -391,13 +390,12 @@ int radeon_gem_set_domain_ioctl(struct drm_device *dev, void *data,
 		up_read(&rdev->exclusive_lock);
 		return -ENOENT;
 	}
-	robj = gem_to_radeon_bo(gobj);
 
 	r = radeon_gem_set_domain(gobj, args->read_domains, args->write_domain);
 
 	drm_gem_object_put_unlocked(gobj);
 	up_read(&rdev->exclusive_lock);
-	r = radeon_gem_handle_lockup(robj->rdev, r);
+	r = radeon_gem_handle_lockup(rdev, r);
 	return r;
 }
 
@@ -451,7 +449,7 @@ int radeon_gem_busy_ioctl(struct drm_device *dev, void *data,
 	else
 		r = 0;
 
-	cur_placement = READ_ONCE(robj->tbo.mem.mem_type);
+	cur_placement = ACCESS_ONCE(robj->tbo.mem.mem_type);
 	args->domain = radeon_mem_type_to_domain(cur_placement);
 	drm_gem_object_put_unlocked(gobj);
 	return r;
@@ -481,7 +479,7 @@ int radeon_gem_wait_idle_ioctl(struct drm_device *dev, void *data,
 		r = ret;
 
 	/* Flush HDP cache via MMIO if necessary */
-	cur_placement = READ_ONCE(robj->tbo.mem.mem_type);
+	cur_placement = ACCESS_ONCE(robj->tbo.mem.mem_type);
 	if (rdev->asic->mmio_hdp_flush &&
 	    radeon_mem_type_to_domain(cur_placement) == RADEON_GEM_DOMAIN_VRAM)
 		robj->rdev->asic->mmio_hdp_flush(rdev);

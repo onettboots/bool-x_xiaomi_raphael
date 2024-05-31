@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2016 Intel Corporation
- * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, distribute, and sell this software and its
  * documentation for any purpose is hereby granted without fee, provided that
@@ -178,7 +177,7 @@ struct drm_bridge_funcs {
 	 * or &drm_encoder_helper_funcs.dpms hook.
 	 *
 	 * The bridge must assume that the display pipe (i.e. clocks and timing
-	 * signals) feeding it is no longer running when this callback is
+	 * singals) feeding it is no longer running when this callback is
 	 * called.
 	 *
 	 * The post_disable callback is optional.
@@ -240,7 +239,6 @@ struct drm_bridge_funcs {
 
 	void (*disp_param_set)(struct drm_bridge *bridge, int cmd);
 	ssize_t (*disp_param_get)(struct drm_bridge *bridge, char *buf);
-
 	int (*disp_get_panel_info)(struct drm_bridge *bridge, char *name);
 };
 
@@ -286,8 +284,8 @@ void drm_bridge_mode_set(struct drm_bridge *bridge,
 			struct drm_display_mode *mode,
 			struct drm_display_mode *adjusted_mode);
 void drm_bridge_pre_enable(struct drm_bridge *bridge);
-int dsi_bridge_interface_enable(int timeout);
 void drm_bridge_enable(struct drm_bridge *bridge);
+int dsi_bridge_interface_enable(int timeout);
 int drm_bridge_connector_init(struct drm_bridge *bridge,
 	struct drm_connector *connector);
 

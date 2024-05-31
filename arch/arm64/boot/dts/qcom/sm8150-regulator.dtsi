@@ -939,7 +939,6 @@
 	};
 
 	rpmh-regulator-smpf2 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "smpf2";
@@ -952,7 +951,6 @@
 	};
 
 	rpmh-regulator-ldof2 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof2";
@@ -965,7 +963,6 @@
 	};
 
 	rpmh-regulator-ldof5 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof5";
@@ -978,7 +975,6 @@
 	};
 
 	rpmh-regulator-ldof6 {
-		status = "disabled";
 		compatible = "qcom,rpmh-xob-regulator";
 		mboxes = <&apps_rsc 0>;
 		qcom,resource-name = "ldof6";

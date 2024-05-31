@@ -40,6 +40,7 @@
 #define INPUT_TYPE_B_PROTOCOL
 #endif
 #include <linux/backlight.h>
+#include "../xiaomi/xiaomi_touch.h"
 
 #define INPUT_EVENT_START						0
 #define INPUT_EVENT_SENSITIVE_MODE_OFF			0
@@ -648,194 +649,6 @@ static ssize_t goodix_ts_irq_info_store(struct device *dev,
 	return count;
 }
 
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
-static int gtp_set_cur_value(int gtp_mode, int gtp_value)
-{
-	u8 state_data[3] = { 0 };
-	u8 goodix_game_value = 0;
-	u8 temp_value = 0;
-	int ret = 0;
-	int i = 0;
-
-	struct goodix_ts_device *dev = goodix_core_data->ts_dev;
-
-	if (gtp_mode >= Touch_Mode_NUM && gtp_mode < 0)
-		return -EINVAL;
-
-	goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE] = gtp_value;
-
-	if (goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE] >
-			goodix_core_data->touch_mode[gtp_mode][GET_MAX_VALUE]) {
-		goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE] =
-				goodix_core_data->touch_mode[gtp_mode][GET_MAX_VALUE];
-	} else if (goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE] <
-			goodix_core_data->touch_mode[gtp_mode][GET_MIN_VALUE]) {
-		goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE] =
-				goodix_core_data->touch_mode[gtp_mode][GET_MIN_VALUE];
-	}
-
-	ts_info("GAME -> MODE:%d, VALUE:%d", gtp_mode, gtp_value);
-
-	if (goodix_core_data->touch_mode[Touch_Game_Mode][SET_CUR_VALUE] == 0) {
-		ts_info("GAME -> exit touch game mode");
-		state_data[0] = GTP_EXIT_GAME_CMD;
-		state_data[1] = 0x00;
-		state_data[2] = 0xF1;
-		ret = goodix_i2c_write(dev, GTP_GAME_CMD_ADD, state_data, 3);
-		if (ret < 0)
-			ts_info("GAME -> exit game mode fail");
-		goodix_game_value = 0;
-		goodix_core_data->touch_mode[gtp_mode][GET_CUR_VALUE] = goodix_core_data->touch_mode[gtp_mode][GET_DEF_VALUE];
-		return ret;
-	} else {
-		 /* Temp Workaround */
-		goodix_core_data->touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE] = 1;
-
-		for (i = 0; i < Touch_Mode_NUM; i++) {
-			switch (i) {
-			case Touch_Game_Mode:
-					break;
-			case Touch_UP_THRESHOLD:
-					temp_value =
-					goodix_core_data->touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
-					goodix_game_value &= 0xFC;
-					goodix_game_value |= temp_value;
-					break;
-			case Touch_Tolerance:
-					temp_value =
-					goodix_core_data->touch_mode[Touch_Tolerance][SET_CUR_VALUE];
-					temp_value = 3 - temp_value;
-					goodix_game_value &= 0xF3;
-					goodix_game_value |= (temp_value << 2);
-					break;
-			case Touch_Edge_Filter:
-					temp_value =
-					goodix_core_data->touch_mode[Touch_Edge_Filter][SET_CUR_VALUE];
-					goodix_game_value &= 0xCF;
-					goodix_game_value |= (temp_value << 4);
-					break;
-			case Touch_Panel_Orientation:
-					/* 0, 1, 2, 3 = 0, 90, 180, 270 */
-					temp_value =
-					goodix_core_data->touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE];
-					if (temp_value == 3)
-						temp_value = 2;
-					else if (temp_value == 2)
-						temp_value = 3;
-					goodix_game_value &= 0x3F;
-					goodix_game_value |= (temp_value << 6);
-					break;
-			default:
-					/* Don't support */
-					break;
-
-			};
-		}
-
-		goodix_core_data->touch_mode[gtp_mode][GET_CUR_VALUE] =
-					goodix_core_data->touch_mode[gtp_mode][SET_CUR_VALUE];
-
-		state_data[0] = GTP_GAME_CMD;
-		state_data[1] = goodix_game_value;
-		state_data[2] = 0xFF & (0 - state_data[0] - state_data[1]);
-		ts_info("GAME -> MODE:%d, VALUE:%d --> cmd1:0x%x, cmd2:0x%x, cmd3:0x%x",
-			gtp_mode, gtp_value, state_data[0], state_data[1], state_data[2]);
-
-		ret = goodix_i2c_write(dev, GTP_GAME_CMD_ADD, state_data, 5);
-		if (ret < 0)
-			ts_info("GAME -> change game mode fail");
-	}
-	return ret;
-}
-
-static void gtp_init_touchmode_data(void)
-{
-	int i;
-
-	/* Touch Game Mode Switch */
-	goodix_core_data->touch_mode[Touch_Game_Mode][GET_DEF_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Game_Mode][GET_MAX_VALUE] = 1;
-	goodix_core_data->touch_mode[Touch_Game_Mode][GET_MIN_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Game_Mode][SET_CUR_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Game_Mode][GET_CUR_VALUE] = 0;
-
-	/* Finger hysteresis */
-	goodix_core_data->touch_mode[Touch_UP_THRESHOLD][GET_MAX_VALUE] = 3;
-	goodix_core_data->touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_UP_THRESHOLD][GET_DEF_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE] = 0;
-
-	/* Tolerance */
-	goodix_core_data->touch_mode[Touch_Tolerance][GET_MAX_VALUE] = 3;
-	goodix_core_data->touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Tolerance][GET_DEF_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 0;
-
-	/* Edge filter */
-	goodix_core_data->touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 3;
-	goodix_core_data->touch_mode[Touch_Edge_Filter][GET_MIN_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Edge_Filter][GET_DEF_VALUE] = 1;
-	goodix_core_data->touch_mode[Touch_Edge_Filter][SET_CUR_VALUE] = 1;
-	goodix_core_data->touch_mode[Touch_Edge_Filter][GET_CUR_VALUE] = 1;
-
-	/* Orientation */
-	goodix_core_data->touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 3;
-	goodix_core_data->touch_mode[Touch_Panel_Orientation][GET_MIN_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE] = 0;
-	goodix_core_data->touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] = 0;
-
-	for (i = 0; i < Touch_Mode_NUM; i++) {
-		ts_info("GAME --> mode:%d, set cur:%d, get cur:%d, def:%d, min:%d, max:%d\n",
-			i,
-			goodix_core_data->touch_mode[i][SET_CUR_VALUE],
-			goodix_core_data->touch_mode[i][GET_CUR_VALUE],
-			goodix_core_data->touch_mode[i][GET_DEF_VALUE],
-			goodix_core_data->touch_mode[i][GET_MIN_VALUE],
-			goodix_core_data->touch_mode[i][GET_MAX_VALUE]);
-	}
-	return;
-}
-
-static ssize_t goodix_ts_game_mode_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-
-	if (core_data == NULL)
-		return snprintf(buf, PAGE_SIZE, "error\n");
-
-	return snprintf(buf, PAGE_SIZE, "%d %d %d %d\n",
-		goodix_core_data->touch_mode[Touch_Game_Mode][GET_CUR_VALUE],
-		goodix_core_data->touch_mode[Touch_Tolerance][GET_CUR_VALUE],
-		goodix_core_data->touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE],
-		goodix_core_data->touch_mode[Touch_Edge_Filter][GET_CUR_VALUE]);
-}
-
-static ssize_t goodix_ts_game_mode_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int rc, i;
-	unsigned int u[Touch_Mode_NUM] = { 0 };
-
-	ts_info("GAME -> buf : %s, len : %d\n", buf, count);
-
-	rc = sscanf(buf, "%d %d %d %d\n", &u[Touch_Game_Mode], &u[Touch_Tolerance], &u[Touch_UP_THRESHOLD], &u[Touch_Edge_Filter]);
-
-	if (rc != 4) {
-		ts_info("GAME -> Invalid Format!");
-		return -EINVAL;
-	}
-
-	for (i = 0; i < Touch_Mode_NUM; i++)
-		gtp_set_cur_value(i, u[i]);
-
-	return count;
-}
-#endif
-
 static DEVICE_ATTR(extmod_info, 0444, goodix_ts_extmod_show, NULL);
 static DEVICE_ATTR(driver_info, 0444, goodix_ts_driver_info_show, NULL);
 static DEVICE_ATTR(chip_info, 0444, goodix_ts_chip_info_show, NULL);
@@ -845,10 +658,6 @@ static DEVICE_ATTR(send_cfg, 0220, NULL, goodix_ts_send_cfg_store);
 static DEVICE_ATTR(read_cfg, 0444, goodix_ts_read_cfg_show, NULL);
 static DEVICE_ATTR(irq_info, 0664,
 		goodix_ts_irq_info_show, goodix_ts_irq_info_store);
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
-static DEVICE_ATTR(game_mode, 0664,
-		goodix_ts_game_mode_show, goodix_ts_game_mode_store);
-#endif
 
 static struct attribute *sysfs_attrs[] = {
 	&dev_attr_extmod_info.attr,
@@ -859,9 +668,6 @@ static struct attribute *sysfs_attrs[] = {
 	&dev_attr_send_cfg.attr,
 	&dev_attr_read_cfg.attr,
 	&dev_attr_irq_info.attr,
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
-	&dev_attr_game_mode.attr,
-#endif
 	NULL,
 };
 
@@ -1005,15 +811,13 @@ static int goodix_ts_input_report(struct input_dev *dev,
 			input_report_key(core_data->input_dev, BTN_INFO, 1);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 1);*/
 			core_data->fod_pressed = true;
-			sysfs_notify(&core_data->gtp_touch_dev->kobj, NULL, "fp_state");
 			ts_info("BTN_INFO press");
 		} else if (core_data->fod_pressed && (core_data->event_status & 0x88) != 0x88) {
 		if (unlikely(!core_data->fod_test)) {
 			input_report_key(core_data->input_dev, BTN_INFO, 0);
 			/*input_report_key(core_data->input_dev, KEY_INFO, 0);*/
-			core_data->fod_pressed = false;
-			sysfs_notify(&core_data->gtp_touch_dev->kobj, NULL, "fp_state");
 			ts_info("BTN_INFO release");
+			core_data->fod_pressed = false;
 		}
 	}
 	mutex_unlock(&ts_dev->report_mutex);
@@ -1038,6 +842,7 @@ static void goodix_ts_sleep_work(struct work_struct *work)
 
 	ts_info("enter");
 
+	core_data->fod_ok = 0;
 	if (core_data->tp_already_suspend) {
 		r = wait_for_completion_timeout(&core_data->pm_resume_completion, msecs_to_jiffies(500));
 		if (!r) {
@@ -1159,7 +964,7 @@ int goodix_ts_irq_setup(struct goodix_ts_core *core_data)
 	r = devm_request_threaded_irq(&core_data->pdev->dev,
 			core_data->irq, NULL,
 			goodix_ts_threadirq_func,
-			ts_bdata->irq_flags | IRQF_ONESHOT | IRQF_NOBALANCING,
+			ts_bdata->irq_flags | IRQF_ONESHOT,
 			GOODIX_CORE_DRIVER_NAME, core_data);
 	if (r < 0)
 		ts_err("Failed to requeset threaded irq:%d", r);
@@ -1377,7 +1182,7 @@ static ssize_t gtp_fod_status_show(struct device *dev,
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
 
-	return snprintf(buf, 10, "%d\n", core_data->fod_status);
+	return snprintf(buf, 10, "%d\n", core_data->fod_ok);
 }
 
 static ssize_t gtp_fod_status_store(struct device *dev,
@@ -1387,7 +1192,7 @@ static ssize_t gtp_fod_status_store(struct device *dev,
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
 	//struct goodix_ts_event *ts_event = &core_data->ts_event;
 	ts_info("buf:%s, count:%zu\n", buf, count);
-	sscanf(buf, "%u", &core_data->fod_status);
+	sscanf(buf, "%u", &core_data->fod_ok);
 
 	//goodix_ts_input_report(core_data->input_dev,&ts_event->event_data.touch_data);
 	core_data->gesture_enabled = core_data->double_wakeup | core_data->fod_status;
@@ -1403,19 +1208,6 @@ static DEVICE_ATTR(fod_test, (0664),
 
 static DEVICE_ATTR(touch_suspend_notify, (0444),
 			gtp_touch_suspend_notify_show, NULL);
-
-static ssize_t fp_state_show(struct device *dev,
-						struct device_attribute *attr, char *buf)
-{
-	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
-	struct goodix_touch_data *touch_data =
-			&core_data->ts_event.event_data.touch_data;
-
-	return snprintf(buf, PAGE_SIZE, "%d,%d,%d\n",
-			touch_data->coords[0].x, touch_data->coords[0].y,
-			core_data->fod_pressed);
-}
-static DEVICE_ATTR_RO(fp_state);
 
 static void goodix_switch_mode_work(struct work_struct *work)
 {
@@ -1944,7 +1736,7 @@ static int goodix_bl_state_chg_callback(struct notifier_block *nb, unsigned long
 	if (data && core_data) {
 		blank = *(int *)(data);
 		ts_info("%s val:%lu, blank:%u\n", __func__, val, blank);
-		if (blank == BACKLIGHT_OFF && !atomic_read(&core_data->suspend_stat)) {
+		if (blank == BACKLIGHT_OFF && (atomic_read(&core_data->suspend_stat) && core_data->fod_status)) {
 			ts_info("%s BACKLIGHT OFF, disable irq\n", __func__);
 			goodix_ts_irq_enable(core_data, false);
 		} else
@@ -1970,7 +1762,7 @@ int goodix_ts_msm_drm_notifier_callback(struct notifier_block *self,
 		blank = *(int *)(msm_drm_event->data);
 		flush_workqueue(core_data->event_wq);
 		if (event == MSM_DRM_EVENT_BLANK && (blank == MSM_DRM_BLANK_POWERDOWN ||
-			blank == MSM_DRM_BLANK_LP)) {
+			blank == MSM_DRM_BLANK_LP1 || blank == MSM_DRM_BLANK_LP2)) {
 			ts_info("touchpanel suspend .....blank=%d\n", blank);
 			ts_info("touchpanel suspend .....suspend_stat=%d\n", atomic_read(&core_data->suspend_stat));
 			if (atomic_read(&core_data->suspend_stat))
@@ -2019,12 +1811,14 @@ static void goodix_ts_resume_work(struct work_struct *work)
 {
 	struct goodix_ts_core *core_data =
 		container_of(work, struct goodix_ts_core, resume_work);
+	core_data->fod_ok = 0;
 	goodix_ts_resume(core_data);
 }
 static void goodix_ts_suspend_work(struct work_struct *work)
 {
 	struct goodix_ts_core *core_data =
 		container_of(work, struct goodix_ts_core, suspend_work);
+	core_data->fod_ok = 0;
 	goodix_ts_suspend(core_data);
 }
 
@@ -2059,6 +1853,7 @@ static int goodix_ts_pm_resume(struct device *dev)
 
 	core_data->tp_already_suspend = false;
 	complete(&core_data->pm_resume_completion);
+	core_data->fod_ok = 0;
 
 	return 0;
 }
@@ -2197,6 +1992,88 @@ exit:
 
 }
 
+static ssize_t goodix_lockdown_info_read(struct file *file, char __user *buf,
+				size_t count, loff_t *pos)
+{
+	int cnt = 0, ret = 0;
+	#define TP_INFO_MAX_LENGTH 50
+	char tmp[TP_INFO_MAX_LENGTH];
+
+	if (*pos != 0 || !goodix_core_data)
+		return 0;
+
+	cnt = snprintf(tmp, TP_INFO_MAX_LENGTH,
+			"0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x\n",
+			goodix_core_data->lockdown_info[0], goodix_core_data->lockdown_info[1],
+			goodix_core_data->lockdown_info[2], goodix_core_data->lockdown_info[3],
+			goodix_core_data->lockdown_info[4], goodix_core_data->lockdown_info[5],
+			goodix_core_data->lockdown_info[6], goodix_core_data->lockdown_info[7]);
+	ret = copy_to_user(buf, tmp, cnt);
+	*pos += cnt;
+	if (ret != 0)
+		return 0;
+	else
+		return cnt;
+}
+
+static const struct file_operations goodix_lockdown_info_ops = {
+	.read = goodix_lockdown_info_read,
+};
+
+static ssize_t goodix_panel_color_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
+{
+	if (!goodix_core_data)
+		return 0;
+
+	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[2]);
+}
+
+static ssize_t goodix_panel_vendor_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
+{
+	if (!goodix_core_data)
+		return 0;
+
+	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[6]);
+}
+
+static ssize_t goodix_panel_display_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
+{
+	if (!goodix_core_data)
+		return 0;
+
+	return snprintf(buf, PAGE_SIZE, "%c\n", goodix_core_data->lockdown_info[1]);
+}
+
+static ssize_t goodix_lockdown_info_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	if (!goodix_core_data)
+		return 0;
+
+	return snprintf(buf, PAGE_SIZE,
+			"0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x,0x%02x\n",
+			goodix_core_data->lockdown_info[0], goodix_core_data->lockdown_info[1],
+			goodix_core_data->lockdown_info[2], goodix_core_data->lockdown_info[3],
+			goodix_core_data->lockdown_info[4], goodix_core_data->lockdown_info[5],
+			goodix_core_data->lockdown_info[6], goodix_core_data->lockdown_info[7]);
+}
+
+static DEVICE_ATTR(lockdown_info, (0444), goodix_lockdown_info_show, NULL);
+static DEVICE_ATTR(panel_vendor, (0444), goodix_panel_vendor_show, NULL);
+static DEVICE_ATTR(panel_color, (0444), goodix_panel_color_show, NULL);
+static DEVICE_ATTR(panel_display, (0444), goodix_panel_display_show, NULL);
+
+static struct attribute *goodix_attr_group[] = {
+	&dev_attr_panel_vendor.attr,
+	&dev_attr_panel_color.attr,
+	&dev_attr_panel_display.attr,
+	&dev_attr_lockdown_info.attr,
+	NULL,
+};
+
 static void gtp_power_supply_work(struct work_struct *work)
 {
 	struct goodix_ts_core *core_data =
@@ -2234,6 +2111,238 @@ static int gtp_power_supply_event(struct notifier_block *nb, unsigned long event
 
 	return 0;
 }
+
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+static struct xiaomi_touch_interface xiaomi_touch_interfaces;
+
+static int gtp_set_cur_value(int gtp_mode, int gtp_value)
+{
+	u8 state_data[3] = {0};
+	u8 goodix_game_value = 0;
+	u8 temp_value = 0;
+	int ret = 0;
+	int i = 0;
+
+	struct goodix_ts_device *dev = goodix_core_data->ts_dev;
+/*
+	if (gtp_mode == Touch_Fod_Enable && goodix_core_data && gtp_value >= 0) {
+		ts_info("set fod status");
+		goodix_core_data->fod_status = gtp_value;
+		goodix_core_data->gesture_enabled = goodix_core_data->double_wakeup |
+			goodix_core_data->fod_status | goodix_core_data->aod_status;
+		goodix_check_gesture_stat(!!goodix_core_data->fod_status);
+		return 0;
+	}
+	if (gtp_mode == Touch_Aod_Enable && goodix_core_data && gtp_value >= 0) {
+		ts_info("set aod status");
+		goodix_core_data->aod_status = gtp_value;
+		goodix_core_data->gesture_enabled = goodix_core_data->double_wakeup |
+			goodix_core_data->fod_status | goodix_core_data->aod_status;
+		goodix_check_gesture_stat(!!goodix_core_data->aod_status);
+		return 0;
+	}
+*/
+	if (gtp_mode >= Touch_Mode_NUM && gtp_mode < 0) {
+		ts_err("gtp mode is error:%d", gtp_mode);
+		return -EINVAL;
+	} else if (xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE] >
+			xiaomi_touch_interfaces.touch_mode[gtp_mode][GET_MAX_VALUE]) {
+
+		xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE] =
+				xiaomi_touch_interfaces.touch_mode[gtp_mode][GET_MAX_VALUE];
+
+	} else if (xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE] <
+			xiaomi_touch_interfaces.touch_mode[gtp_mode][GET_MIN_VALUE]) {
+
+		xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE] =
+				xiaomi_touch_interfaces.touch_mode[gtp_mode][GET_MIN_VALUE];
+	}
+
+	xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE] = gtp_value;
+
+	if (gtp_mode == Touch_Game_Mode && gtp_value == 0) {
+		ts_info("exit touch game mode");
+		state_data[0] = GTP_EXIT_GAME_CMD;
+		state_data[1] = 0x00;
+		state_data[2] = 0xF1;
+		ret = goodix_i2c_write(dev, GTP_GAME_CMD_ADD, state_data, 3);
+		if (ret < 0) {
+			ts_err("exit game mode fail");
+		}
+		goodix_game_value = 0;
+		return ret;
+	}
+
+	for (i = 0; i < Touch_Mode_NUM; i++) {
+		switch (i) {
+		case Touch_Game_Mode:
+				break;
+		case Touch_Active_MODE:
+				break;
+		case Touch_UP_THRESHOLD:
+				temp_value =
+				xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE];
+				goodix_game_value &= 0xFC;
+				goodix_game_value |= temp_value;
+				break;
+		case Touch_Tolerance:
+				temp_value =
+				xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE];
+				temp_value = 3 - temp_value;
+				goodix_game_value &= 0xF3;
+				goodix_game_value |= (temp_value << 2);
+				break;
+		case Touch_Edge_Filter:
+				temp_value =
+				xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][SET_CUR_VALUE];
+				goodix_game_value &= 0xCF;
+				goodix_game_value |= (temp_value << 4);
+				break;
+		case Touch_Panel_Orientation:
+				/* 0,1,2,3 = 0, 90, 180,270 */
+				temp_value =
+				xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE];
+				if (temp_value == 3)
+					temp_value = 2;
+				else if (temp_value == 2)
+					temp_value = 3;
+				goodix_game_value &= 0x3F;
+				goodix_game_value |= (temp_value << 6);
+				break;
+		default:
+				/* Don't support */
+				break;
+
+		};
+	}
+	ts_info("mode:%d, value:%d, write value:0x%x", gtp_mode, gtp_value, goodix_game_value);
+
+	xiaomi_touch_interfaces.touch_mode[gtp_mode][GET_CUR_VALUE] =
+					xiaomi_touch_interfaces.touch_mode[gtp_mode][SET_CUR_VALUE];
+
+	if (xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE]) {
+		state_data[0] = GTP_GAME_CMD;
+		state_data[1] = goodix_game_value;
+		state_data[2] = 0xFF & (0 - state_data[0] - state_data[1]);
+
+		ret = goodix_i2c_write(dev, GTP_GAME_CMD_ADD, state_data, 3);
+
+		if (ret < 0) {
+			ts_err("change game mode fail");
+		}
+	}
+	return ret;
+}
+
+static int gtp_get_mode_value(int mode, int value_type)
+{
+	int value = -1;
+
+	if (mode < Touch_Mode_NUM && mode >= 0)
+		value = xiaomi_touch_interfaces.touch_mode[mode][value_type];
+	else
+		ts_err("don't support");
+
+	return value;
+}
+
+static int gtp_get_mode_all(int mode, int *value)
+{
+	if (mode < Touch_Mode_NUM && mode >= 0) {
+		value[0] = xiaomi_touch_interfaces.touch_mode[mode][GET_CUR_VALUE];
+		value[1] = xiaomi_touch_interfaces.touch_mode[mode][GET_DEF_VALUE];
+		value[2] = xiaomi_touch_interfaces.touch_mode[mode][GET_MIN_VALUE];
+		value[3] = xiaomi_touch_interfaces.touch_mode[mode][GET_MAX_VALUE];
+	} else {
+		ts_err("don't support");
+	}
+	ts_info("mode:%d, value:%d:%d:%d:%d", mode, value[0], value[1], value[2], value[3]);
+
+	return 0;
+}
+
+static int gtp_reset_mode(int mode)
+{
+	int i = 0;
+
+	if (mode < Touch_Mode_NUM && mode > 0) {
+		xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE] =
+			xiaomi_touch_interfaces.touch_mode[mode][GET_DEF_VALUE];
+		gtp_set_cur_value(mode, xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE]);
+	} else if (mode == 0) {
+		for (i = 0; i < Touch_Mode_NUM; i++) {
+			xiaomi_touch_interfaces.touch_mode[i][SET_CUR_VALUE] =
+			xiaomi_touch_interfaces.touch_mode[i][GET_DEF_VALUE];
+			gtp_set_cur_value(mode, xiaomi_touch_interfaces.touch_mode[mode][SET_CUR_VALUE]);
+		}
+	} else {
+		ts_err("don't support");
+	}
+
+	ts_info("mode:%d", mode);
+
+	return 0;
+}
+
+static void gtp_init_touchmode_data(void)
+{
+	int i;
+
+	/* Touch Game Mode Switch */
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_DEF_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_MAX_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][SET_CUR_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Game_Mode][GET_CUR_VALUE] = 0;
+
+	/* Acitve Mode */
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_MAX_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_DEF_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][SET_CUR_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Active_MODE][GET_CUR_VALUE] = 0;
+
+	/* finger hysteresis */
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_DEF_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][SET_CUR_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_UP_THRESHOLD][GET_CUR_VALUE] = 0;
+
+	/*  Tolerance */
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_DEF_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][SET_CUR_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Tolerance][GET_CUR_VALUE] = 0;
+
+	/*	edge filter */
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_MIN_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_DEF_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][SET_CUR_VALUE] = 1;
+	xiaomi_touch_interfaces.touch_mode[Touch_Edge_Filter][GET_CUR_VALUE] = 1;
+
+	/*	Orientation */
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MAX_VALUE] = 3;
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_MIN_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_DEF_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][SET_CUR_VALUE] = 0;
+	xiaomi_touch_interfaces.touch_mode[Touch_Panel_Orientation][GET_CUR_VALUE] = 0;
+
+	for (i = 0; i < Touch_Mode_NUM; i++) {
+		ts_info("mode:%d, set cur:%d, get cur:%d, def:%d min:%d max:%d\n",
+			i,
+			xiaomi_touch_interfaces.touch_mode[i][SET_CUR_VALUE],
+			xiaomi_touch_interfaces.touch_mode[i][GET_CUR_VALUE],
+			xiaomi_touch_interfaces.touch_mode[i][GET_DEF_VALUE],
+			xiaomi_touch_interfaces.touch_mode[i][GET_MIN_VALUE],
+			xiaomi_touch_interfaces.touch_mode[i][GET_MAX_VALUE]);
+	}
+
+	return;
+}
+#endif
 
 /**
  * goodix_ts_probe - called by kernel when a Goodix touch
@@ -2329,6 +2438,7 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	device_init_wakeup(&pdev->dev, 1);
 
 	core_data->is_usb_exist = -1;
+	core_data->fod_status = 1;
 	/*i2c test*/
 	r = ts_device->hw_ops->read_trans(ts_device, 0x3100, &read_val, 1);
 	if (!r)
@@ -2337,6 +2447,9 @@ static int goodix_ts_probe(struct platform_device *pdev)
 		ts_err("i2c test FAILED");
 		goto out;
 	}
+
+	core_data->tp_lockdown_info_proc =
+	    proc_create("tp_lockdown_info", 0664, NULL, &goodix_lockdown_info_ops);
 
 	/*unified protocl
 	 * start a thread to parse cfg_bin and init IC*/
@@ -2357,9 +2470,22 @@ static int goodix_ts_probe(struct platform_device *pdev)
 		ts_err("ERROR:register bl_notifier failed\n");
 		goto out;
 	}
+	core_data->attrs.attrs = goodix_attr_group;
+	r = sysfs_create_group(&client->dev.kobj, &core_data->attrs);
+	if (r) {
+		ts_err("ERROR: Cannot create sysfs structure!\n");
+		r = -ENODEV;
+		goto out;
+	}
 
 	if (core_data->gtp_tp_class == NULL)
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+		core_data->gtp_tp_class = get_xiaomi_touch_class();
+		if (core_data->gtp_tp_class == NULL)
+			ts_err("ERROR: gtp_tp_class is NULL!\n");
+#else
 		core_data->gtp_tp_class = class_create(THIS_MODULE, "touch");
+#endif
 	core_data->gtp_touch_dev = device_create(core_data->gtp_tp_class, NULL, 0x5d, core_data, "tp_dev");
 	if (IS_ERR(core_data->gtp_touch_dev)) {
 		ts_err("ERROR: Cannot create device for the sysfs!\n");
@@ -2389,12 +2515,6 @@ static int goodix_ts_probe(struct platform_device *pdev)
 	core_data->dbclick_count = 0;
 #endif
 
-if (sysfs_create_file(&core_data->gtp_touch_dev->kobj,
-				  &dev_attr_fp_state.attr)) {
-		ts_err("Failed to create fp_state sysfs file!");
-		goto out;
-	}
-
 	/*core_data->fod_status = -1;*/
 	//wake_lock_init(&core_data->tp_wakelock, WAKE_LOCK_SUSPEND, "touch_locker");
 #ifdef CONFIG_TOUCHSCREEN_GOODIX_DEBUG_FS
@@ -2404,9 +2524,16 @@ if (sysfs_create_file(&core_data->gtp_touch_dev->kobj,
 					&tpdbg_operations);
 	}
 #endif
-#ifdef CONFIG_TOUCHSCREEN_GOODIX_GTX8_GAMEMODE
-	gtp_init_touchmode_data();
+#ifdef CONFIG_TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+		memset(&xiaomi_touch_interfaces, 0x00, sizeof(struct xiaomi_touch_interface));
+		xiaomi_touch_interfaces.getModeValue = gtp_get_mode_value;
+		xiaomi_touch_interfaces.setModeValue = gtp_set_cur_value;
+		xiaomi_touch_interfaces.resetMode = gtp_reset_mode;
+		xiaomi_touch_interfaces.getModeAll = gtp_get_mode_all;
+		xiaomitouch_register_modedata(&xiaomi_touch_interfaces);
+		gtp_init_touchmode_data();
 #endif
+
 out:
 	backlight_unregister_notifier(&core_data->bl_notifier);
 	ts_info("goodix_ts_probe OUT, r:%d", r);
