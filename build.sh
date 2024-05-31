@@ -27,7 +27,7 @@ CLANG_BIN="${CLANG}/bin/"
 TARGET_IMAGE="Image.gz-dtb"
 cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
-CONFIGS="raphael_defconfig"
+CONFIGS="raphael-vts_defconfig"
 
 VER="V1.7-Pickasal-DSP"
 KERNEL_DIR=`pwd`
