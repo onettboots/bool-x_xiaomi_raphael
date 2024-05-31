@@ -16,6 +16,7 @@ TARGETS += kcmp
 TARGETS += lib
 TARGETS += membarrier
 TARGETS += memfd
+TARGETS += drivers/ntsync
 TARGETS += memory-hotplug
 TARGETS += mount
 TARGETS += mqueue

@@ -9576,6 +9576,15 @@ F:	include/trace/events/nilfs2.h
 F:	include/uapi/linux/nilfs2_api.h
 F:	include/uapi/linux/nilfs2_ondisk.h
 
+NTSYNC SYNCHRONIZATION PRIMITIVE DRIVER
+M:	Elizabeth Figura <zfigura@codeweavers.com>
+L:	wine-devel@winehq.org
+S:	Supported
+F:	Documentation/userspace-api/ntsync.rst
+F:	drivers/misc/ntsync.c
+F:	include/uapi/linux/ntsync.h
+F:	tools/testing/selftests/drivers/ntsync/
+
 NINJA SCSI-3 / NINJA SCSI-32Bi (16bit/CardBus) PCMCIA SCSI HOST ADAPTER DRIVER
 M:	YOKOTA Hiroshi <yokota@netlab.is.tsukuba.ac.jp>
 W:	http://www.netlab.is.tsukuba.ac.jp/~yokota/izumi/ninja/
