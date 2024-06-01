@@ -412,7 +412,7 @@ static char *task_group_path(struct task_group *tg)
 static void
 print_task(struct seq_file *m, struct rq *rq, struct task_struct *p)
 {
-	if (task_current(rq, p))
+	if (rq->curr == p)
 		SEQ_printf(m, ">R");
 	else
 		SEQ_printf(m, " %c", task_state_to_char(p));
