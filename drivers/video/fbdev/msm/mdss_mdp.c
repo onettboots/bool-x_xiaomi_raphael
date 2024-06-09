@@ -2430,7 +2430,6 @@ static u32 mdss_mdp_scaler_init(struct mdss_data_type *mdata,
 			return -EINVAL;
 		}
 		mdata->scaler_off->ndest_scalers = len/sizeof(u32);
-		BUG_ON(mdata->scaler_off->ndest_scalers > 2);
 
 		mdata->scaler_off->dest_scaler_off =
 			devm_kzalloc(dev, sizeof(u32) *
@@ -4920,7 +4919,7 @@ struct mdss_panel_cfg *mdss_panel_intf_type(int intf_val)
 }
 EXPORT_SYMBOL(mdss_panel_intf_type);
 
-struct irq_info *mdss_intr_line()
+struct irq_info *mdss_intr_line(void)
 {
 	return mdss_mdp_hw.irq_info;
 }
