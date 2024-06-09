@@ -184,7 +184,7 @@ int backlight_device_set_brightness(struct backlight_device *bd,
 			rc = -EINVAL;
 		else {
 			if ((!bd->use_count && brightness) || (bd->use_count && !brightness)) {
-				pr_debug("%s: set brightness to %lu\n", __func__, brightness);
+				pr_info("%s: set brightness to %lu\n", __func__, brightness);
 				if (!bd->use_count)
 					bd->use_count++;
 				else
@@ -328,9 +328,7 @@ static ssize_t brightness_clone_store(struct device *dev,
 	if (rc)
 		return rc;
 
-	bd->props.brightness_clone = (brightness <= bd->thermal_brightness_limit) ?
-				brightness :
-				bd->thermal_brightness_limit;
+	bd->props.brightness_clone = brightness;
 
 	envp[0] = "SOURCE=sysfs";
 	envp[1] = NULL;
