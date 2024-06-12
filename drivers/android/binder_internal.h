@@ -14,6 +14,7 @@
 #include <linux/uidgid.h>
 #include <uapi/linux/android/binderfs.h>
 #include "binder_alloc.h"
+#include "dbitmap.h"
 
 struct binder_context {
 	struct binder_node *binder_context_mgr_node;
@@ -409,6 +410,8 @@ enum binder_prio_state {
  * @freeze_wait:          waitqueue of processes waiting for all outstanding
  *                        transactions to be processed
  *                        (protected by @inner_lock)
+ * @dmap                  dbitmap to manage available reference descriptors
+ *                        (protected by @outer_lock)
  * @todo:                 list of work for this process
  *                        (protected by @inner_lock)
  * @stats:                per-process binder statistics
@@ -440,35 +443,32 @@ enum binder_prio_state {
  *
  * Bookkeeping structure for binder processes
  */
-
 struct binder_proc {
-        struct hlist_node proc_node;
-        struct rb_root threads;
-        struct rb_root nodes;
-        struct rb_root refs_by_desc;
-        struct rb_root refs_by_node;
-        struct list_head waiting_threads;
-        int pid;
-        struct task_struct *tsk;
-        struct files_struct *files;
-        struct mutex files_lock;
-        const struct cred *cred;
-        struct hlist_node deferred_work_node;
-        int deferred_work;
-        int outstanding_txns;
-        bool is_dead;
-        bool is_frozen;
-        bool sync_recv;
-        bool async_recv;
-        wait_queue_head_t freeze_wait;
-
-        struct list_head todo;
-        wait_queue_head_t wait;
-        struct binder_stats stats;
-        struct list_head delivered_death;
-        u32 max_threads;
-        int requested_threads;
-        int requested_threads_started;                                                          int tmp_ref;
+	struct hlist_node proc_node;
+	struct rb_root threads;
+	struct rb_root nodes;
+	struct rb_root refs_by_desc;
+	struct rb_root refs_by_node;
+	struct list_head waiting_threads;
+	int pid;
+	struct task_struct *tsk;
+	const struct cred *cred;
+	struct hlist_node deferred_work_node;
+	int deferred_work;
+	int outstanding_txns;
+	bool is_dead;
+	bool is_frozen;
+	bool sync_recv;
+	bool async_recv;
+	wait_queue_head_t freeze_wait;
+	struct dbitmap dmap;
+	struct list_head todo;
+	struct binder_stats stats;
+	struct list_head delivered_death;
+	int max_threads;
+	int requested_threads;
+	int requested_threads_started;
+	int tmp_ref;
 	struct binder_priority default_priority;
         struct dentry *binderfs_entry;
 	struct dentry *debugfs_entry;
