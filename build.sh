@@ -29,7 +29,7 @@ cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
 CONFIGS="raphael_defconfig"
 
-VER="V1.7-Pickasal-Miui-HyperOs"
+VER="V1.8-PickTobrut-Miui-HyperOs"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
