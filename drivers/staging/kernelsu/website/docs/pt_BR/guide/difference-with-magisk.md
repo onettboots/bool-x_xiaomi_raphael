@@ -1,10 +1,10 @@
-# Diferença com Magisk
+# Diferenças com Magisk
 
 Embora existam muitas semelhanças entre os módulos KernelSU e os módulos Magisk, existem inevitavelmente algumas diferenças devido aos seus mecanismos de implementação completamente diferentes. Se você deseja que seu módulo seja executado no Magisk e no KernelSU, você deve entender essas diferenças.
 
 ## Semelhanças
 
-- Formato de arquivo do módulo: ambos usam o formato zip para organizar os módulos, e o formato dos módulos é quase o mesmo.
+- Formato de arquivo do módulo: ambos usam o formato ZIP para organizar os módulos, e o formato dos módulos é quase o mesmo.
 - Diretório de instalação do módulo: ambos localizados em `/data/adb/modules`.
 - Sem sistema: ambos suportam a modificação de `/system` de maneira sem sistema por meio de módulos.
 - post-fs-data.sh: o tempo de execução e a semântica são exatamente os mesmos.

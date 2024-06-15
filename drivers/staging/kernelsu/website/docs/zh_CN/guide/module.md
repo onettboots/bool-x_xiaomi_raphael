@@ -4,6 +4,10 @@ KernelSU 提供了一个模块机制，它可以在保持系统分区完整性�
 
 KernelSU 的模块运作机制与 Magisk 几乎是一样的，如果你熟悉 Magisk 模块的开发，那么开发 KernelSU 的模块大同小异，你可以跳过下面有关模块的介绍，只需要了解 [KernelSU 模块与 Magisk 模块的异同](difference-with-magisk.md)。
 
+## 模块界面
+
+KernelSU 的模块支持显示界面并与用户交互，请参阅 [WebUI 文档](module-webui.md)。
+
 ## Busybox
 
 KernelSU 提供了一个功能完备的 BusyBox 二进制文件（包括完整的SELinux支持）。可执行文件位于 `/data/adb/ksu/bin/busybox`。
@@ -263,3 +267,67 @@ set_perm_recursive <directory> <owner> <group> <dirpermission> <filepermission> 
   - `post-fs-data.sh` 以 post-fs-data 模式运行，`post-mount.sh` 以 post-mount 模式运行，而 `service.sh` 则以 late_start 服务模式运行，`boot-completed` 在 Android 系统启动完毕后以服务模式运行。
 
 所有启动脚本都将在 KernelSU 的 BusyBox ash shell 中运行，并启用“独立模式”。
+
+### 启动脚本的流程解疑 {#Boot-scripts-process-explanation}
+
+以下是 Android 的相关启动流程（部分省略），其中包括了 KernelSU 的操作（带前导星号），应该能帮助你更好地理解这些启动脚本的用途：
+
+```txt
+0. Bootloader (nothing on screen)
+load patched boot.img
+load kernel:
+    - GKI mode: GKI kernel with KernelSU integrated
+    - LKM mode: stock kernel
+...
+
+1. kernel exec init (oem logo on screen):
+    - GKI mode: stock init
+    - LKM mode: exec ksuinit, insmod kernelsu.ko, exec stock init
+mount /dev, /dev/pts, /proc, /sys, etc.
+property-init -> read default props
+read init.rc
+...
+early-init -> init -> late_init
+early-fs
+   start vold
+fs
+  mount /vendor, /system, /persist, etc.
+post-fs-data
+  *safe mode check
+  *execute general scripts in post-fs-data.d/
+  *load sepolicy.rule
+  *mount tmpfs
+  *execute module scripts post-fs-data.sh
+    **(Zygisk)./bin/zygisk-ptrace64 monitor
+  *(pre)load system.prop (same as resetprop -n)
+  *remount modules /system
+  *execute general scripts in post-mount.d/
+  *execute module scripts post-mount.sh
+zygote-start
+load_all_props_action
+  *execute resetprop (actual set props for resetprop with -n option)
+... -> boot
+  class_start core
+    start-service logd, console, vold, etc.
+  class_start main
+    start-service adb, netd (iptables), zygote, etc.
+
+2. kernel2user init (rom animation on screen, start by service bootanim)
+*execute general scripts in service.d/
+*execute module scripts service.sh
+*set props for resetprop without -p option
+  **(Zygisk) hook zygote (start zygiskd)
+  **(Zygisk) mount zygisksu/module.prop
+start system apps (autostart)
+...
+boot complete (broadcast ACTION_BOOT_COMPLETED event)
+*execute general scripts in boot-completed.d/
+*execute module scripts boot-completed.sh
+
+3. User operable (lock screen)
+input password to decrypt /data/data
+*actual set props for resetprop with -p option
+start user apps (autostart)
+```
+
+如果你对 Android 的 init 语言感兴趣，推荐阅读[文档](https://android.googlesource.com/platform/system/core/+/master/init/README.md)。
