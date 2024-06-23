@@ -760,8 +760,9 @@ static u64 sched_slice(struct cfs_rq *cfs_rq, struct sched_entity *se)
 {
 	u64 slice = __sched_period(cfs_rq->nr_running + !se->on_rq);
 
-                if (unlikely(!se->on_rq)) {
-                        lw = cfs_rq->load;
+	for_each_sched_entity(se) {
+		struct load_weight *load;
+		struct load_weight lw;
 
 		cfs_rq = cfs_rq_of(se);
 		load = &cfs_rq->load;
