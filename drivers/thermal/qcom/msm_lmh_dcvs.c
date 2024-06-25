@@ -150,7 +150,7 @@ static unsigned long limits_mitigation_notify(struct limits_dcvs_hw *hw, bool li
 	unsigned long max_capacity, capacity;
 	struct cpufreq_policy *policy = NULL;
 
-	capacity = max_capacity = arch_scale_cpu_capacity(NULL, cpumask_first(&hw->core_map));
+	capacity = max_capacity = arch_scale_cpu_capacity(cpumask_first(&hw->core_map));
 	policy = cpufreq_cpu_get(cpumask_first(&hw->core_map));
 
 	if (limit) {
