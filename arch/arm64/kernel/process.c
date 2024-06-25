@@ -83,27 +83,6 @@ static void __cpu_do_idle(void)
 	wfi();
 }
 
-static void __cpu_do_idle_irqprio(void)
-{
-	unsigned long pmr;
-	unsigned long daif_bits;
-
-	daif_bits = read_sysreg(daif);
-	write_sysreg(daif_bits | PSR_I_BIT, daif);
-
-	/*
-	 * Unmask PMR before going idle to make sure interrupts can
-	 * be raised.
-	 */
-	pmr = gic_read_pmr();
-	gic_write_pmr(GIC_PRIO_IRQON);
-
-	__cpu_do_idle();
-
-	gic_write_pmr(pmr);
-	write_sysreg(daif_bits, daif);
-}
-
 /*
  *	cpu_do_idle()
  *
