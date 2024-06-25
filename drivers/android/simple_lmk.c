@@ -8,8 +8,10 @@
 #include <linux/freezer.h>
 #include <linux/kthread.h>
 #include <linux/mm.h>
+#include <linux/mmu_notifier.h>
 #include <linux/moduleparam.h>
 #include <linux/oom.h>
+#include <linux/ratelimit.h>
 #include <linux/sched/mm.h>
 #include <linux/sort.h>
 #include <linux/vmpressure.h>
@@ -262,7 +264,7 @@ static void scan_and_kill(void)
 		set_bit(MMF_OOM_VICTIM, &mm->flags);
 
 		/* Accelerate the victim's death by forcing the kill signal */
-		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, PIDTYPE_TGID);
+		do_send_sig_info(SIGKILL, SEND_SIG_FORCED, vtsk, true);
 
 		/*
 		 * Mark the thread group dead so that other kernel code knows,
@@ -354,6 +356,13 @@ static struct mm_struct *next_reap_victim(void)
 			continue;
 		}
 
+		/* Skip any mm with notifiers for now since they can sleep */
+		if (mm_has_notifiers(mm)) {
+			up_read(&mm->mmap_sem);
+			should_retry = true;
+			continue;
+		}
+
 		/*
 		 * Check MMF_OOM_SKIP again under the lock in case this mm was
 		 * reaped by exit_mmap() and then had its page tables destroyed.
@@ -397,13 +406,12 @@ static void reap_victims(void)
 		}
 
 		/*
-		 * Try to reap the victim. Unflag the mm for exit_mmap() reaping
-		 * and mark it as reaped with MMF_OOM_SKIP if successful.
+		 * Reap the victim, then unflag the mm for exit_mmap() reaping
+		 * and mark it as reaped with MMF_OOM_SKIP.
 		 */
-		if (__oom_reap_task_mm(mm)) {
-			clear_bit(MMF_OOM_VICTIM, &mm->flags);
-			set_bit(MMF_OOM_SKIP, &mm->flags);
-		}
+		__oom_reap_task_mm(mm);
+		clear_bit(MMF_OOM_VICTIM, &mm->flags);
+		set_bit(MMF_OOM_SKIP, &mm->flags);
 		up_read(&mm->mmap_sem);
 	}
 }
