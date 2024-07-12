@@ -744,11 +744,11 @@ static ssize_t store_##file_name					\
 	struct cpufreq_policy new_policy;				\
 									\
 	memcpy(&new_policy, policy, sizeof(*policy));			\
-	new_policy.min = policy->user_policy.min;			\
-	new_policy.max = policy->user_policy.max;			\
+	new_policy.min = policy->cpuinfo.min_freq;			\
+	new_policy.max = policy->cpuinfo.max_freq;			\
 									\
-	new_policy.min = new_policy.user_policy.min;			\
-	new_policy.max = new_policy.user_policy.max;			\
+	new_policy.min = new_policy.cpuinfo.min_freq;			\
+	new_policy.max = new_policy.cpuinfo.max_freq;			\
 									\
 	ret = sscanf(buf, "%u", &new_policy.object);			\
 	if (ret != 1)							\
