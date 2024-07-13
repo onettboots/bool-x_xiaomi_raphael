@@ -14,6 +14,7 @@
 #include <linux/binfmts.h>
 #include <linux/cpufreq.h>
 #include <linux/kthread.h>
+#include <linux/devfreq_boost.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/slab.h>
 #include <linux/sched/sysctl.h>
@@ -397,6 +398,9 @@ static void sugov_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
 	/* Double the boost at each request */
 	if (sg_cpu->iowait_boost) {
 		max_boost = uclamp_rq_util_with(rq, max_boost, NULL);
+
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1000, true);
 
 		sg_cpu->iowait_boost =
 			min_t(unsigned int, sg_cpu->iowait_boost << 1, SCHED_CAPACITY_SCALE);
