@@ -5210,8 +5210,8 @@ static void __setscheduler_params(struct task_struct *p,
 {
 	int policy = attr->sched_policy;
 
-	if (policy == SETPARAM_POLICY)
-		policy = p->policy;
+        if (policy == SETPARAM_POLICY)
+                policy = p->policy;
 
 	p->policy = policy;
 
