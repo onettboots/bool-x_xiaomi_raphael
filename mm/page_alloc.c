@@ -71,8 +71,6 @@
 #include <linux/nmi.h>
 #include <linux/khugepaged.h>
 #include <linux/psi.h>
-#include <linux/cpu_input_boost.h>
-#include <linux/devfreq_boost.h>
 
 #include <asm/sections.h>
 #include <asm/tlbflush.h>
@@ -4147,10 +4145,6 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 		gfp_mask &= ~__GFP_ATOMIC;
 
 restart:
-	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 3000, true);
-	devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 3000, true);
-	cpu_input_boost_kick_max(3000, true);
-
 	compaction_retries = 0;
 	no_progress_loops = 0;
 	compact_priority = DEF_COMPACT_PRIORITY;
@@ -4239,10 +4233,6 @@ restart:
 	}
 
 retry:
-	devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 3000, true);
-        devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 3000, true);
-        cpu_input_boost_kick_max(3000, true);
-
 	/* Ensure kswapd doesn't accidentally go to sleep as long as we loop */
 	if (gfp_mask & __GFP_KSWAPD_RECLAIM)
 		wake_all_kswapds(order, gfp_mask, ac);
