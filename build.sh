@@ -139,6 +139,7 @@ case "$cchoice" in
 		break
 		;;
 	n|N )
+		rm $KERNEL
 		break
 		;;
 	* )
