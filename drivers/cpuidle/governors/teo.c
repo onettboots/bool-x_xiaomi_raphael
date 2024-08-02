@@ -501,14 +501,16 @@ end:
 	    duration_us < TICK_USEC) && !tick_nohz_tick_stopped()) {
 		unsigned int delta_tick_us = ktime_to_us(delta_tick);
 
-	/*
-	 * The tick is not going to be stopped, so if the target residency of
-	 * the state to be returned is not within the time till the closest
-	 * timer including the tick, try to correct that.
-	 */
-	if (idx > idx0 &&
-	    drv->states[idx].target_residency > ktime_to_us(delta_tick))
-		idx = teo_find_shallower_state(drv, dev, idx, ktime_to_us(delta_tick));
+		/*
+		 * The tick is not going to be stopped, so if the target
+		 * residency of the state to be returned is not within the time
+		 * till the closest timer including the tick, try to correct
+		 * that.
+		 */
+		if (idx > idx0 &&
+		    drv->states[idx].target_residency > delta_tick_us)
+			idx = teo_find_shallower_state(drv, dev, idx, delta_tick_us);
+	}
 
 out_tick:
 	*stop_tick = false;
