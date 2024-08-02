@@ -148,7 +148,6 @@ struct teo_cpu {
 	unsigned int total;
 	int next_recent_idx;
 	int recent_idx[NR_RECENT];
-	unsigned int tick_hits;
 };
 
 static DEFINE_PER_CPU(struct teo_cpu, teo_cpus);
@@ -511,8 +510,6 @@ end:
 			idx = teo_find_shallower_state(drv, dev, idx, delta_tick_us);
 	}
 
-out_tick:
-	*stop_tick = false;
 	return idx;
 }
 
