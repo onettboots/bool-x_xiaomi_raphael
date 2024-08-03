@@ -1,8 +1,8 @@
-#include <linux/export.h>
-#include <linux/fs.h>
-#include <linux/kobject.h>
-#include <linux/module.h>
-#include <linux/workqueue.h>
+#include "linux/export.h"
+#include "linux/fs.h"
+#include "linux/kobject.h"
+#include "linux/module.h"
+#include "linux/workqueue.h"
 
 #include "allowlist.h"
 #include "arch.h"
@@ -60,6 +60,8 @@ int __init kernelsu_init(void)
 #ifdef CONFIG_KPROBES
 	ksu_sucompat_init();
 	ksu_ksud_init();
+#else
+	pr_alert("KPROBES is disabled, KernelSU may not work, please check https://kernelsu.org/guide/how-to-integrate-for-non-gki.html");
 #endif
 
 #ifdef MODULE

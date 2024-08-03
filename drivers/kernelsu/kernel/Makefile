@@ -26,8 +26,7 @@ $(info -- KernelSU version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else # If there is no .git file, the default version will be passed.
 # $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git submodule!")
-# Harcoded DKSU_VERSION and Recalculate it from subtree updater
-ccflags-y += -DKSU_VERSION=11871
+ccflags-y += -DKSU_VERSION=11872
 endif
 
 ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
