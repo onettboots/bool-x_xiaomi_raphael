@@ -2131,17 +2131,16 @@ unlock:
 /*
  * Cross migrate two tasks
  */
-int migrate_swap(struct task_struct *cur, struct task_struct *p,
-		int target_cpu, int curr_cpu)
+int migrate_swap(struct task_struct *cur, struct task_struct *p)
 {
 	struct migration_swap_arg arg;
 	int ret = -EINVAL;
 
 	arg = (struct migration_swap_arg){
 		.src_task = cur,
-		.src_cpu = curr_cpu,
+		.src_cpu = task_cpu(cur),
 		.dst_task = p,
-		.dst_cpu = target_cpu,
+		.dst_cpu = task_cpu(p),
 	};
 
 	if (arg.src_cpu == arg.dst_cpu)
