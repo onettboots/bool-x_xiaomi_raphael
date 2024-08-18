@@ -332,12 +332,6 @@ const struct sched_class fair_sched_class;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 
-/* cpu runqueue to which this cfs_rq is attached */
-static inline struct rq *rq_of(struct cfs_rq *cfs_rq)
-{
-	return cfs_rq->rq;
-}
-
 /* An entity is a task if it doesn't "own" a runqueue */
 #define entity_is_task(se)	(!se->my_q)
 
@@ -999,6 +993,7 @@ int sched_proc_update_handler(struct ctl_table *table, int write,
 
 	return 0;
 }
+#endif
 
 static void clear_buddies(struct cfs_rq *cfs_rq, struct sched_entity *se);
 
@@ -4254,7 +4249,6 @@ static inline bool uclamp_can_ignore_uclamp_max(struct rq *rq,
 		return false;
 
 	cfs_rq = cfs_rq_of(se);
-	slice = sched_slice(cfs_rq, se);
 	runtime <<= sysctl_sched_uclamp_max_filter_divider;
 
 	if (runtime >= slice)
@@ -6556,6 +6550,10 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 {
 	unsigned int util;
 
+#ifndef CONFIG_SCHED_WALT
+	struct cfs_rq *cfs_rq;
+#endif
+
 #ifdef CONFIG_SCHED_WALT
 	/*
 	 * WALT does not decay idle tasks in the same manner
@@ -6575,7 +6573,6 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 #ifdef CONFIG_SCHED_WALT
 	util = max_t(long, cpu_util(cpu) - task_util(p), 0);
 #else
-	struct cfs_rq *cfs_rq;
 
 	cfs_rq = &cpu_rq(cpu)->cfs;
 	util = READ_ONCE(cfs_rq->avg.util_avg);
@@ -8453,7 +8450,9 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 		if (!prefer_idle && !boosted &&
 			(target_cpu != -1 || best_idle_cpu != -1) &&
 			(fbt_env->placement_boost == SCHED_BOOST_NONE ||
+#ifdef CONFIG_SCHED_WALT
 			sched_boost() != FULL_THROTTLE_BOOST ||
+#endif
 			(fbt_env->placement_boost == SCHED_BOOST_ON_BIG &&
 				!next_group_higher_cap)))
 			break;
@@ -9999,9 +9998,11 @@ redo:
 
 		continue;
 next:
+#ifdef CONFIG_SCHED_WALT
 		trace_sched_load_balance_skip_tasks(env->src_cpu, env->dst_cpu,
 				env->src_grp_type, p->pid, load, task_util(p),
 				cpumask_bits(&p->cpus_allowed)[0]);
+#endif
 		list_move_tail(&p->se.group_node, tasks);
 	}
 
@@ -11638,6 +11639,8 @@ redo:
 	env.src_rq = busiest;
 
 	ld_moved = 0;
+	/* Clear this flag as soon as we find a pullable task */
+	env.flags |= LBF_ALL_PINNED;
 	if (busiest->nr_running > 1) {
 		/*
 		 * Attempt to move tasks. If find_busiest_group has found
@@ -11645,7 +11648,6 @@ redo:
 		 * still unbalanced. ld_moved simply stays zero, so it is
 		 * correctly treated as an imbalance.
 		 */
-		env.flags |= LBF_ALL_PINNED;
 		env.loop_max  = min(sysctl_sched_nr_migrate, busiest->nr_running);
 
 more_balance:
@@ -11691,9 +11693,7 @@ more_balance:
 
 		if (env.flags & LBF_NEED_BREAK) {
 			env.flags &= ~LBF_NEED_BREAK;
-			/* Stop if we tried all running tasks */
-			if (env.loop < busiest->nr_running)
-				goto more_balance;
+			goto more_balance;
 		}
 
 		/*
@@ -11801,9 +11801,11 @@ no_move:
 			if (!cpumask_test_cpu(this_cpu, &busiest->curr->cpus_allowed)) {
 				raw_spin_unlock_irqrestore(&busiest->lock,
 							    flags);
-				env.flags |= LBF_ALL_PINNED;
 				goto out_one_pinned;
 			}
+
+			/* Record that we found at least one task that could run on this_cpu */
+			env.flags &= ~LBF_ALL_PINNED;
 
 			/*
 			 * ->active_balance synchronizes accesses to
@@ -11815,7 +11817,7 @@ no_move:
 				busiest->active_balance = 1;
 				busiest->push_cpu = this_cpu;
 				active_balance = 1;
-				mark_reserved(this_cpu);
+				/*mark_reserved(this_cpu);*/
 			}
 			raw_spin_unlock_irqrestore(&busiest->lock, flags);
 
@@ -11893,11 +11895,6 @@ out_one_pinned:
 	    sd->balance_interval < sd->max_interval)
 		sd->balance_interval *= 2;
 out:
-	trace_sched_load_balance(this_cpu, idle, *continue_balancing,
-				 group ? group->cpumask[0] : 0,
-				 busiest ? busiest->nr_running : 0,
-				 env.imbalance, env.flags, ld_moved,
-				 sd->balance_interval, active_balance);
 	return ld_moved;
 }
 

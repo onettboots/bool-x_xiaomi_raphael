@@ -20,6 +20,8 @@
 #define SCHED_CPUFREQ_RT_DL	(SCHED_CPUFREQ_RT | SCHED_CPUFREQ_DL)
 
 #ifdef CONFIG_CPU_FREQ
+struct cpufreq_policy;
+
 struct update_util_data {
        void (*func)(struct update_util_data *data, u64 time, unsigned int flags);
 };

@@ -152,7 +152,7 @@ static int ten_thousand = 10000;
 #ifdef CONFIG_PERF_EVENTS
 static int six_hundred_forty_kb = 640 * 1024;
 #endif
-static int two_hundred_fifty_five = 255;
+// static int two_hundred_fifty_five = 255;
 
 /* this is needed for the proc_doulongvec_minmax of vm_dirty_bytes */
 static unsigned long dirty_bytes_min = 2 * PAGE_SIZE;
@@ -340,6 +340,7 @@ static struct ctl_table sysctl_base_table[] = {
 static int min_sched_tunable_scaling = SCHED_TUNABLESCALING_NONE;
 static int max_sched_tunable_scaling = SCHED_TUNABLESCALING_END-1;
 #endif /* CONFIG_SMP */
+#endif /* CONFIG_SCHED_DEBUG */
 
 #ifdef CONFIG_COMPACTION
 static int min_extfrag_threshold;
@@ -470,6 +471,7 @@ static struct ctl_table kern_table[] = {
 		.extra1         = &zero,
 		.extra2         = &one,
 	},
+#ifdef CONFIG_SCHED_DEBUG
 	{
 		.procname	= "sched_sync_hint_enable",
 		.data		= &sysctl_sched_sync_hint_enable,
@@ -501,7 +503,6 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
-#ifdef CONFIG_SCHED_DEBUG
 	{
 		.procname	= "sched_nr_migrate",
 		.data		= &sysctl_sched_nr_migrate,
