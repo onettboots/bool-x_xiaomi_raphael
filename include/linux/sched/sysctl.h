@@ -42,6 +42,7 @@ extern unsigned int sysctl_sched_walt_rotate_big_tasks;
 extern unsigned int sysctl_sched_min_task_util_for_boost;
 extern unsigned int sysctl_sched_min_task_util_for_colocation;
 extern unsigned int sysctl_sched_little_cluster_coloc_fmin_khz;
+extern unsigned int sysctl_sched_asym_cap_sibling_freq_match_pct;
 
 extern int
 walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
@@ -53,7 +54,8 @@ walt_proc_group_thresholds_handler(struct ctl_table *table, int write,
 #if defined(CONFIG_PREEMPT_TRACER) || defined(CONFIG_DEBUG_PREEMPT)
 extern unsigned int sysctl_preemptoff_tracing_threshold_ns;
 #endif
-#if defined(CONFIG_PREEMPTIRQ_EVENTS) && defined(CONFIG_IRQSOFF_TRACER)
+#if defined(CONFIG_PREEMPTIRQ_EVENTS) && defined(CONFIG_IRQSOFF_TRACER) && \
+		!defined(CONFIG_PROVE_LOCKING)
 extern unsigned int sysctl_irqsoff_tracing_threshold_ns;
 #endif
 
@@ -70,6 +72,7 @@ extern unsigned int sysctl_numa_balancing_scan_period_min;
 extern unsigned int sysctl_numa_balancing_scan_period_max;
 extern unsigned int sysctl_numa_balancing_scan_size;
 
+#ifdef CONFIG_SCHED_DEBUG
 extern __read_mostly unsigned int sysctl_sched_migration_cost;
 extern __read_mostly unsigned int sysctl_sched_nr_migrate;
 extern __read_mostly unsigned int sysctl_sched_time_avg;
@@ -77,6 +80,7 @@ extern __read_mostly unsigned int sysctl_sched_time_avg;
 int sched_proc_update_handler(struct ctl_table *table, int write,
 		void __user *buffer, size_t *length,
 		loff_t *ppos);
+#endif
 
 extern int sched_boost_handler(struct ctl_table *table, int write,
 			void __user *buffer, size_t *lenp, loff_t *ppos);
@@ -94,7 +98,6 @@ extern int sysctl_sched_rt_runtime;
 extern unsigned int sysctl_sched_uclamp_util_min;
 extern unsigned int sysctl_sched_uclamp_util_max;
 extern unsigned int sysctl_sched_uclamp_util_min_rt_default;
-extern unsigned int sysctl_sched_uclamp_max_filter_divider;
 #endif
 
 #ifdef CONFIG_CFS_BANDWIDTH
@@ -119,6 +122,7 @@ extern int sched_rt_handler(struct ctl_table *table, int write,
 extern int sched_updown_migrate_handler(struct ctl_table *table,
 					int write, void __user *buffer,
 					size_t *lenp, loff_t *ppos);
+
 #ifdef CONFIG_UCLAMP_TASK
 extern int sysctl_sched_uclamp_handler(struct ctl_table *table, int write,
 				       void __user *buffer, size_t *lenp,

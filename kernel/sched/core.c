@@ -56,7 +56,7 @@ DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
  * Number of tasks to iterate in a single balance run.
  * Limited because this is done with IRQs disabled.
  */
-const_debug unsigned int sysctl_sched_nr_migrate = 64;
+const_debug unsigned int sysctl_sched_nr_migrate = 32;
 
 /*
  * period over which we average the RT time consumption, measured
@@ -264,8 +264,9 @@ static enum hrtimer_restart hrtick(struct hrtimer *timer)
 static void __hrtick_restart(struct rq *rq)
 {
 	struct hrtimer *timer = &rq->hrtick_timer;
+	ktime_t time = rq->hrtick_time;
 
-	hrtimer_start_expires(timer, HRTIMER_MODE_ABS_PINNED);
+	hrtimer_start(timer, time, HRTIMER_MODE_ABS_PINNED);
 }
 
 /*
@@ -290,7 +291,6 @@ static void __hrtick_start(void *arg)
 void hrtick_start(struct rq *rq, u64 delay)
 {
 	struct hrtimer *timer = &rq->hrtick_timer;
-	ktime_t time;
 	s64 delta;
 
 	/*
@@ -298,9 +298,7 @@ void hrtick_start(struct rq *rq, u64 delay)
 	 * doesn't make sense and can cause timer DoS.
 	 */
 	delta = max_t(s64, delay, 10000LL);
-	time = ktime_add_ns(timer->base->get_time(), delta);
-
-	hrtimer_set_expires(timer, time);
+	rq->hrtick_time = ktime_add_ns(timer->base->get_time(), delta);
 
 	if (rq == this_rq()) {
 		__hrtick_restart(rq);
@@ -527,27 +525,32 @@ void resched_cpu(int cpu)
  */
 int get_nohz_timer_target(void)
 {
-	int i, cpu = smp_processor_id();
+	int i, cpu = smp_processor_id(), default_cpu = -1;
 	struct sched_domain *sd;
 
-	if (!idle_cpu(cpu) && is_housekeeping_cpu(cpu))
-		return cpu;
+	if (is_housekeeping_cpu(cpu)) {
+		if (!idle_cpu(cpu))
+			return cpu;
+		default_cpu = cpu;
+	}
 
 	rcu_read_lock();
 	for_each_domain(cpu, sd) {
-		for_each_cpu(i, sched_domain_span(sd)) {
+		for_each_cpu_and(i, sched_domain_span(sd),
+			housekeeping_cpumask()) {
 			if (cpu == i)
 				continue;
 
-			if (!idle_cpu(i) && is_housekeeping_cpu(i)) {
+			if (!idle_cpu(i)) {
 				cpu = i;
 				goto unlock;
 			}
 		}
 	}
 
-	if (!is_housekeeping_cpu(cpu))
-		cpu = housekeeping_any_cpu();
+	if (default_cpu == -1)
+		default_cpu = housekeeping_any_cpu();
+	cpu = default_cpu;
 unlock:
 	rcu_read_unlock();
 	return cpu;
@@ -785,21 +788,6 @@ unsigned int sysctl_sched_uclamp_util_min = SCHED_CAPACITY_SCALE;
 unsigned int sysctl_sched_uclamp_util_max = SCHED_CAPACITY_SCALE;
 
 /*
- * Ignore uclamp_max for tasks if
- *
- *	runtime < sched_slice() / divider
- *
- * ==>
- *
- *	runtime * divider < sched_slice()
- *
- * where
- *
- *	divider = 1 << sysctl_sched_uclamp_max_filter_divider
- */
-unsigned int sysctl_sched_uclamp_max_filter_divider = 2;
-
-/*
  * By default RT tasks run at the maximum performance point/capacity of the
  * system. Uclamp enforces this by always setting UCLAMP_MIN of RT tasks to
  * SCHED_CAPACITY_SCALE.
@@ -894,7 +882,7 @@ static inline void uclamp_idle_reset(struct rq *rq, enum uclamp_id clamp_id,
 	if (!(rq->uclamp_flags & UCLAMP_FLAG_IDLE))
 		return;
 
-	WRITE_ONCE(rq->uclamp[clamp_id].value, clamp_value);
+	uclamp_rq_set(rq, clamp_id, clamp_value);
 }
 
 static inline
@@ -1041,14 +1029,13 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 		return uc_req;
 
 	//battery kprofile optimization
-        if (kp_active_mode() == 1) {
-                tg_min = 0;
-        } else {
-                //Run for clamp boosting
-                uclamp_boost_write(p);
-                tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
-        }
-
+	if (kp_active_mode() == 1) {
+		tg_min = 0;
+	} else {
+		//Run for clamp boosting
+		uclamp_boost_write(p);
+		tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
+	}
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	value = uc_req.value;
 	value = clamp(value, tg_min, tg_max);
@@ -1102,7 +1089,7 @@ unsigned long uclamp_eff_value(struct task_struct *p, enum uclamp_id clamp_id)
  * This "local max aggregation" allows to track the exact "requested" value
  * for each bucket when all its RUNNABLE tasks require the same clamp.
  */
-inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
+static inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
 				    enum uclamp_id clamp_id)
 {
 	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
@@ -1127,8 +1114,8 @@ inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
 	if (bucket->tasks == 1 || uc_se->value > bucket->value)
 		bucket->value = uc_se->value;
 
-	if (uc_se->value > READ_ONCE(uc_rq->value))
-		WRITE_ONCE(uc_rq->value, uc_se->value);
+	if (uc_se->value > uclamp_rq_get(rq, clamp_id))
+		uclamp_rq_set(rq, clamp_id, uc_se->value);
 }
 
 /*
@@ -1140,7 +1127,7 @@ inline void uclamp_rq_inc_id(struct rq *rq, struct task_struct *p,
  * always valid. If it's detected they are not, as defensive programming,
  * enforce the expected state and warn.
  */
-inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
+static inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 				    enum uclamp_id clamp_id)
 {
 	struct uclamp_rq *uc_rq = &rq->uclamp[clamp_id];
@@ -1194,7 +1181,7 @@ inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 	if (likely(bucket->tasks))
 		return;
 
-	rq_clamp = READ_ONCE(uc_rq->value);
+	rq_clamp = uclamp_rq_get(rq, clamp_id);
 	/*
 	 * Defensive programming: this should never happen. If it happens,
 	 * e.g. due to future modification, warn and fixup the expected value.
@@ -1202,7 +1189,7 @@ inline void uclamp_rq_dec_id(struct rq *rq, struct task_struct *p,
 	SCHED_WARN_ON(bucket->value > rq_clamp);
 	if (bucket->value >= rq_clamp) {
 		bkt_clamp = uclamp_rq_max_value(rq, clamp_id, uc_se->value);
-		WRITE_ONCE(uc_rq->value, bkt_clamp);
+		uclamp_rq_set(rq, clamp_id, bkt_clamp);
 	}
 }
 
@@ -1481,7 +1468,10 @@ static void __setscheduler_uclamp(struct task_struct *p,
 	if (likely(!(attr->sched_flags & SCHED_FLAG_UTIL_CLAMP)))
 		return;
 
-	if (attr->sched_flags & SCHED_FLAG_UTIL_CLAMP_MIN) {
+	static_branch_enable(&sched_uclamp_used);
+
+	if (attr->sched_flags & SCHED_FLAG_UTIL_CLAMP_MIN &&
+	    attr->sched_util_min != -1) {
 		uclamp_se_set(&p->uclamp_req[UCLAMP_MIN],
 			      attr->sched_util_min, true);
 	}
@@ -1503,8 +1493,6 @@ static void uclamp_fork(struct task_struct *p)
 	 */
 	for_each_clamp_id(clamp_id)
 		p->uclamp[clamp_id].active = false;
-
-	p->uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
 
 	if (likely(!p->sched_reset_on_fork))
 		return;
@@ -1547,8 +1535,6 @@ static void __init init_uclamp(void)
 		uclamp_se_set(&init_task.uclamp_req[clamp_id],
 			      uclamp_none(clamp_id), false);
 	}
-
-	init_task.uclamp_req[UCLAMP_MAX].ignore_uclamp_max = 0;
 
 	/* System defaults allow max clamp values for both indexes */
 	uclamp_se_set(&uc_max, uclamp_none(UCLAMP_MAX), false);
@@ -1954,8 +1940,7 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	cpumask_andnot(&allowed_mask, new_mask, cpu_isolated_mask);
 	cpumask_and(&allowed_mask, &allowed_mask, cpu_valid_mask);
 
-	dest_cpu = cpumask_any(&allowed_mask);
-	if (dest_cpu >= nr_cpu_ids) {
+	if (!cpumask_intersects(new_mask, cpu_valid_mask)) {
 		cpumask_and(&allowed_mask, cpu_valid_mask, new_mask);
 		/*
 		 * Picking a ~random cpu helps in cases where we are changing affinity
@@ -1985,6 +1970,7 @@ static int __set_cpus_allowed_ptr(struct task_struct *p,
 	if (cpumask_test_cpu(task_cpu(p), &allowed_mask))
 		goto out;
 
+	dest_cpu = cpumask_any_and(cpu_valid_mask, new_mask);
 	if (task_running(rq, p) || p->state == TASK_WAKING) {
 		struct migration_arg arg = { p, dest_cpu };
 		/* Need help from migration thread: drop lock and wait. */
@@ -2145,17 +2131,16 @@ unlock:
 /*
  * Cross migrate two tasks
  */
-int migrate_swap(struct task_struct *cur, struct task_struct *p,
-		int target_cpu, int curr_cpu)
+int migrate_swap(struct task_struct *cur, struct task_struct *p)
 {
 	struct migration_swap_arg arg;
 	int ret = -EINVAL;
 
 	arg = (struct migration_swap_arg){
 		.src_task = cur,
-		.src_cpu = curr_cpu,
+		.src_cpu = task_cpu(cur),
 		.dst_task = p,
-		.dst_cpu = target_cpu,
+		.dst_cpu = task_cpu(p),
 	};
 
 	if (arg.src_cpu == arg.dst_cpu)
@@ -2179,48 +2164,6 @@ int migrate_swap(struct task_struct *cur, struct task_struct *p,
 
 out:
 	return ret;
-}
-
-/*
- * Calls to sched_migrate_to_cpumask_start() cannot nest. This can only be used
- * in process context.
- */
-void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
-				    const struct cpumask *dest)
-{
-	struct task_struct *p = current;
-
-	raw_spin_lock_irq(&p->pi_lock);
-	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
-	raw_spin_unlock_irq(&p->pi_lock);
-
-	/*
-	 * This will force the current task onto the destination cpumask. It
-	 * will sleep when a migration to another CPU is actually needed.
-	 */
-	set_cpus_allowed_ptr(p, dest);
-}
-
-void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
-				  const struct cpumask *dest)
-{
-	struct task_struct *p = current;
-
-	/*
-	 * Check that cpus_allowed didn't change from what it was temporarily
-	 * set to earlier. If so, we can go ahead and lazily restore the old
-	 * cpumask. There's no need to immediately migrate right now.
-	 */
-	raw_spin_lock_irq(&p->pi_lock);
-	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
-		struct rq *rq = this_rq();
-
-		raw_spin_lock(&rq->lock);
-		update_rq_clock(rq);
-		do_set_cpus_allowed(p, old_mask);
-		raw_spin_unlock(&rq->lock);
-	}
-	raw_spin_unlock_irq(&p->pi_lock);
 }
 
 /*
@@ -3705,6 +3648,69 @@ fire_sched_out_preempt_notifiers(struct task_struct *curr,
 
 #endif /* CONFIG_PREEMPT_NOTIFIERS */
 
+#ifdef CONFIG_SMP
+
+static void do_balance_callbacks(struct rq *rq, struct callback_head *head)
+{
+	void (*func)(struct rq *rq);
+	struct callback_head *next;
+
+	lockdep_assert_held(&rq->lock);
+
+	while (head) {
+		func = (void (*)(struct rq *))head->func;
+		next = head->next;
+		head->next = NULL;
+		head = next;
+
+		func(rq);
+	}
+}
+
+static inline struct callback_head *splice_balance_callbacks(struct rq *rq)
+{
+	struct callback_head *head = rq->balance_callback;
+
+	lockdep_assert_held(&rq->lock);
+	if (head)
+		rq->balance_callback = NULL;
+
+	return head;
+}
+
+static void __balance_callbacks(struct rq *rq)
+{
+	do_balance_callbacks(rq, splice_balance_callbacks(rq));
+}
+
+static inline void balance_callbacks(struct rq *rq, struct callback_head *head)
+{
+	unsigned long flags;
+
+	if (unlikely(head)) {
+		raw_spin_lock_irqsave(&rq->lock, flags);
+		do_balance_callbacks(rq, head);
+		raw_spin_unlock_irqrestore(&rq->lock, flags);
+	}
+}
+
+#else
+
+static inline void __balance_callbacks(struct rq *rq)
+{
+}
+
+static inline struct callback_head *splice_balance_callbacks(struct rq *rq)
+{
+	return NULL;
+}
+
+static inline void balance_callbacks(struct rq *rq, struct callback_head *head)
+{
+}
+
+#endif
+
 /**
  * prepare_task_switch - prepare to switch tasks
  * @rq: the runqueue preparing to switch
@@ -3842,6 +3848,7 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	 * to use.
 	 */
 	smp_mb__after_unlock_lock();
+	tick_nohz_task_switch();
 	finish_lock_switch(rq, prev);
 	finish_arch_post_lock_switch();
 	kcov_finish_switch(current);
@@ -3864,46 +3871,8 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 			finish_task_switch_dead(prev);
 	}
 
-	tick_nohz_task_switch();
 	return rq;
 }
-
-#ifdef CONFIG_SMP
-
-/* rq->lock is NOT held, but preemption is disabled */
-static void __balance_callback(struct rq *rq)
-{
-	struct callback_head *head, *next;
-	void (*func)(struct rq *rq);
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&rq->lock, flags);
-	head = rq->balance_callback;
-	rq->balance_callback = NULL;
-	while (head) {
-		func = (void (*)(struct rq *))head->func;
-		next = head->next;
-		head->next = NULL;
-		head = next;
-
-		func(rq);
-	}
-	raw_spin_unlock_irqrestore(&rq->lock, flags);
-}
-
-static inline void balance_callback(struct rq *rq)
-{
-	if (unlikely(rq->balance_callback))
-		__balance_callback(rq);
-}
-
-#else
-
-static inline void balance_callback(struct rq *rq)
-{
-}
-
-#endif
 
 /**
  * schedule_tail - first thing a freshly forked thread must call.
@@ -3924,7 +3893,6 @@ asmlinkage __visible void schedule_tail(struct task_struct *prev)
 	 */
 
 	rq = finish_task_switch(prev);
-	balance_callback(rq);
 	preempt_enable();
 
 	if (current->set_child_tid)
@@ -4212,9 +4180,7 @@ void scheduler_tick(void)
 	u64 wallclock;
 	bool early_notif;
 	u32 old_load;
-#ifdef CONFIG_SCHED_WALT
 	struct related_thread_group *grp;
-#endif
 	unsigned int flag = 0;
 	unsigned long thermal_pressure;
 
@@ -4248,7 +4214,6 @@ void scheduler_tick(void)
 #endif
 	rq_last_tick_reset(rq);
 
-#ifdef CONFIG_SCHED_WALT
 	rcu_read_lock();
 	grp = task_related_thread_group(curr);
 	if (update_preferred_cluster(grp, curr, old_load))
@@ -4257,7 +4222,9 @@ void scheduler_tick(void)
 
 	if (curr->sched_class == &fair_sched_class)
 		check_for_migration(rq, curr);
-#endif
+
+	if (idle_cpu(cpu) && is_reserved(cpu))
+		clear_reserved(cpu);
 }
 
 #ifdef CONFIG_NO_HZ_FULL
@@ -4682,10 +4649,11 @@ static void __sched notrace __schedule(bool preempt)
 	} else {
 		update_task_ravg(prev, rq, TASK_UPDATE, wallclock, 0);
 		rq->clock_update_flags &= ~(RQCF_ACT_SKIP|RQCF_REQ_SKIP);
-		rq_unlock_irq(rq, &rf);
-	}
 
-	balance_callback(rq);
+		rq_unpin_lock(rq, &rf);
+		__balance_callbacks(rq);
+		raw_spin_unlock_irq(&rq->lock);
+	}
 }
 
 void __noreturn do_task_dead(void)
@@ -4877,7 +4845,16 @@ asmlinkage __visible void __sched notrace preempt_schedule_notrace(void)
 		 * an infinite recursion.
 		 */
 		prev_ctx = exception_enter();
+		/*
+		 * The add/subtract must not be traced by the function
+		 * tracer. But we still want to account for the
+		 * preempt off latency tracer. Since the _notrace versions
+		 * of add/subtract skip the accounting for latency tracer
+		 * we must force it manually.
+		 */
+		start_critical_timings();
 		__schedule(true);
+		stop_critical_timings();
 		exception_exit(prev_ctx);
 
 		preempt_latency_stop(1);
@@ -5061,9 +5038,11 @@ void rt_mutex_setprio(struct task_struct *p, struct task_struct *pi_task)
 out_unlock:
 	/* Avoid rq from going away on us: */
 	preempt_disable();
-	__task_rq_unlock(rq, &rf);
 
-	balance_callback(rq);
+	rq_unpin_lock(rq, &rf);
+	__balance_callbacks(rq);
+	raw_spin_unlock(&rq->lock);
+
 	preempt_enable();
 }
 #else
@@ -5112,17 +5091,17 @@ void set_user_nice(struct task_struct *p, long nice)
 	p->prio = effective_prio(p);
 	delta = p->prio - old_prio;
 
-	if (queued) {
+	if (queued)
 		enqueue_task(rq, p, ENQUEUE_RESTORE | ENQUEUE_NOCLOCK);
-		/*
-		 * If the task increased its priority or is running and
-		 * lowered its priority, then reschedule its CPU:
-		 */
-		if (delta < 0 || (delta > 0 && task_running(rq, p)))
-			resched_curr(rq);
-	}
 	if (running)
 		set_curr_task(rq, p);
+
+	/*
+	 * If the task increased its priority or is running and
+	 * lowered its priority, then reschedule its CPU:
+	 */
+	p->sched_class->prio_changed(rq, p, old_prio);
+
 out_unlock:
 	task_rq_unlock(rq, p, &rf);
 }
@@ -5262,21 +5241,19 @@ static struct task_struct *find_process_by_pid(pid_t pid)
 #define SETPARAM_POLICY	-1
 
 static void __setscheduler_params(struct task_struct *p,
-                const struct sched_attr *attr)
+		const struct sched_attr *attr)
 {
-        int policy = attr->sched_policy;
+	int policy = attr->sched_policy;
 
 	if (policy == SETPARAM_POLICY)
 		policy = p->policy;
-	else
-		policy &= ~SCHED_RESET_ON_FORK;
 
-        p->policy = policy;
+	p->policy = policy;
 
-        if (dl_policy(policy))
-                __setparam_dl(p, attr);
-        else if (fair_policy(policy))
-                p->static_prio = NICE_TO_PRIO(attr->sched_nice);
+	if (dl_policy(policy))
+		__setparam_dl(p, attr);
+	else if (fair_policy(policy))
+		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
 	/*
 	 * __sched_setscheduler() ensures attr->sched_priority == 0 when
@@ -5342,6 +5319,7 @@ static int __sched_setscheduler(struct task_struct *p,
 	int retval, oldprio, oldpolicy = -1, queued, running;
 	int new_effective_prio, policy = attr->sched_policy;
 	const struct sched_class *prev_class;
+	struct callback_head *head;
 	struct rq_flags rf;
 	int reset_on_fork;
 	int queue_flags = DEQUEUE_SAVE | DEQUEUE_MOVE | DEQUEUE_NOCLOCK;
@@ -5361,8 +5339,7 @@ recheck:
 			return -EINVAL;
 	}
 
-	if (attr->sched_flags &
-		~(SCHED_FLAG_RESET_ON_FORK | SCHED_FLAG_RECLAIM))
+	if (attr->sched_flags & ~SCHED_FLAG_ALL)
 		return -EINVAL;
 
 	/*
@@ -5576,13 +5553,14 @@ change:
 
 	/* Avoid rq from going away on us: */
 	preempt_disable();
+	head = splice_balance_callbacks(rq);
 	task_rq_unlock(rq, p, &rf);
 
 	if (pi)
 		rt_mutex_adjust_pi(p);
 
 	/* Run balance callbacks after we've adjusted the PI chain: */
-	balance_callback(rq);
+	balance_callbacks(rq, head);
 	preempt_enable();
 
 	return 0;
@@ -5865,8 +5843,6 @@ SYSCALL_DEFINE3(sched_setattr, pid_t, pid, struct sched_attr __user *, uattr,
 	rcu_read_unlock();
 
 	if (likely(p)) {
-		if (attr.sched_flags & SCHED_FLAG_KEEP_PARAMS)
-			get_params(p, &attr);
 		retval = sched_setattr(p, &attr);
 		put_task_struct(p);
 	}
@@ -7059,6 +7035,8 @@ int do_isolation_work_cpu_stop(void *data)
 	struct rq *rq = cpu_rq(cpu);
 	struct rq_flags rf;
 
+	watchdog_disable(cpu);
+
 	local_irq_disable();
 
 	irq_migrate_all_off_this_cpu();
@@ -7205,10 +7183,7 @@ int sched_isolate_cpu(int cpu)
 	smp_call_function_any(&avail_cpus, hrtimer_quiesce_cpu, &cpu, 1);
 	smp_call_function_any(&avail_cpus, timer_quiesce_cpu, &cpu, 1);
 
-	watchdog_disable(cpu);
-	irq_lock_sparse();
 	stop_cpus(cpumask_of(cpu), do_isolation_work_cpu_stop, 0);
-	irq_unlock_sparse();
 
 	calc_load_migrate(rq);
 	update_max_interval();
@@ -8142,11 +8117,12 @@ static void sched_update_down_migrate_values(int cap_margin_levels,
 
 	if (cap_margin_levels > 1) {
 		/*
-		 * Skip first cluster as down migrate value isn't needed
+		 * Skip last cluster as down migrate value isn't needed.
+		 * Because there is no downmigration to it.
 		 */
 		for (i = 0; i < cap_margin_levels; i++)
-			if (cluster_cpus[i+1])
-				for_each_cpu(cpu, cluster_cpus[i+1])
+			if (cluster_cpus[i])
+				for_each_cpu(cpu, cluster_cpus[i])
 					sched_capacity_margin_down[cpu] =
 					sysctl_sched_capacity_margin_down[i];
 	} else {
@@ -8557,7 +8533,6 @@ static u64 cpu_uclamp_ls_read_u64(struct cgroup_subsys_state *css,
 
 	return (u64) tg->latency_sensitive;
 }
-
 #endif /* CONFIG_UCLAMP_TASK_GROUP */
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
