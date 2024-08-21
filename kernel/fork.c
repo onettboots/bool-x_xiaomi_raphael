@@ -2267,7 +2267,6 @@ long _do_fork(unsigned long clone_flags,
 			cpu_input_boost_kick_max(500, false);
 			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 500, true);
 			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 500, true);
-			balance_irqs();
 		}
 	}
 
