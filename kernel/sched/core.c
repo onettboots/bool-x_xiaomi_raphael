@@ -4169,7 +4169,6 @@ void scheduler_tick(void)
 	bool early_notif;
 	u32 old_load;
 	struct related_thread_group *grp;
-	unsigned int flag = 0;
 	unsigned long thermal_pressure;
 
 	sched_clock_tick();
