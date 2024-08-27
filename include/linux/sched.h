@@ -696,11 +696,15 @@ struct sched_dl_entity {
 	 * has not been executed yet. This flag is useful to avoid race
 	 * conditions between the inactive timer handler and the wakeup
 	 * code.
+	 *
+	 * @dl_overrun tells if the task asked to be informed about runtime
+	 * overruns.
 	 */
-	int				dl_throttled;
-	int				dl_boosted;
-	int				dl_yielded;
-	int				dl_non_contending;
+	unsigned int			dl_throttled      : 1;
+	unsigned int			dl_boosted        : 1;
+	unsigned int			dl_yielded        : 1;
+	unsigned int			dl_non_contending : 1;
+	unsigned int			dl_overrun	  : 1;
 
 	/*
 	 * Bandwidth enforcement timer. Each -deadline task has its
@@ -750,7 +754,6 @@ struct uclamp_se {
 	unsigned int bucket_id		: bits_per(UCLAMP_BUCKETS);
 	unsigned int active		: 1;
 	unsigned int user_defined	: 1;
-	unsigned int ignore_uclamp_max	: 1;
 };
 #endif /* CONFIG_UCLAMP_TASK */
 
@@ -1163,6 +1166,7 @@ struct task_struct {
 
 #ifdef CONFIG_TRACE_IRQFLAGS
 	unsigned int			irq_events;
+	unsigned int			hardirq_threaded;
 	unsigned long			hardirq_enable_ip;
 	unsigned long			hardirq_disable_ip;
 	unsigned int			hardirq_enable_event;
@@ -1175,6 +1179,7 @@ struct task_struct {
 	unsigned int			softirq_enable_event;
 	int				softirqs_enabled;
 	int				softirq_context;
+	int				irq_config;
 #endif
 
 #ifdef CONFIG_LOCKDEP
@@ -1452,10 +1457,6 @@ struct task_struct {
 	struct task_struct		*simple_lmk_next;
 #endif
 
-#ifdef CONFIG_MACH_XIAOMI_RAPHAEL
-	int static_ux;
-#endif /* CONFIG_MACH_XIAOMI_RAPHAEL */
-
 	struct {
 		struct work_struct work;
 		atomic_t running;
@@ -1468,8 +1469,6 @@ struct task_struct {
 	 */
 	randomized_struct_fields_end
 
-	struct fuse_package *fpack;
-
 	/* CPU-specific state of this task: */
 	struct thread_struct		thread;
 
@@ -1479,12 +1478,6 @@ struct task_struct {
 	 *
 	 * Do not put anything below here!
 	 */
-};
-
-struct fuse_package {
-	bool fuse_open_req;
-	struct file *filp;
-	char *iname;
 };
 
 static inline struct pid *task_pid(struct task_struct *task)
@@ -1846,7 +1839,7 @@ extern struct task_struct *idle_task(int cpu);
  *
  * Return: 1 if @p is an idle task. 0 otherwise.
  */
-static inline bool is_idle_task(const struct task_struct *p)
+static __always_inline bool is_idle_task(const struct task_struct *p)
 {
 	return !!(p->flags & PF_IDLE);
 }

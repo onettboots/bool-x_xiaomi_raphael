@@ -203,7 +203,6 @@ static void group_init(struct psi_group *group)
 	INIT_DELAYED_WORK(&group->avgs_work, psi_avgs_work);
 	mutex_init(&group->avgs_lock);
 	/* Init trigger-related members */
-	atomic_set(&group->poll_scheduled, 0);
 	mutex_init(&group->trigger_lock);
 	INIT_LIST_HEAD(&group->triggers);
 	memset(group->nr_triggers, 0, sizeof(group->nr_triggers));
@@ -568,17 +567,18 @@ static u64 update_triggers(struct psi_group *group, u64 now)
 	return now + group->poll_min_period;
 }
 
-/* Schedule polling if it's not already scheduled or forced. */
-static void psi_schedule_poll_work(struct psi_group *group, unsigned long delay,
-				   bool force)
+/* Schedule polling if it's not already scheduled. */
+static void psi_schedule_poll_work(struct psi_group *group, unsigned long delay)
 {
 	struct task_struct *task;
 
 	/*
-	 * atomic_xchg should be called even when !force to provide a
-	 * full memory barrier (see the comment inside psi_poll_work).
+	 * Do not reschedule if already scheduled.
+	 * Possible race with a timer scheduled after this check but before
+	 * mod_timer below can be tolerated because group->polling_next_update
+	 * will keep updates on schedule.
 	 */
-	if (atomic_xchg(&group->poll_scheduled, 1) && !force)
+	if (timer_pending(&group->poll_timer))
 		return;
 
 	rcu_read_lock();
@@ -590,58 +590,18 @@ static void psi_schedule_poll_work(struct psi_group *group, unsigned long delay,
 	 */
 	if (likely(task))
 		mod_timer(&group->poll_timer, jiffies + delay);
-	else
-		atomic_set(&group->poll_scheduled, 0);
 
 	rcu_read_unlock();
 }
 
 static void psi_poll_work(struct psi_group *group)
 {
-	bool force_reschedule = false;
 	u32 changed_states;
 	u64 now;
 
 	mutex_lock(&group->trigger_lock);
 
 	now = sched_clock();
-
-	if (now > group->polling_until) {
-		/*
-		 * We are either about to start or might stop polling if no
-		 * state change was recorded. Resetting poll_scheduled leaves
-		 * a small window for psi_group_change to sneak in and schedule
-		 * an immegiate poll_work before we get to rescheduling. One
-		 * potential extra wakeup at the end of the polling window
-		 * should be negligible and polling_next_update still keeps
-		 * updates correctly on schedule.
-		 */
-		atomic_set(&group->poll_scheduled, 0);
-		/*
-		 * A task change can race with the poll worker that is supposed to
-		 * report on it. To avoid missing events, ensure ordering between
-		 * poll_scheduled and the task state accesses, such that if the poll
-		 * worker misses the state update, the task change is guaranteed to
-		 * reschedule the poll worker:
-		 *
-		 * poll worker:
-		 *   atomic_set(poll_scheduled, 0)
-		 *   smp_mb()
-		 *   LOAD states
-		 *
-		 * task change:
-		 *   STORE states
-		 *   if atomic_xchg(poll_scheduled, 1) == 0:
-		 *     schedule poll worker
-		 *
-		 * The atomic_xchg() implies a full barrier.
-		 */
-		smp_mb();
-	} else {
-		/* Polling window is not over, keep rescheduling */
-		force_reschedule = true;
-	}
-
 
 	collect_percpu_times(group, PSI_POLL, &changed_states);
 
@@ -668,8 +628,7 @@ static void psi_poll_work(struct psi_group *group)
 		group->polling_next_update = update_triggers(group, now);
 
 	psi_schedule_poll_work(group,
-		nsecs_to_jiffies(group->polling_next_update - now) + 1,
-		force_reschedule);
+		nsecs_to_jiffies(group->polling_next_update - now) + 1);
 
 out:
 	mutex_unlock(&group->trigger_lock);
@@ -797,7 +756,7 @@ static void psi_group_change(struct psi_group *group, int cpu,
 	write_seqcount_end(&groupc->seq);
 
 	if (state_mask & group->poll_states)
-		psi_schedule_poll_work(group, 1, false);
+		psi_schedule_poll_work(group, 1);
 
 	if (wake_clock && !delayed_work_pending(&group->avgs_work))
 		schedule_delayed_work(&group->avgs_work, PSI_FREQ);
@@ -885,7 +844,6 @@ void psi_task_switch(struct task_struct *prev, struct task_struct *next,
 		psi_flags_change(next, 0, TSK_ONCPU);
 		/*
 		 * When switching between tasks that have an identical
-		 * runtime state, the cgroup that contains both tasks
 		 * runtime state, the cgroup that contains both tasks
 		 * we reach the first common ancestor. Iterate @next's
 		 * ancestors only until we encounter @prev's ONCPU.
@@ -1142,19 +1100,27 @@ static int psi_cpu_show(struct seq_file *m, void *v)
 	return psi_show(m, &psi_system, PSI_CPU);
 }
 
+static int psi_open(struct file *file, int (*psi_show)(struct seq_file *, void *))
+{
+	if (file->f_mode & FMODE_WRITE && !capable(CAP_SYS_RESOURCE))
+		return -EPERM;
+
+	return single_open(file, psi_show, NULL);
+}
+
 static int psi_io_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, psi_io_show, NULL);
+	return psi_open(file, psi_io_show);
 }
 
 static int psi_memory_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, psi_memory_show, NULL);
+	return psi_open(file, psi_memory_show);
 }
 
 static int psi_cpu_open(struct inode *inode, struct file *file)
 {
-	return single_open(file, psi_cpu_show, NULL);
+	return psi_open(file, psi_cpu_show);
 }
 
 struct psi_trigger *psi_trigger_create(struct psi_group *group,
@@ -1290,7 +1256,6 @@ void psi_trigger_destroy(struct psi_trigger *t)
 		 * can no longer be found through group->poll_task.
 		 */
 		kthread_stop(task_to_destroy);
-		atomic_set(&group->poll_scheduled, 0);
 	}
 	kfree(t);
 }
@@ -1421,10 +1386,12 @@ static const struct file_operations psi_cpu_fops = {
 
 static int __init psi_proc_init(void)
 {
-	proc_mkdir("pressure", NULL);
-	proc_create("pressure/io", 0, NULL, &psi_io_fops);
-	proc_create("pressure/memory", 0, NULL, &psi_memory_fops);
-	proc_create("pressure/cpu", 0, NULL, &psi_cpu_fops);
+	if (psi_enable) {
+		proc_mkdir("pressure", NULL);
+		proc_create("pressure/io", 0666, NULL, &psi_io_fops);
+		proc_create("pressure/memory", 0666, NULL, &psi_memory_fops);
+		proc_create("pressure/cpu", 0666, NULL, &psi_cpu_fops);
+	}
 	return 0;
 }
 module_init(psi_proc_init);

@@ -18,6 +18,8 @@ endif
 
 ccflags-y += -O3
 
+KBUILD_CFLAGS += -Wno-void-pointer-to-int-cast
+
 obj-y += core.o loadavg.o clock.o cputime.o
 obj-y += idle_task.o fair.o rt.o deadline.o
 obj-y += wait.o wait_bit.o swait.o completion.o idle.o
@@ -32,7 +34,6 @@ obj-$(CONFIG_SCHED_TUNE_DUMMY) += tune_dummy.o
 obj-$(CONFIG_CGROUP_CPUACCT) += cpuacct.o
 obj-$(CONFIG_CPU_FREQ) += cpufreq.o
 obj-$(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) += cpufreq_schedutil.o
-obj-$(CONFIG_CPU_FREQ_GOV_PIXEL_SCHEDUTIL) += cpufreq_pixel_schedutil.o
 obj-$(CONFIG_MEMBARRIER) += membarrier.o
 obj-$(CONFIG_SCHED_CORE_CTL) += core_ctl.o
 obj-$(CONFIG_PSI) += psi.o
