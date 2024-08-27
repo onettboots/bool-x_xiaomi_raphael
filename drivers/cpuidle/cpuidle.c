@@ -21,6 +21,7 @@
 #include <linux/ktime.h>
 #include <linux/hrtimer.h>
 #include <linux/module.h>
+#include <linux/slab.h>
 #include <linux/suspend.h>
 #include <linux/tick.h>
 #include <trace/events/power.h>
@@ -115,6 +116,32 @@ void cpuidle_use_deepest_state(bool enable)
 	if (dev)
 		dev->use_deepest_state = enable;
 	preempt_enable();
+}
+
+static void set_uds_callback(void *info)
+{
+	bool enable = *(bool *)info;
+
+	cpuidle_use_deepest_state(enable);
+}
+
+/**
+ * cpuidle_use_deepest_state_mask - Set use_deepest_state on specific CPUs.
+ * @target: cpumask of CPUs to update use_deepest_state on.
+ * @enable: whether to enforce the deepest idle state on those CPUs.
+ */
+int cpuidle_use_deepest_state_mask(const struct cpumask *target, bool enable)
+{
+	bool *info = kmalloc(sizeof(bool), GFP_KERNEL);
+
+	if (!info)
+		return -ENOMEM;
+
+	*info = enable;
+	on_each_cpu_mask(target, set_uds_callback, info, 1);
+	kfree(info);
+
+	return 0;
 }
 
 /**
@@ -265,13 +292,18 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
  *
  * @drv: the cpuidle driver
  * @dev: the cpuidle device
+ * @stop_tick: indication on whether or not to stop the tick
  *
  * Returns the index of the idle state.  The return value must not be negative.
  *
+ * The memory location pointed to by @stop_tick is expected to be written the
+ * 'false' boolean value if the scheduler tick should not be stopped before
+ * entering the returned state.
  */
-int cpuidle_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
+int cpuidle_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
+		   bool *stop_tick)
 {
-	return cpuidle_curr_governor->select(drv, dev);
+	return cpuidle_curr_governor->select(drv, dev, stop_tick);
 }
 
 /**
@@ -391,9 +423,12 @@ int cpuidle_enable_device(struct cpuidle_device *dev)
 	if (dev->enabled)
 		return 0;
 
+	if (!cpuidle_curr_governor)
+		return -EIO;
+
 	drv = cpuidle_get_cpu_driver(dev);
 
-	if (!drv || !cpuidle_curr_governor)
+	if (!drv)
 		return -EIO;
 
 	if (!dev->registered)

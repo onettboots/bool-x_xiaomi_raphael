@@ -316,7 +316,7 @@ static void cluster_prepare(struct lpm_cluster *cluster,
 	if (cluster_configure(cluster, i, from_idle))
 		goto failed;
 
-	if (IS_ENABLED(CONFIG_MSM_IDLE_STATS))
+	if (!IS_ERR_OR_NULL(cluster->stats))
 		cluster->stats->sleep_time = start_time;
 	cluster_prepare(cluster->parent, &cluster->num_children_in_sync, i,
 			from_idle, start_time);
@@ -325,7 +325,7 @@ static void cluster_prepare(struct lpm_cluster *cluster,
 	return;
 failed:
 	spin_unlock(&cluster->sync_lock);
-	if (IS_ENABLED(CONFIG_MSM_IDLE_STATS))
+	if (!IS_ERR_OR_NULL(cluster->stats))
 		cluster->stats->sleep_time = 0;
 }
 
@@ -361,7 +361,7 @@ static void cluster_unprepare(struct lpm_cluster *cluster,
 	if (!first_cpu || cluster->last_level == cluster->default_level)
 		goto unlock_return;
 
-	if (IS_ENABLED(CONFIG_MSM_IDLE_STATS) && cluster->stats->sleep_time)
+	if (!IS_ERR_OR_NULL(cluster->stats) && cluster->stats->sleep_time)
 		cluster->stats->sleep_time = end_time -
 			cluster->stats->sleep_time;
 	lpm_stats_cluster_exit(cluster->stats, cluster->last_level, success);
@@ -487,16 +487,23 @@ static bool psci_enter_sleep(struct lpm_cpu *cpu, int idx, bool from_idle)
 }
 
 static int lpm_cpuidle_select(struct cpuidle_driver *drv,
-		struct cpuidle_device *dev)
+		struct cpuidle_device *dev, bool *stop_tick)
 {
+#ifdef CONFIG_NO_HZ_COMMON
+	ktime_t delta_next;
+	s64 duration_ns = tick_nohz_get_sleep_length(&delta_next);
+
+	if (duration_ns <= TICK_NSEC)
+		*stop_tick = false;
+#endif
+
 	return 0;
 }
 
 static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 		struct cpuidle_driver *drv, int idx)
 {
-	if (!need_resched())
-		wfi();
+	wfi();
 
 	return idx;
 }
@@ -607,9 +614,11 @@ static int cluster_cpuidle_register(struct lpm_cluster *cl)
 			snprintf(st->name, CPUIDLE_NAME_LEN, "C%u\n", i);
 			snprintf(st->desc, CPUIDLE_DESC_LEN, "%s",
 					cpu_level->name);
-			st->flags = 0;
+
+			if (cpu_level->pwr.local_timer_stop)
+				st->flags |= CPUIDLE_FLAG_TIMER_STOP;
 			st->exit_latency = cpu_level->pwr.exit_latency;
-			st->target_residency = 0;
+			st->target_residency = cpu_level->pwr.min_residency;
 			st->enter = lpm_cpuidle_enter;
 			if (i == lpm_cpu->nlevels - 1)
 				st->enter_s2idle = lpm_cpuidle_s2idle;
