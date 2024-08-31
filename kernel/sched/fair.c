@@ -150,7 +150,7 @@ unsigned int __read_mostly sysctl_sched_energy_aware = 1;
 unsigned int sysctl_sched_wakeup_granularity		= 1000000UL;
 unsigned int normalized_sysctl_sched_wakeup_granularity	= 1000000UL;
 
-const_debug unsigned int sysctl_sched_migration_cost	= 500000UL;
+const_debug unsigned int sysctl_sched_migration_cost	= 1000000UL;
 DEFINE_PER_CPU_READ_MOSTLY(int, sched_load_boost);
 
 #ifdef CONFIG_SCHED_WALT
@@ -7649,6 +7649,17 @@ static bool is_packing_eligible(struct task_struct *p, int target_cpu,
 	 */
 	return (estimated_capacity <= capacity_curr_of(target_cpu));
 }
+
+#ifdef CONFIG_UCLAMP_TASK
+static unsigned int uclamp_task_util(struct task_struct *p)
+{
+        unsigned int min_util = uclamp_eff_value(p, UCLAMP_MIN);
+        unsigned int max_util = uclamp_eff_value(p, UCLAMP_MAX);
+        unsigned int est_util = task_util(p);
+
+        return clamp(est_util, min_util, max_util);
+}
+#endif
 
 static int start_cpu(struct task_struct *p, bool boosted,
 		     struct cpumask *rtg_target)
