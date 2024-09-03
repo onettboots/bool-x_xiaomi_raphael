@@ -31,7 +31,7 @@ CONFIGS="raphael_defconfig"
 
 VER="V1.9-PickSakahayang-Miui-HyperOs"
 KERNEL_DIR=`pwd`
-REPACK_DIR=$HOME/AnyKernel3
+REPACK_DIR=$HOME/AnyKernel3Miui
 ZIP_MOVE=$HOME/Boolx
 BASE_AK_VER="Bool-X-Raphael-"
 DATE=`date +"%Y%m%d-%H%M"`
@@ -70,7 +70,7 @@ function build() {
 
 function create_out {
 		echo
-		git clone https://github.com/onettboots/boolx_anykernel.git $REPACK_DIR && mkdir $ZIP_MOVE
+		git clone https://github.com/onettboots/boolx_anykernel.git -b Miui $REPACK_DIR && mkdir $ZIP_MOVE
 }
 function clean_all {
 		echo
