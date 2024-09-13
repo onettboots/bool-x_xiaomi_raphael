@@ -629,7 +629,7 @@ static inline void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn
 		return;
 
 	if (status) {
-                cpu_input_boost_kick_max(1200, true);
+                cpu_input_boost_kick_max(1200);
                 devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 1200);
         }
 

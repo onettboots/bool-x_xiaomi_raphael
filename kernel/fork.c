@@ -2242,6 +2242,7 @@ struct task_struct *fork_idle(int cpu)
 	return task;
 }
 
+extern int kp_active_mode(void);
 /*
  *  Ok, this is the main fork-routine.
  *
