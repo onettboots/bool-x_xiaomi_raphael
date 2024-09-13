@@ -200,16 +200,12 @@ void cpu_input_boost_kick(void)
 }
 
 static void __cpu_input_boost_kick_max(struct boost_drv *b,
-				       unsigned int duration_ms,
-				       bool always)
+				       unsigned int duration_ms)
 {
 	unsigned long boost_jiffies = msecs_to_jiffies(duration_ms);
 	unsigned long curr_expires, new_expires;
 
 	if (test_bit(SCREEN_OFF, &b->state))
-		return;
-
-	if (kp_active_mode() == 1 && !always && !test_bit(MAX_BOOST, &b->state))
 		return;
 
 	do {
@@ -228,12 +224,11 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 		wake_up(&b->boost_waitq);
 }
 
-void cpu_input_boost_kick_max(unsigned int duration_ms, bool always)
+void cpu_input_boost_kick_max(unsigned int duration_ms)
 {
 	struct boost_drv *b = &boost_drv_g;
 
-	__cpu_input_boost_kick_max(b, duration_ms, always);
-	last_mb_time = jiffies;
+	__cpu_input_boost_kick_max(b, duration_ms);
 }
 
 static void input_unboost_worker(struct work_struct *work)

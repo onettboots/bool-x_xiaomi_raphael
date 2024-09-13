@@ -630,8 +630,8 @@ static inline void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn
 
 	if (status) {
                 cpu_input_boost_kick_max(1200, true);
-                devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200, true);
-                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200);
+                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200);
         }
 
 	dsi_panel_set_fod_hbm(panel, status);
