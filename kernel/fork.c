@@ -2263,12 +2263,10 @@ long _do_fork(unsigned long clone_flags,
 	if (task_is_zygote(current)) {
 		if (kp_active_mode() == 2 || kp_active_mode() == 0) {
 			cpu_input_boost_kick_max(50);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
-			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 50);
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 50);
 		} else if (kp_active_mode() == 3) {
-			cpu_input_boost_kick_max(50);
-			devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 700);
-			devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 700);
+			cpu_input_boost_kick_max(100);
+			devfreq_boost_kick_max(DEVFREQ_CPU_LLCC_DDR_BW, 100);
 		}
 	}
 
