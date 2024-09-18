@@ -522,18 +522,6 @@ ifneq ($(KBUILD_SRC),)
 endif
 
 ifeq ($(cc-name),clang)
-ifdef CONFIG_POLLY_CLANG
-KBUILD_CFLAGS += -mllvm -polly \
-		   -mllvm -polly-run-dce \
-		   -mllvm -polly-run-inliner \
-           -mllvm -polly-isl-arg=--no-schedule-serialize-sccs \
-		   -mllvm -polly-ast-use-context \
-           -mllvm -polly-detect-keep-going \
-		   -mllvm -polly-position=before-vectorizer \
-		   -mllvm -polly-vectorizer=stripmine \
-           -mllvm -polly-detect-profitability-min-per-loop-insts=40 \
-		   -mllvm -polly-invariant-load-hoisting
-endif
 
 ifeq ($(CROSS_COMPILE),)
 ifeq ($(CLANG_TARGET_FLAGS),)
@@ -778,6 +766,27 @@ KBUILD_CFLAGS   += -ffp-contract=fast
 #Enable hot cold split optimization
 KBUILD_CFLAGS   += -mllvm -hot-cold-split=true
 KBUILD_CFLAGS	+= -march=armv8.2-a+lse+fp16+dotprod -mcpu=cortex-a76+crypto+crc
+ifdef CONFIG_LLVM_POLLY
+KBUILD_CFLAGS	+= -mllvm -polly \
+		   -mllvm -polly-ast-use-context \
+		   -mllvm -polly-invariant-load-hoisting \
+		   -mllvm -polly-run-inliner \
+		   -mllvm -polly-loopfusion-greedy=1 \
+		   -mllvm -polly-reschedule=1 \
+		   -mllvm -polly-postopts=1 \
+		   -mllvm -polly-vectorizer=stripmine
+# Polly may optimise loops with dead paths beyound what the linker
+# # can understand. This may negate the effect of the linker's DCEAdd commentMore actions
+# # so we tell Polly to perfom proven DCE on the loops it optimises
+# # in order to preserve the overall effect of the linker's DCE.
+ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATIONMore actions
+KBUILD_CFLAGS	+= -mllvm -polly-run-dce
+endif
+endif
+endif
+
+ifdef CONFIG_MINIMAL_TRACING_FOR_IORAPMore actions
+KBUILD_CFLAGS   += -DNOTRACE
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
