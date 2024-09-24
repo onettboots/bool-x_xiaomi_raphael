@@ -10914,21 +10914,6 @@ static int need_active_balance(struct lb_env *env)
 			return 1;
 	}
 
-	/*
-	 * The dst_cpu is idle and the src_cpu CPU has only 1 CFS task.
-	 * It's worth migrating the task if the src_cpu's capacity is reduced
-	 * because of other sched_class or IRQs if more capacity stays
-	 * available on dst_cpu.
-	 * Avoid pulling the CFS task if it is the only task running.
-	 */
-	if ((env->idle != CPU_NOT_IDLE) &&
-	    (env->src_rq->nr_running > 1) &&
-	    (env->src_rq->cfs.h_nr_running == 1)) {
-		if ((check_cpu_capacity(env->src_rq, sd)) &&
-		    (capacity_of(env->src_cpu)*sd->imbalance_pct < capacity_of(env->dst_cpu)*100))
-			return 1;
-	}
-
 	if ((env->idle != CPU_NOT_IDLE) &&
 		(capacity_of(env->src_cpu) < capacity_of(env->dst_cpu)) &&
 	    ((capacity_orig_of(env->src_cpu) < capacity_orig_of(env->dst_cpu))) &&
@@ -12121,15 +12106,6 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 			goto unlock;
 		}
 
-	}
-
-	sd = rcu_dereference(rq->sd);
-	if (sd) {
-		if ((rq->cfs.h_nr_running >= 1) &&
-				check_cpu_capacity(rq, sd)) {
-			kick = true;
-			goto unlock;
-		}
 	}
 
 	sd = rcu_dereference(per_cpu(sd_asym, cpu));
