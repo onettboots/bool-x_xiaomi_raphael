@@ -424,7 +424,7 @@ static bool do_recv_completion(int fd, int domain)
 /* Read all outstanding messages on the errqueue */
 static void do_recv_completions(int fd, int domain)
 {
-	while (do_recv_completion(fd, domain)) {}
+	while (do_recv_completion(fd)) {}
 	sends_since_notify = 0;
 }
 
@@ -509,7 +509,7 @@ static void do_tx(int domain, int type, int protocol)
 			do_sendmsg(fd, &msg, cfg_zerocopy);
 
 		if (cfg_zerocopy && sends_since_notify >= cfg_notification_limit)
-			do_recv_completions(fd, domain);
+			do_recv_completions(fd);
 
 		while (!do_poll(fd, POLLOUT)) {
 			if (cfg_zerocopy)
