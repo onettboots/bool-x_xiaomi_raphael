@@ -70,13 +70,6 @@ extern __read_mostly unsigned int sched_group_upmigrate;
 extern __read_mostly unsigned int sched_group_downmigrate;
 
 extern struct sched_cluster init_cluster;
-extern int num_sched_clusters;
-extern unsigned long uclamp_task_util(struct task_struct *p);
-
-extern void walt_find_busiest_queue(int dst_cpu,
-				    struct sched_group *group,
-				    struct cpumask *env_cpus,
-				    struct rq **busiest, int *done);
 
 extern void update_task_ravg(struct task_struct *p, struct rq *rq, int event,
 						u64 wallclock, u64 irqtime);

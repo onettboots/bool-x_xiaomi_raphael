@@ -4161,11 +4161,6 @@ void scheduler_tick(void)
 		clear_reserved(cpu);
 	rq_unlock(rq, &rf);
 #endif
-
-#ifdef CONFIG_HW_RT_ACTIVE_LB
-	if (curr->sched_class == &rt_sched_class)
-		check_for_rt_migration(rq, curr);
-#endif
 #endif
 }
 

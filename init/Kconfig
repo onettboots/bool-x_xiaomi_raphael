@@ -2350,5 +2350,3 @@ config ASN1
 	  functions to call on what tags.
 
 source "kernel/Kconfig.locks"
-
-source "kernel/sched/hw_rt/Kconfig"

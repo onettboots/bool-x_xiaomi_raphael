@@ -13,8 +13,6 @@
 
 #include "walt.h"
 
-#include <trace/events/sched.h>
-
 int sched_rr_timeslice = RR_TIMESLICE;
 int sysctl_sched_rr_timeslice = (MSEC_PER_SEC * RR_TIMESLICE) / HZ;
 
@@ -1937,19 +1935,12 @@ unlock:
 	return best_cpu;
 }
 
-#ifdef CONFIG_HW_RT_CAS
-#include "./hw_rt/rt_cas.c"
-#endif
-
 static int find_lowest_rq(struct task_struct *task)
 {
 	struct sched_domain *sd;
 	struct cpumask *lowest_mask = this_cpu_cpumask_var_ptr(local_cpu_mask);
 	int this_cpu = smp_processor_id();
 	int cpu = -1;
-#ifdef CONFIG_HW_RT_CAS
-	int cas_cpu;
-#endif
 
 	/* Make sure the mask is initialized first */
 	if (unlikely(!lowest_mask))
@@ -1961,12 +1952,6 @@ static int find_lowest_rq(struct task_struct *task)
 	if (!cpupri_find(&task_rq(task)->rd->cpupri, task, lowest_mask,
 			 rt_task_fits_capacity))
 		return -1; /* No targets found */
-
-#ifdef CONFIG_HW_RT_CAS
-	cas_cpu = find_cas_cpu(sd, task, lowest_mask);
-	if (cas_cpu != -1)
-		return cas_cpu;
-#endif
 
 	if (energy_aware())
 		cpu = rt_energy_aware_wake_cpu(task);
@@ -2676,10 +2661,6 @@ static void set_curr_task_rt(struct rq *rq)
 {
 	set_next_task(rq, rq->curr);
 }
-
-#ifdef CONFIG_HW_RT_CAS
-#include "./hw_rt/rt_misfit.c"
-#endif
 
 static unsigned int get_rr_interval_rt(struct rq *rq, struct task_struct *task)
 {
