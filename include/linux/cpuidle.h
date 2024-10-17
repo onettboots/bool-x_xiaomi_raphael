@@ -267,9 +267,7 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
 ({									\
 	int __ret = 0;							\
 									\
-	if (need_resched()) {						\
-		__ret = -1;						\
-	} else if (!idx) {						\
+	if (!idx) {							\
 		cpu_do_idle();						\
 	} else {							\
 		if (!is_retention)					\
