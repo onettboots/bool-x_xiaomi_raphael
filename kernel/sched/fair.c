@@ -10196,18 +10196,6 @@ check_cpu_capacity(struct rq *rq, struct sched_domain *sd)
 }
 
 /*
- * Check whether a rq has a misfit task and if it looks like we can actually
- * help that task: we can migrate the task to a CPU of higher capacity, or
- * the task's current CPU is heavily pressured.
- */
-static inline int check_misfit_status(struct rq *rq, struct sched_domain *sd)
-{
-	return rq->misfit_task_load &&
-		(rq->cpu_capacity_orig < rq->rd->max_cpu_capacity.val ||
-		 check_cpu_capacity(rq, sd));
-}
-
-/*
  * Group imbalance indicates (and tries to solve) the problem where balancing
  * groups is inadequate due to ->cpus_allowed constraints.
  *
@@ -12471,19 +12459,7 @@ static inline bool nohz_kick_needed(struct rq *rq, bool only_update)
 		}
 	}
 
-	sd = rcu_dereference(per_cpu(sd_asym_cpucapacity, cpu));
-	if (sd) {
-		/*
-		 * When ASYM_CPUCAPACITY; see if there's a higher capacity CPU
-		 * to run the misfit task on.
-		 */
-		if (check_misfit_status(rq, sd)) {
-			flags = NOHZ_KICK_MASK;
-			goto unlock;
-		}
-	}
-
-	sd = rcu_dereference(per_cpu(sd_asym_packing, cpu));
+	sd = rcu_dereference(per_cpu(sd_asym, cpu));
 	if (sd) {
 		/*
 		 * When ASYM_PACKING; see if there's a more preferred CPU
