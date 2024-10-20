@@ -5,7 +5,7 @@ LLVM=1
 LLVM_IAS=1
 DEPMOD=depmod
 CLANG_PREBUILT_BIN=prebuilts/clang/host/linux-x86/clang-neutron/bin
-BUILDTOOLS_PREBUILT_BIN=build/kernel/build-tools/path/linux-x86
+BUILDTOOLS_PREBUILT_BIN=build/build-tools/path/linux-x86
 
 KCFLAGS="${KCFLAGS} -D__ANDROID_COMMON_KERNEL__"
 STOP_SHIP_TRACEPRINTK=1
