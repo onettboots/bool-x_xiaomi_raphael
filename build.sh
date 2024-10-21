@@ -31,7 +31,7 @@ cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
 CONFIGS="raphael_defconfig"
 
-VER="V2.1-WarWolf-DSP"
+VER="V2.1-WarWolf-DSP-LosFod"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
