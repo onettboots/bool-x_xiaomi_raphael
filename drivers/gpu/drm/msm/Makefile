@@ -226,3 +226,5 @@ msm_drm-$(CONFIG_DRM_MSM) += \
 msm_drm-$(CONFIG_DEBUG_FS) += msm_debugfs.o
 
 obj-$(CONFIG_DRM_MSM)	+= msm_drm.o
+
+msm_drm-$(CONFIG_DRM_MSM_KCAL_CTRL) += sde/sde_hw_kcal_ctrl.o

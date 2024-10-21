@@ -304,6 +304,22 @@ int dsi_bridge_interface_enable(int timeout)
 }
 EXPORT_SYMBOL(dsi_bridge_interface_enable);
 
+static int dsi_bridge_get_panel_info(struct drm_bridge *bridge, char *buf)
+{
+	int rc = 0;
+	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+
+	if (!c_bridge) {
+		pr_err("Invalid params\n");
+		return rc;
+	}
+
+	if (c_bridge->display->name)
+		return snprintf(buf, PAGE_SIZE, c_bridge->display->name);
+
+	return rc;
+}
+
 static void dsi_bridge_enable(struct drm_bridge *bridge)
 {
 	int rc = 0;
@@ -642,6 +658,7 @@ static const struct drm_bridge_funcs dsi_bridge_ops = {
 	.disable      = dsi_bridge_disable,
 	.post_disable = dsi_bridge_post_disable,
 	.mode_set     = dsi_bridge_mode_set,
+	.disp_get_panel_info = dsi_bridge_get_panel_info,
 };
 
 int dsi_conn_set_info_blob(struct drm_connector *connector,
@@ -967,6 +984,9 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 	for (i = 0; i < count; i++) {
 		struct drm_display_mode *m;
 
+		if (modes[i].splash_dms)
+			modes[i].dsi_mode_flags |= DSI_MODE_FLAG_DMS;
+
 		memset(&drm_mode, 0x0, sizeof(drm_mode));
 		dsi_convert_to_drm_mode(&modes[i], &drm_mode);
 		m = drm_mode_duplicate(connector->dev, &drm_mode);
@@ -983,6 +1003,10 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 		if (i == 0)
 			m->type |= DRM_MODE_TYPE_PREFERRED;
 		drm_mode_probed_add(connector, m);
+
+		if (modes[i].splash_dms)
+			drm_set_preferred_mode(
+				connector, m->hdisplay, m->vdisplay);
 	}
 
 	rc = dsi_drm_update_edid_name(&edid, display->panel->name);

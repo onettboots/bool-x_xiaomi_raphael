@@ -24,8 +24,11 @@
 #include "sde_ad4.h"
 #include "sde_hw_interrupts.h"
 #include "sde_core_irq.h"
-#include "sde_plane.h"
 #include "dsi_panel.h"
+
+#ifdef CONFIG_DRM_MSM_KCAL_CTRL
+#include "sde_hw_kcal_ctrl.h"
+#endif
 
 struct sde_cp_node {
 	u32 property_id;
@@ -647,9 +650,6 @@ static void sde_cp_crtc_setfeature(struct sde_cp_node *prop_node,
 	hw_cfg.num_of_mixers = sde_crtc->num_mixers;
 	hw_cfg.last_feature = 0;
 
-	if (prop_node->feature == SDE_CP_CRTC_DSPP_PCC)
-		return;
-
 	for (i = 0; i < num_mixers && !ret; i++) {
 		hw_lm = sde_crtc->mixers[i].hw_lm;
 		hw_dspp = sde_crtc->mixers[i].hw_dspp;
@@ -1029,6 +1029,12 @@ exit:
 
 }
 
+#ifdef CONFIG_DRM_MSM_KCAL_CTRL
+struct drm_crtc *g_pcc_crtc;
+struct drm_property *g_pcc_property;
+uint64_t g_pcc_val;
+#endif
+
 int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 				struct drm_property *property,
 				uint64_t val)
@@ -1061,6 +1067,15 @@ int sde_cp_crtc_set_property(struct drm_crtc *crtc,
 		ret = -ENOENT;
 		goto exit;
 	}
+
+#ifdef CONFIG_DRM_MSM_KCAL_CTRL
+	if (prop_node->feature == SDE_CP_CRTC_DSPP_PCC) {
+		pr_info("%s pcc kad kcal\n",__func__);
+		g_pcc_crtc = crtc;
+		g_pcc_property = property;
+		g_pcc_val = val;
+	}
+#endif
 
 	/**
 	 * sde_crtc is virtual ensure that hardware has been attached to the
@@ -1121,6 +1136,16 @@ exit:
 	mutex_unlock(&sde_crtc->crtc_cp_lock);
 	return ret;
 }
+
+#ifdef CONFIG_DRM_MSM_KCAL_CTRL
+void kcal_force_update(void) {
+	if (g_pcc_crtc) {
+		pr_info("%s force kad kcal\n",__func__);
+		sde_cp_crtc_set_property(g_pcc_crtc, g_pcc_property, g_pcc_val);
+	}
+}
+EXPORT_SYMBOL(kcal_force_update);
+#endif
 
 int sde_cp_crtc_get_property(struct drm_crtc *crtc,
 			     struct drm_property *property, uint64_t *val)
@@ -2112,25 +2137,4 @@ int sde_cp_hist_interrupt(struct drm_crtc *crtc_drm, bool en,
 
 exit:
 	return ret;
-}
-
-const struct drm_msm_pcc *sde_cp_crtc_get_pcc_cfg(struct drm_crtc *drm_crtc)
-{
-	struct drm_property_blob *blob = NULL;
-	struct sde_cp_node *prop_node = NULL;
-	struct sde_crtc *crtc;
-
-	crtc = to_sde_crtc(drm_crtc);
-
-	mutex_lock(&crtc->crtc_cp_lock);
-	list_for_each_entry(prop_node, &crtc->feature_list, feature_list) {
-		if (prop_node->feature == SDE_CP_CRTC_DSPP_PCC) {
-			blob = prop_node->blob_ptr;
-			break;
-		}
-	}
-
-	mutex_unlock(&crtc->crtc_cp_lock);
-
-	return blob ? (struct drm_msm_pcc *) blob->data : NULL;
 }

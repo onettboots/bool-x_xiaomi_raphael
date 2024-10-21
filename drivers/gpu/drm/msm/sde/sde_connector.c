@@ -19,6 +19,8 @@
 #include "sde_encoder.h"
 #include <linux/backlight.h>
 #include <linux/string.h>
+#include <linux/cpu_input_boost.h>
+#include <linux/devfreq_boost.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
 #include "sde_crtc.h"
@@ -101,9 +103,6 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	} else {
 		bl_lvl = 0;
 	}
-
-	if (bl_lvl > 2047)
-		bl_lvl = 4095;
 
 	if (!c_conn->allow_bl_update) {
 		c_conn->unset_bl_level = bl_lvl;
@@ -596,42 +595,45 @@ static inline int _sde_connector_update_dirty_properties(
 	return 0;
 }
 
-static bool sde_connector_is_fod_enabled(struct sde_connector *c_conn)
+void sde_connector_update_hbm(struct drm_connector *connector)
 {
-	struct drm_connector *connector = &c_conn->base;
-
-	if (!connector->state || !connector->state->crtc)
-		return false;
-
-	return sde_crtc_is_fod_enabled(connector->state->crtc->state);
-}
-
-struct dsi_panel *sde_connector_panel(struct sde_connector *c_conn)
-{
-	struct dsi_display *display = (struct dsi_display *)c_conn->display;
-
-	return display ? display->panel : NULL;
-}
-
-static inline void sde_connector_pre_update_fod_hbm(struct sde_connector *c_conn)
-{
-	struct dsi_panel *panel;
+	static atomic_t effective_status = ATOMIC_INIT(false);
+	struct sde_crtc_state *cstate;
+	struct sde_connector *c_conn;
+	struct dsi_display *display;
 	bool status;
 
-	panel = sde_connector_panel(c_conn);
-	if (!panel)
+	if (!connector) {
+		SDE_ERROR("invalid connector\n");
+		return;
+	}
+
+	c_conn = to_sde_connector(connector);
+	if (c_conn->connector_type != DRM_MODE_CONNECTOR_DSI)
 		return;
 
-	status = sde_connector_is_fod_enabled(c_conn);
-	if (status == dsi_panel_get_fod_ui(panel))
+	display = (struct dsi_display *) c_conn->display;
+
+	if (!c_conn->encoder || !c_conn->encoder->crtc ||
+			!c_conn->encoder->crtc->state)
 		return;
 
-	dsi_panel_set_fod_hbm(panel, status);
+	cstate = to_sde_crtc_state(c_conn->encoder->crtc->state);
+	status = cstate->fod_dim_layer != NULL;
+	if (atomic_xchg(&effective_status, status) == status)
+		return;
 
-	dsi_panel_set_fod_ui(panel, status);
+	if (status) {
+                cpu_input_boost_kick_max(1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1200, true);
+                devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1200, true);
+        }
 
-	if (!status)
-		_sde_connector_update_bl_scale(c_conn);
+	mutex_lock(&display->panel->panel_lock);
+	dsi_panel_set_fod_hbm(display->panel, status);
+	mutex_unlock(&display->panel->panel_lock);
+
+	dsi_display_set_fod_ui(display, status);
 }
 
 int sde_connector_pre_kickoff(struct drm_connector *connector)
@@ -640,7 +642,6 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 	struct sde_connector_state *c_state;
 	struct msm_display_kickoff_params params;
 	int rc;
-	bool dc_dim, was_dcdim;
 
 	if (!connector) {
 		SDE_ERROR("invalid argument\n");
@@ -668,18 +669,7 @@ int sde_connector_pre_kickoff(struct drm_connector *connector)
 
 	SDE_EVT32_VERBOSE(connector->base.id);
 
-	if (c_conn->connector_type == DRM_MODE_CONNECTOR_DSI)
-		sde_connector_pre_update_fod_hbm(c_conn);
-
-	dc_dim = sde_connector_panel(c_conn)->dc_dim;
-	was_dcdim = sde_connector_panel(c_conn)->was_dc_dim;
-	if (!was_dcdim && dc_dim) {
-		_sde_connector_update_bl_scale(c_conn);
-		sde_connector_panel(c_conn)->was_dc_dim = true;
-	} else if (was_dcdim && !dc_dim) {
-		_sde_connector_update_bl_scale(c_conn);
-		sde_connector_panel(c_conn)->was_dc_dim = false;
-	}
+	sde_connector_update_hbm(connector);
 
 	rc = c_conn->ops.pre_kickoff(connector, c_conn->display, &params);
 
