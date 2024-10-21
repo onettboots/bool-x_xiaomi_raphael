@@ -137,7 +137,7 @@ unsigned int sysctl_sched_child_runs_first __read_mostly;
 /*
  * To enable/disable energy aware feature.
  */
-unsigned int __read_mostly sysctl_sched_energy_aware = 1;
+unsigned int __read_mostly sysctl_sched_energy_aware = 0;
 
 /*
  * SCHED_OTHER wake-up granularity.
