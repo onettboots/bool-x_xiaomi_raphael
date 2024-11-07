@@ -31,7 +31,7 @@ cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
 CONFIGS="raphael_defconfig"
 
-VER="V2.1-WarWolf-HyperOs"
+VER="V2.2-Envy-HyperOs"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3Miui
 ZIP_MOVE=$HOME/Boolx
