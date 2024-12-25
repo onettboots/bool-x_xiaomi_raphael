@@ -31,44 +31,49 @@
  * Note that nbits should be always a compile time evaluable constant.
  * Otherwise many inlines will generate horrible code.
  *
- * ::
+ * bitmap_zero(dst, nbits)			*dst = 0UL
+ * bitmap_fill(dst, nbits)			*dst = ~0UL
+ * bitmap_copy(dst, src, nbits)			*dst = *src
+ * bitmap_and(dst, src1, src2, nbits)		*dst = *src1 & *src2
+ * bitmap_or(dst, src1, src2, nbits)		*dst = *src1 | *src2
+ * bitmap_xor(dst, src1, src2, nbits)		*dst = *src1 ^ *src2
+ * bitmap_andnot(dst, src1, src2, nbits)	*dst = *src1 & ~(*src2)
+ * bitmap_complement(dst, src, nbits)		*dst = ~(*src)
+ * bitmap_equal(src1, src2, nbits)		Are *src1 and *src2 equal?
+ * bitmap_intersects(src1, src2, nbits) 	Do *src1 and *src2 overlap?
+ * bitmap_subset(src1, src2, nbits)		Is *src1 a subset of *src2?
+ * bitmap_empty(src, nbits)			Are all bits zero in *src?
+ * bitmap_full(src, nbits)			Are all bits set in *src?
+ * bitmap_weight(src, nbits)			Hamming Weight: number set bits
+ * bitmap_set(dst, pos, nbits)			Set specified bit area
+ * bitmap_clear(dst, pos, nbits)		Clear specified bit area
+ * bitmap_find_next_zero_area(buf, len, pos, n, mask)	Find bit free area
+ * bitmap_find_next_zero_area_off(buf, len, pos, n, mask)	as above
+ * bitmap_shift_right(dst, src, n, nbits)	*dst = *src >> n
+ * bitmap_shift_left(dst, src, n, nbits)	*dst = *src << n
+ * bitmap_remap(dst, src, old, new, nbits)	*dst = map(old, new)(src)
+ * bitmap_bitremap(oldbit, old, new, nbits)	newbit = map(old, new)(oldbit)
+ * bitmap_onto(dst, orig, relmap, nbits)	*dst = orig relative to relmap
+ * bitmap_fold(dst, orig, sz, nbits)		dst bits = orig bits mod sz
+ * bitmap_parse(buf, buflen, dst, nbits)	Parse bitmap dst from kernel buf
+ * bitmap_parse_user(ubuf, ulen, dst, nbits)	Parse bitmap dst from user buf
+ * bitmap_parselist(buf, dst, nbits)		Parse bitmap dst from kernel buf
+ * bitmap_parselist_user(buf, dst, nbits)	Parse bitmap dst from user buf
+ * bitmap_find_free_region(bitmap, bits, order)	Find and allocate bit region
+ * bitmap_release_region(bitmap, pos, order)	Free specified bit region
+ * bitmap_allocate_region(bitmap, pos, order)	Allocate specified bit region
+ * bitmap_from_u32array(dst, nbits, buf, nwords) *dst = *buf (nwords 32b words)
+ * bitmap_to_u32array(buf, nwords, src, nbits)	*buf = *dst (nwords 32b words)
  *
- *  bitmap_zero(dst, nbits)                     *dst = 0UL
- *  bitmap_fill(dst, nbits)                     *dst = ~0UL
- *  bitmap_copy(dst, src, nbits)                *dst = *src
- *  bitmap_and(dst, src1, src2, nbits)          *dst = *src1 & *src2
- *  bitmap_or(dst, src1, src2, nbits)           *dst = *src1 | *src2
- *  bitmap_xor(dst, src1, src2, nbits)          *dst = *src1 ^ *src2
- *  bitmap_andnot(dst, src1, src2, nbits)       *dst = *src1 & ~(*src2)
- *  bitmap_complement(dst, src, nbits)          *dst = ~(*src)
- *  bitmap_equal(src1, src2, nbits)             Are *src1 and *src2 equal?
- *  bitmap_intersects(src1, src2, nbits)        Do *src1 and *src2 overlap?
- *  bitmap_subset(src1, src2, nbits)            Is *src1 a subset of *src2?
- *  bitmap_empty(src, nbits)                    Are all bits zero in *src?
- *  bitmap_full(src, nbits)                     Are all bits set in *src?
- *  bitmap_weight(src, nbits)                   Hamming Weight: number set bits
- *  bitmap_set(dst, pos, nbits)                 Set specified bit area
- *  bitmap_clear(dst, pos, nbits)               Clear specified bit area
- *  bitmap_find_next_zero_area(buf, len, pos, n, mask)  Find bit free area
- *  bitmap_find_next_zero_area_off(buf, len, pos, n, mask)  as above
- *  bitmap_shift_right(dst, src, n, nbits)      *dst = *src >> n
- *  bitmap_shift_left(dst, src, n, nbits)       *dst = *src << n
- *  bitmap_cut(dst, src, first, n, nbits)       Cut n bits from first, copy rest
- *  bitmap_remap(dst, src, old, new, nbits)     *dst = map(old, new)(src)
- *  bitmap_bitremap(oldbit, old, new, nbits)    newbit = map(old, new)(oldbit)
- *  bitmap_onto(dst, orig, relmap, nbits)       *dst = orig relative to relmap
- *  bitmap_fold(dst, orig, sz, nbits)           dst bits = orig bits mod sz
- *  bitmap_parse(buf, buflen, dst, nbits)       Parse bitmap dst from kernel buf
- *  bitmap_parse_user(ubuf, ulen, dst, nbits)   Parse bitmap dst from user buf
- *  bitmap_parselist(buf, dst, nbits)           Parse bitmap dst from kernel buf
- *  bitmap_parselist_user(buf, dst, nbits)      Parse bitmap dst from user buf
- *  bitmap_find_free_region(bitmap, bits, order)  Find and allocate bit region
- *  bitmap_release_region(bitmap, pos, order)   Free specified bit region
- *  bitmap_allocate_region(bitmap, pos, order)  Allocate specified bit region
- *  bitmap_from_arr32(dst, buf, nbits)          Copy nbits from u32[] buf to dst
- *  bitmap_to_arr32(buf, src, nbits)            Copy nbits from buf to u32[] dst
- *  bitmap_get_value8(map, start)               Get 8bit value from map at start
- *  bitmap_set_value8(map, value, start)        Set 8bit value to map at start
+ * Note, bitmap_zero() and bitmap_fill() operate over the region of
+ * unsigned longs, that is, bits behind bitmap till the unsigned long
+ * boundary will be zeroed or filled as well. Consider to use
+ * bitmap_clear() or bitmap_set() to make explicit zeroing or filling
+ * respectively.
+ */
+
+/*
+ * Also the following operations in asm/bitops.h apply to bitmaps.
  *
  */
 
@@ -225,12 +230,12 @@ static inline void bitmap_zero(unsigned long *dst, unsigned int nbits)
 
 static inline void bitmap_fill(unsigned long *dst, unsigned int nbits)
 {
-	unsigned int nlongs = BITS_TO_LONGS(nbits);
-	if (!small_const_nbits(nbits)) {
-		unsigned int len = (nlongs - 1) * sizeof(unsigned long);
-		memset(dst, 0xff,  len);
+	if (small_const_nbits(nbits))
+		*dst = ~0UL;
+	else {
+		unsigned int len = BITS_TO_LONGS(nbits) * sizeof(unsigned long);
+		memset(dst, 0xff, len);
 	}
-	dst[nlongs - 1] = BITMAP_LAST_WORD_MASK(nbits);
 }
 
 static inline void bitmap_copy(unsigned long *dst, const unsigned long *src,
