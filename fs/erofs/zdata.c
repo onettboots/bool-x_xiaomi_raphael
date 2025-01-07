@@ -155,8 +155,9 @@ static struct kthread_worker *erofs_init_percpu_worker(int cpu)
 	if (IS_ERR(worker))
 		return worker;
 	if (IS_ENABLED(CONFIG_EROFS_FS_PCPU_KTHREAD_HIPRI))
-		sched_setscheduler_nocheck(worker->task, SCHED_RR, &sched_zero_prio);
-		//sched_set_fifo_low(worker->task);
+		sched_set_fifo(worker->task);
+	else
+		sched_set_normal(worker->task, 0);
 	return worker;
 }
 
