@@ -964,6 +964,102 @@ static void uclamp_sync_util_min_rt_default(void)
 	rcu_read_unlock();
 }
 
+extern int kp_active_mode(void);
+
+static inline void uclamp_boost_write(struct task_struct *p) {
+	struct cgroup_subsys_state *css = task_css(p, cpu_cgrp_id);
+
+	if (strcmp(css->cgroup->kn->name, "top-app") == 0) {
+		if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 615;
+			task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }
+		if (kp_active_mode() == 2 || kp_active_mode() == 0 || time_before(jiffies, last_input_time + msecs_to_jiffies(9000))) {
+			task_group(p)->uclamp[UCLAMP_MIN].value = 128;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }
+		if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 820;
+                        task_group(p)->latency_sensitive = 0;
+		}
+	}
+
+	if (strcmp(css->cgroup->kn->name, "foreground") == 0) {
+                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 256;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }  
+                if (kp_active_mode() == 2 || kp_active_mode() == 0) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }
+                if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 820;
+                        task_group(p)->latency_sensitive = 0;
+                }
+        }
+
+	if (strcmp(css->cgroup->kn->name, "camera-daemon") == 0) {
+                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 256;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }  
+                if (kp_active_mode() == 2 || kp_active_mode() == 0) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 0;
+                }
+                if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 820;
+                        task_group(p)->latency_sensitive = 0;
+                }
+        }
+
+	if (strcmp(css->cgroup->kn->name, "background") == 0) {
+                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 512;
+                        task_group(p)->latency_sensitive = 1;
+                }  
+                if (kp_active_mode() == 2 || (kp_active_mode() == 0)) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 410;
+                        task_group(p)->latency_sensitive = 0;
+                }
+                if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 308;
+                        task_group(p)->latency_sensitive = 0;
+                }
+        }
+
+	if (strcmp(css->cgroup->kn->name, "system-background") == 0) {
+                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 612;
+                        task_group(p)->latency_sensitive = 1;
+                }  
+                if (kp_active_mode() == 2 || (kp_active_mode() == 0)) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 512;
+                        task_group(p)->latency_sensitive = 0;
+                }
+                if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 410;
+                        task_group(p)->latency_sensitive = 0;
+                }
+        }
+}
+
 static inline struct uclamp_se
 uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 {
@@ -981,6 +1077,8 @@ uclamp_tg_restrict(struct task_struct *p, enum uclamp_id clamp_id)
 	if (task_group(p) == &root_task_group)
 		return uc_req;
 
+        uclamp_boost_write(p);
+        tg_min = task_group(p)->uclamp[UCLAMP_MIN].value;
 	tg_max = task_group(p)->uclamp[UCLAMP_MAX].value;
 	value = uc_req.value;
 	value = clamp(value, tg_min, tg_max);
@@ -1464,7 +1562,7 @@ static void __init init_uclamp_rq(struct rq *rq)
 		};
 	}
 
-	rq->uclamp_flags = UCLAMP_FLAG_IDLE;
+	rq->uclamp_flags = 0;
 }
 
 static void __init init_uclamp(void)
@@ -8530,15 +8628,15 @@ static void uclamp_set(struct cgroup_subsys_state *css)
 	int i;
 
 	static struct uclamp_param tgts[] = {
-		{"top-app",             "20", "max",  1, 20480},
-		{"rt",			"0",  "max",  1, 20480},
-		{"nnapi-hal",		"0",  "max",  1, 20480},
-       		{"foreground",          "0",  "max",  1, 20480},
-                {"camera-daemon",       "10", "max",  1, 20480},
-                {"system",              "0",  "max",  0, 20480},
-                {"dex2oat",             "0",  "60",   0,   512},
-        	{"background",          "0",  "50",   0,  1024},
-        	{"system-background",   "0",  "50",   0,  1024},
+		{"top-app",             "0", "0",  0, 20480},
+		{"rt",			"0",  "0",  0, 20480},
+		{"nnapi-hal",		"0",  "0",  0, 20480},
+       		{"foreground",          "0",  "0",  0, 20480},
+                {"camera-daemon",       "0", "0",  0, 20480},
+                {"system",              "0",  "0",  0, 20480},
+                {"dex2oat",             "0",  "0",   0,   512},
+        	{"background",          "0",  "0",   0,  1024},
+        	{"system-background",   "0",  "0",   0,  1024},
 	};
 
         if(!css->cgroup->kn)
