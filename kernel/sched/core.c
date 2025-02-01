@@ -975,7 +975,7 @@ static inline void uclamp_boost_write(struct task_struct *p) {
 			task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
                         task_group(p)->latency_sensitive = 1;
                 }
-		if (kp_active_mode() == 2 || kp_active_mode() == 0 || time_before(jiffies, last_input_time + msecs_to_jiffies(9000))) {
+		if (kp_active_mode() == 2 || kp_active_mode() == 0 || time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
 			task_group(p)->uclamp[UCLAMP_MIN].value = 128;
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
                         task_group(p)->latency_sensitive = 1;
@@ -993,7 +993,7 @@ static inline void uclamp_boost_write(struct task_struct *p) {
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
                         task_group(p)->latency_sensitive = 1;
                 }  
-                if (kp_active_mode() == 2 || kp_active_mode() == 0) {
+                if (kp_active_mode() == 2 || kp_active_mode() == 0 || time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
                         task_group(p)->latency_sensitive = 1;
@@ -1024,10 +1024,10 @@ static inline void uclamp_boost_write(struct task_struct *p) {
         }
 
 	if (strcmp(css->cgroup->kn->name, "background") == 0) {
-                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                if (kp_active_mode() == 3 ) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0;
                         task_group(p)->uclamp[UCLAMP_MAX].value = 512;
-                        task_group(p)->latency_sensitive = 1;
+                        task_group(p)->latency_sensitive = 0;
                 }  
                 if (kp_active_mode() == 2 || (kp_active_mode() == 0)) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
@@ -1042,10 +1042,10 @@ static inline void uclamp_boost_write(struct task_struct *p) {
         }
 
 	if (strcmp(css->cgroup->kn->name, "system-background") == 0) {
-                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                if (kp_active_mode() == 3 ) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0;
                         task_group(p)->uclamp[UCLAMP_MAX].value = 612;
-                        task_group(p)->latency_sensitive = 1;
+                        task_group(p)->latency_sensitive = 0;
                 }  
                 if (kp_active_mode() == 2 || (kp_active_mode() == 0)) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
@@ -1058,6 +1058,25 @@ static inline void uclamp_boost_write(struct task_struct *p) {
                         task_group(p)->latency_sensitive = 0;
                 }
         }
+
+	if (strcmp(css->cgroup->kn->name, "nnapi-hal") == 0) {
+                if (kp_active_mode() == 3 || time_before(jiffies, last_input_time + msecs_to_jiffies(7000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 256;
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }  
+                if (kp_active_mode() == 2 || kp_active_mode() == 0 || time_before(jiffies, last_input_time + msecs_to_jiffies(5000))) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
+                        task_group(p)->latency_sensitive = 1;
+                }
+                if (kp_active_mode() == 1) {
+                        task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
+                        task_group(p)->uclamp[UCLAMP_MAX].value = 820;
+                        task_group(p)->latency_sensitive = 0;
+                }
+        }
+
 }
 
 static inline struct uclamp_se
