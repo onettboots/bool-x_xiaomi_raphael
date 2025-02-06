@@ -517,6 +517,26 @@ static ktime_t __hrtimer_get_next_event(struct hrtimer_cpu_base *cpu_base,
 		expires_next = 0;
 	return expires_next;
 }
+
+static inline int hrtimer_hres_active(void);
+/**
+ * hrtimer_next_event_without - time until next expiry event w/o one timer
+ * @exclude:	timer to exclude
+ *
+ * Returns the next expiry time over all timers except for the @exclude one or
+ * KTIME_MAX if none of them is pending.
+ */
+u64 hrtimer_next_event_without(const struct hrtimer *exclude)
+{
+	struct hrtimer_cpu_base *cpu_base = this_cpu_ptr(&hrtimer_bases);
+	u64 expires = KTIME_MAX;
+	unsigned long flags;
+	raw_spin_lock_irqsave(&cpu_base->lock, flags);
+	if (hrtimer_hres_active()) 
+		expires = ktime_to_ns(__hrtimer_get_next_event(cpu_base, exclude));
+	raw_spin_unlock_irqrestore(&cpu_base->lock, flags);
+	return expires;
+}
 #endif
 
 static inline ktime_t hrtimer_update_base(struct hrtimer_cpu_base *base)
@@ -1118,29 +1138,6 @@ u64 hrtimer_get_next_event(void)
 
 	if (!__hrtimer_hres_active(cpu_base))
 		expires = __hrtimer_get_next_event(cpu_base, NULL);
-
-	raw_spin_unlock_irqrestore(&cpu_base->lock, flags);
-
-	return expires;
-}
-
-/**
- * hrtimer_next_event_without - time until next expiry event w/o one timer
- * @exclude:	timer to exclude
- *
- * Returns the next expiry time over all timers except for the @exclude one or
- * KTIME_MAX if none of them is pending.
- */
-u64 hrtimer_next_event_without(const struct hrtimer *exclude)
-{
-	struct hrtimer_cpu_base *cpu_base = this_cpu_ptr(&hrtimer_bases);
-	u64 expires = KTIME_MAX;
-	unsigned long flags;
-
-	raw_spin_lock_irqsave(&cpu_base->lock, flags);
-
-	if (__hrtimer_hres_active(cpu_base))
-		expires = __hrtimer_get_next_event(cpu_base, exclude);
 
 	raw_spin_unlock_irqrestore(&cpu_base->lock, flags);
 

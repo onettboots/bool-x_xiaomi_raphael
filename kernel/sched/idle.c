@@ -171,35 +171,40 @@ static void cpuidle_idle_call(void)
 	 */
 
 	if (idle_should_enter_s2idle() || dev->use_deepest_state) {
-		if (idle_should_enter_s2idle()) {
-			rcu_idle_enter();
+                if (idle_should_enter_s2idle()) {
+                        rcu_idle_enter();
 
-			entered_state = cpuidle_enter_s2idle(drv, dev);
-			if (entered_state > 0) {
-				local_irq_enable();
-				goto exit_idle;
-			}
+                        entered_state = cpuidle_enter_s2idle(drv, dev);
+                        if (entered_state > 0) {
+                                local_irq_enable();
+                                goto exit_idle;
+                        }
 
-			rcu_idle_exit();
-		}
+                        rcu_idle_exit();
+                }
 
-		tick_nohz_idle_stop_tick();
-		rcu_idle_enter();
+                tick_nohz_idle_stop_tick();
+                rcu_idle_enter();
 
-		next_state = cpuidle_find_deepest_state(drv, dev);
-		call_cpuidle(drv, dev, next_state);
+                next_state = cpuidle_find_deepest_state(drv, dev);
+                call_cpuidle(drv, dev, next_state);
 	} else {
+		bool stop_tick = true;
 
 		/*
 		 * Ask the cpuidle framework to choose a convenient idle state.
 		 */
-		next_state = cpuidle_select(drv, dev);
+		next_state = cpuidle_select(drv, dev, &stop_tick);
 
-		tick_nohz_idle_stop_tick();
+                if (stop_tick || tick_nohz_tick_stopped())
+                        tick_nohz_idle_stop_tick();
+                else
+                        tick_nohz_idle_retain_tick();
 
-		rcu_idle_enter();
+                rcu_idle_enter();
 
-		entered_state = call_cpuidle(drv, dev, next_state);
+                entered_state = call_cpuidle(drv, dev, next_state);
+
 		/*
 		 * Give the governor an opportunity to reflect on the outcome
 		 */
@@ -225,7 +230,6 @@ exit_idle:
  */
 static void do_idle(void)
 {
-	int cpu = smp_processor_id();
 	/*
 	 * If the arch has a polling bit, we maintain an invariant:
 	 *
@@ -236,35 +240,36 @@ static void do_idle(void)
 	 */
 
 	__current_set_polling();
-	tick_nohz_idle_enter();
+	quiet_vmstat();
+        tick_nohz_idle_enter();
 
-	while (!need_resched()) {
-		check_pgt_cache();
-		rmb();
+        while (!need_resched()) {
+                check_pgt_cache();
+                rmb();
 
-		if (cpu_is_offline(cpu)) {
-			tick_nohz_idle_stop_tick_protected();
-			cpuhp_report_idle_dead();
-			arch_cpu_idle_dead();
-		}
+                if (cpu_is_offline(smp_processor_id())) {
+                        tick_nohz_idle_stop_tick_protected();
+                        cpuhp_report_idle_dead();
+                        arch_cpu_idle_dead();
+                }
 
-		local_irq_disable();
-		arch_cpu_idle_enter();
+                local_irq_disable();
+                arch_cpu_idle_enter();
 
-		/*
-		 * In poll mode we reenable interrupts and spin. Also if we
-		 * detected in the wakeup from idle path that the tick
-		 * broadcast device expired for us, we don't want to go deep
-		 * idle as we know that the IPI is going to arrive right away.
-		 */
-		if (cpu_idle_force_poll || tick_check_broadcast_expired()) {
-			tick_nohz_idle_restart_tick();
-			cpu_idle_poll();
-		} else {
-			cpuidle_idle_call();
-		}
-		arch_cpu_idle_exit();
-	}
+                /*
+                 * In poll mode we reenable interrupts and spin. Also if we
+                 * detected in the wakeup from idle path that the tick
+                 * broadcast device expired for us, we don't want to go deep
+                 * idle as we know that the IPI is going to arrive right away.
+                 */
+                if (cpu_idle_force_poll || tick_check_broadcast_expired()) {
+                        tick_nohz_idle_restart_tick();
+                        cpu_idle_poll();
+                } else {
+                        cpuidle_idle_call();
+                }
+                arch_cpu_idle_exit();
+        }
 
 	/*
 	 * Since we fell out of the loop above, we know TIF_NEED_RESCHED must

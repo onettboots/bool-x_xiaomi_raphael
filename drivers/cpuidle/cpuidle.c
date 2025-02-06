@@ -269,9 +269,10 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
  * Returns the index of the idle state.  The return value must not be negative.
  *
  */
-int cpuidle_select(struct cpuidle_driver *drv, struct cpuidle_device *dev)
+int cpuidle_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
+                   bool *stop_tick)
 {
-	return cpuidle_curr_governor->select(drv, dev);
+        return cpuidle_curr_governor->select(drv, dev, stop_tick);
 }
 
 /**
