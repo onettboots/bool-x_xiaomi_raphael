@@ -207,14 +207,14 @@ static inline u64 scale_slice(u64 delta, struct sched_entity *se) {
 }
 
 static void update_burst_score(struct sched_entity *se) {
-	if (!entity_is_task(se)) return;
 	struct task_struct *p = task_of(se);
 	u8 prio = p->static_prio - MAX_RT_PRIO;
 	u8 prev_prio = min(39, prio + se->burst_score);
+	u8 new_prio = min(39, prio + se->burst_score);
+	if (!entity_is_task(se)) return;
 
 	se->burst_score = se->burst_penalty >> 2;
 
-	u8 new_prio = min(39, prio + se->burst_score);
 	if (new_prio != prev_prio)
 	 	reweight_task(p, new_prio);
 }
@@ -5680,6 +5680,9 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_entity *se = &p->se;
 	int task_new = !(flags & ENQUEUE_WAKEUP);
 	int idle_h_nr_running = idle_policy(p->policy);
+#ifdef CONFIG_SCHED_BORE
+	int task_sleep = flags & DEQUEUE_SLEEP;
+#endif
 #ifdef CONFIG_SCHED_TUNE
 	bool prefer_idle = sched_feat(EAS_PREFER_IDLE)
 				? (schedtune_prefer_idle(p) > 0) : 0;
@@ -5737,8 +5740,6 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 		uclamp_reset_ignore_uclamp_max(p);
 
 #ifdef CONFIG_SCHED_BORE
-	int task_sleep = flags & DEQUEUE_SLEEP;
-	
 	if (task_sleep) {
 		cfs_rq = cfs_rq_of(se);
 		if (cfs_rq->curr == se)
