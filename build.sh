@@ -40,6 +40,7 @@ DATE=`date +"%Y%m%d-%H%M"`
 AK_VER="$BASE_AK_VER$VER"
 ZIP_NAME="$AK_VER"-"$DATE"
 TOOLCHAINS=$HOME/toolchains/boolx-clang
+SAVEHERE=$HOME/toolchains
 CONFIG=out/.config
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
@@ -132,7 +133,10 @@ case "$cchoice" in
 	x86|X86 )
 		echo
 		echo "Downloading Boolx-clang for X86 host."
-		git clone https://gitlab.com/onettboots/boolx-clang.git -b Clang-17.0_x86 $TOOLCHAINS
+		wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-21/boolx-clang21.tar.gz -P $SAVEHERE
+ 		cd $SAVEHERE
+		echo "Extracting Boolx Clang 21.0.0 to $HOME/toolchains/:"
+ 		tar -xf boolx-clang21.tar.gz
 		break
 		;;
 	* )
