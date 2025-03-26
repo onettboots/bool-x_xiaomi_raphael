@@ -5,7 +5,7 @@
     <string name="issue_report_body_2">Сообщите об этом как можно скорее!</string>
     <string name="issue_report_github">Сообщить на GitHub</string>
     <string name="issue_report_telegram">Связаться через Telegram</string>
-    <string name="issue_report_github_link">https://github.com/rifsxd/KernelSU-Next/issues</string>
+    <string name="issue_report_github_link">https://github.com/KernelSU-Next/KernelSU-Next/issues</string>
     <string name="issue_report_telegram_link">https://t.me/ksunext</string>
     <string name="confirm">Подтвердить</string>
     <string name="app_name" translatable="false">KernelSU Next</string>
@@ -34,7 +34,7 @@
     <string name="module_failed_to_disable">Не удалось отключить модуль: %s</string>
     <string name="module_empty">Нет установленных модулей</string>
     <string name="module">Модули</string>
-    <string name="module_install_prompt_with_name">Вы хотите продолжить установку модуля %1$s?</string>
+    <string name="module_install_prompt_with_name">Следующие модуль(и) будут установлены: %1$s</string>
     <string name="module_sort_a_to_z">Сортировать (А-Я)</string>
     <string name="module_sort_z_to_a">Сортировать (Я-А)</string>
     <string name="uninstall">Удалить</string>
@@ -57,6 +57,12 @@
     <string name="module_restore_failed">Не удалось восстановить: %s</string>
     <string name="module_version">Версия</string>
     <string name="module_author">Автор</string>
+    <string name="module_id">ID</string>
+    <string name="module_version_code">Код версии</string>
+    <string name="module_update_json">UpdateJson</string>
+    <string name="module_update_json_empty">Пусто</string>
+    <string name="enable_developer_options">Включить настройки разработчика</string>
+    <string name="enable_developer_options_summary">Показывать скрытые настройки и отладочную информацию, актуальную только для разработчиков.</string>
     <string name="module_overlay_fs_not_available">Модули недоступны, так как OverlayFS отключен ядром.</string>
     <string name="refresh">Обновить</string>
     <string name="show_system_apps">Показать системные приложения</string>
@@ -75,15 +81,20 @@
     <string name="reboot_message">Изменения вступят в силу после перезагрузки системы. Перезагрузить сейчас?</string>
     <string name="module_restore">Восстановить модуль</string>
     <string name="module_restore_message">Восстановление модулей из последней резервной копии.</string>
+    <string name="backup_restore">Резервное копирование и восстановление</string>
     <string name="module_backup">Резервное копирование модуля</string>
     <string name="module_backup_message">Резервное копирование текущих установленных модулей.</string>
+    <string name="allowlist_restore">Восстановить список разрешений</string>
+    <string name="allowlist_restore_message">Восстановить список разрешений из последнего резервного копирования.</string>
+    <string name="allowlist_backup">Создать резервную копию списка разрешений</string>
+    <string name="allowlist_backup_message">Создать резервную копию текущего списка разрешений.</string>
     <string name="warning">Предупреждение</string>
     <string name="warning_message">Эта функция всё ещё находится в стадии бета-тестирования. Пожалуйста, убедитесь, что вы создали резервные копии модулей перед использованием. Используйте это только если понимаете возможные риски. Будьте осторожны.</string>
     <string name="proceed">Продолжить</string>
     <string name="cancel">Отмена</string>
     <string name="later">Позже</string>
     <string name="home_next_kernelsu">🔥 Следующий билд</string>
-    <string name="home_next_kernelsu_repo">https://github.com/rifsxd/KernelSU-Next</string>
+    <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
     <string name="home_next_kernelsu_body">Следующая экспериментальная ветка. Посмотрите на GitHub!</string>
     <string name="home_experimental_kernelsu">⚠️ Предупреждение об экспериментальной разработке!</string>
     <string name="home_experimental_kernelsu_repo">127.0.0.1</string>
@@ -107,7 +118,7 @@
     <string name="profile_umount_modules">Отключить модули</string>
     <string name="failed_to_update_app_profile">Не удалось обновить Профиль Приложения для %s</string>
     <string name="require_kernel_version">Текущая версия KernelSU Next %1$d слишком низкая для корректной работы менеджера. Пожалуйста, обновитесь до версии %2$d или выше!</string>
-    <string name="settings_umount_modules_default">Отключать модули по умолчанию</string>
+    <string name="settings_umount_modules_default">Отмонтировать модули</string>
     <string name="settings_umount_modules_default_summary">Глобальное значение по умолчанию для \"Отключить модули\" в профиле приложения. Если включено, это удалит все модификации системы модулями для приложений без установленного профиля.</string>
     <string name="settings_susfs_toggle">Скрыть хуки kprobe</string>
     <string name="settings_susfs_toggle_summary">Отключает хуки kprobe, созданные ksu, и вместо этого активирует встроенные некрючковые функции, реализующие ту же функциональность для неконечных ядер, которые не поддерживают kprobe.</string>
@@ -123,6 +134,7 @@
     <string name="force_stop_app">Принудительно остановить</string>
     <string name="restart_app">Перезапустить</string>
     <string name="failed_to_update_sepolicy">Не удалось обновить правила SELinux для: %s</string>
+    <string name="su_not_allowed">Предоставление прав суперпользователя запрещено для: %s</string>
     <string name="module_changelog">Журнал изменений</string>
     <string name="settings_profile_template">Шаблон Профиля Приложения</string>
     <string name="settings_profile_template_summary">Управление локальными и онлайн-шаблонами профилей приложений</string>
@@ -176,4 +188,6 @@
     <string name="save_log">Сохранить логи</string>
     <string name="log_saved">Логи сохранены</string>
     <string name="send_log">Поделиться логами</string>
+    <string name="settings_disable_su">Отключить совместимость с su</string>
+    <string name="settings_disable_su_summary">Временно отключить возможность приложениям получать права root через команду su (существующие процессы с правами root не будут затронуты).</string>
 </resources>
