@@ -55,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.dropUnlessResumed
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.ramcosta.composedestinations.annotation.Destination
@@ -95,6 +96,7 @@ fun AppProfileScreen(
     val scope = rememberCoroutineScope()
     val failToUpdateAppProfile = stringResource(R.string.failed_to_update_app_profile).format(appInfo.label)
     val failToUpdateSepolicy = stringResource(R.string.failed_to_update_sepolicy).format(appInfo.label)
+    val suNotAllowed = stringResource(R.string.su_not_allowed).format(appInfo.label)
 
     val packageName = appInfo.packageName
     val initialProfile = Natives.getAppProfile(packageName, appInfo.uid)
@@ -108,7 +110,7 @@ fun AppProfileScreen(
     Scaffold(
         topBar = {
             TopBar(
-                onBack = { navigator.popBackStack() },
+                onBack = dropUnlessResumed { navigator.popBackStack() },
                 scrollBehavior = scrollBehavior
             )
         },
@@ -143,8 +145,13 @@ fun AppProfileScreen(
             },
             onProfileChange = {
                 scope.launch {
-                    if (it.allowSu && !it.rootUseDefault && it.rules.isNotEmpty()) {
-                        if (!setSepolicy(profile.name, it.rules)) {
+                    if (it.allowSu) {
+                        // sync with allowlist.c - forbid_system_uid
+                        if (appInfo.uid < 2000 && appInfo.uid != 1000) {
+                            snackBarHost.showSnackbar(suNotAllowed)
+                            return@launch
+                        }
+                        if (!it.rootUseDefault && it.rules.isNotEmpty() && !setSepolicy(profile.name, it.rules)) {
                             snackBarHost.showSnackbar(failToUpdateSepolicy)
                             return@launch
                         }

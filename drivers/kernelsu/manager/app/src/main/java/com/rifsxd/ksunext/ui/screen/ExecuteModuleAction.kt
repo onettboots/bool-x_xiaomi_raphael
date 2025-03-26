@@ -39,6 +39,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.dropUnlessResumed
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
@@ -100,7 +101,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
         topBar = {
             TopBar(
                 isActionRunning = isActionRunning,
-                onBack = {
+                onBack = dropUnlessResumed {
                     navigator.popBackStack()
                 },
                 onSave = {
@@ -110,7 +111,7 @@ fun ExecuteModuleActionScreen(navigator: DestinationsNavigator, moduleId: String
                             val date = format.format(Date())
                             val file = File(
                                 Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                                "KernelSU_module_action_log_${date}.log"
+                                "KernelSU_Next_module_action_log_${date}.log"
                             )
                             file.writeText(logContent.toString())
                             snackBarHost.showSnackbar("Log saved to ${file.absolutePath}")

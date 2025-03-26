@@ -113,6 +113,7 @@ void ksu_show_allow_list(void)
 static void ksu_grant_root_to_shell()
 {
 	struct app_profile profile = {
+		.version = KSU_APP_PROFILE_VER,
 		.allow_su = true,
 		.current_uid = 2000,
 	};
@@ -152,11 +153,6 @@ static inline bool forbid_system_uid(uid_t uid) {
 static bool profile_valid(struct app_profile *profile)
 {
 	if (!profile) {
-		return false;
-	}
-
-	if (forbid_system_uid(profile->current_uid)) {
-		pr_err("uid lower than 2000 is unsupported: %d\n", profile->current_uid);
 		return false;
 	}
 
