@@ -40,8 +40,8 @@ DATE=`date +"%Y%m%d-%H%M"`
 AK_VER="$BASE_AK_VER$VER"
 ZIP_NAME="$AK_VER"-"$DATE"
 TOOLCHAINS=$HOME/toolchains/boolx-clang
-SAVEHERE=$HOME/toolchains
 CONFIG=out/.config
+SAVEHERE=$HOME/toolchains
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
 
@@ -99,7 +99,27 @@ function make_zip {
 
 function upload()
 {
-curl bashupload.com -T $ZIP_NAME*.zip
+        curl bashupload.com -T $ZIP_NAME*.zip
+}
+
+function upload_boolx_action()
+{
+        ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+        upl=$kernel_dir/upl.sh
+        rm -rf $upl
+        cd $kernel_dir
+        #wget
+        chmod +x $upl
+        sed -i "4i\FILE_PATH=$ziped" $upl
+        BUILDDATE=`date +"%Y-%m-%d"`
+        sed -i '5i\CAPTION="* Build Date: '$BUILDDATE'' $upl
+        sed -i '6i\* Kernel Version: v.4.14.356' $upl
+        sed -i '7i\* KSU+NEXT: v.12465' $upl
+        sed -i '8i\* SUSFS: v1.5.5' $upl
+        sed -i '9i\* Type: MIUI, OCD' $upl
+        sed -i '10i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-HyperMiui' $upl
+        sed -i '11i\* Clang: Boolx Clang 21.0.0"' $upl
+        bash $upl
 }
 
 DATE_START=$(date +"%s")
@@ -130,9 +150,10 @@ case "$cchoice" in
 		echo
 		echo "Downloading Boolx-clang for X86 host."
 		wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-21/boolx-clang21.tar.gz -P $SAVEHERE
- 		cd $SAVEHERE
-		echo "Extracting Boolx Clang 21.0.0 to $HOME/toolchains/:"
- 		tar -xf boolx-clang21.tar.gz
+  		cd $SAVEHERE
+ 		echo "Extracting Boolx Clang 21.0.0 to $HOME/toolchains/:"
+  		tar -xf boolx-clang21.tar.gz
+  		rm boolx-clang21.tar.gz
 		break
 		;;
 	* )
@@ -167,7 +188,8 @@ echo -e "${green}"
 echo "------------------"
 echo "CLEAN OPTIONS:"
 echo "------------------"
-while read -p "Do you want to clean stuffs (y/n)? " cchoice
+if [ -d $objdir ]; then
+    while read -p "Do you want to clean stuffs (y/n)? " cchoice
 do
 case "$cchoice" in
 	y|Y )
@@ -190,6 +212,10 @@ case "$cchoice" in
 		;;
 esac
 done
+else
+   echo -e "${green}"
+   echo -e "${restore}"
+fi
 echo -e "${restore}"
 
 if [ -f $CONFIG ]; then
