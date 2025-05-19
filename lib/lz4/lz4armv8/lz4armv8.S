@@ -240,11 +240,11 @@
 .text
 .p2align 4
 
-ENTRY(_lz4_decompress_asm)
+SYM_FUNC_START(_lz4_decompress_asm)
 	lz4_decompress_asm_generic
-ENDPROC(_lz4_decompress_asm)
+SYM_FUNC_END(_lz4_decompress_asm)
 
-Failed:
+SYM_INNER_LABEL(Failed, SYM_L_LOCAL)
 	mov	tmp, #-1
 	b	Exit_here
 
@@ -302,6 +302,6 @@ Copylength_table:
 
 .text
 .p2align 4
-ENTRY(_lz4_decompress_asm_noprfm)
+SYM_FUNC_START(_lz4_decompress_asm_noprfm)
 	lz4_decompress_asm_generic	0
-ENDPROC(_lz4_decompress_asm_noprfm)
+SYM_FUNC_END(_lz4_decompress_asm_noprfm)
