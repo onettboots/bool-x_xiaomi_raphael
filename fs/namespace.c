@@ -1154,6 +1154,11 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 {
 	struct mount *mnt;
 	struct dentry *root;
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	struct nsproxy *nsproxy;
+	struct mnt_namespace *mnt_ns;
+	int last_entry_mnt_id = 0;
+#endif
 
 	if (!type)
 		return ERR_PTR(-ENODEV);
@@ -1198,8 +1203,18 @@ bypass_orig_flow:
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// If caller process is zygote, then it is a normal mount, so we just reorder the mnt_id
 	if (susfs_is_current_zygote_domain()) {
-		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
+		rcu_read_lock();
+		nsproxy = current->nsproxy;
+		if (nsproxy) {
+			mnt_ns = nsproxy->mnt_ns;
+			if (mnt_ns) {
+				mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
 		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
+				last_entry_mnt_id = list_last_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
+				mnt->mnt_id = last_entry_mnt_id + 1;
+			}
+		}
+		rcu_read_unlock();
 	}
 #endif
 
@@ -1232,6 +1247,9 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	struct mount *mnt;
 	int err;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	struct nsproxy *nsproxy;
+	struct mnt_namespace *mnt_ns;
+	int last_entry_mnt_id = 0;
 	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
 	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
 
@@ -1332,8 +1350,18 @@ bypass_orig_flow:
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// If caller process is zygote and not doing unshare, so we just reorder the mnt_id
 	if (likely(is_current_zygote_domain) && !(flag & CL_ZYGOTE_COPY_MNT_NS)) {
-		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
+		rcu_read_lock();
+		nsproxy = current->nsproxy;
+		if (nsproxy) {
+			mnt_ns = nsproxy->mnt_ns;
+			if (mnt_ns) {
+				mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
 		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
+				last_entry_mnt_id = list_last_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
+				mnt->mnt_id = last_entry_mnt_id + 1;
+			}
+		}
+		rcu_read_unlock();
 	}
 #endif
 
