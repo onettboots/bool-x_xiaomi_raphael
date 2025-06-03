@@ -550,7 +550,7 @@
 	};
 
 	chosen {
-		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-3 noirqdebug nodebugmon kpti=off dwc3_msm.ep_addr_rxdbg_mask=0 dwc3_msm.ep_addr_txdbg_mask=0";
+		bootargs = "quiet rcupdate.rcu_expedited=1 rcu_nocbs=0-3 cgroup.memory=nokmem,nosocket noirqdebug nodebugmon kpti=off cgroup_disable=pressure nosoftlockup mce=ignore_ce";
 		rng-seed = <0x12345678>;
 	};
 
