@@ -561,7 +561,6 @@
 			boot_devices = "soc/1d84000.ufshc";
 			compatible = "android,firmware";
 			shared_meta: vbmeta {
-                        parts = "vbmeta,boot,system,vendor,dtbo";
 			};
 		};
 	};
