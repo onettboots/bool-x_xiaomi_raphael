@@ -1027,7 +1027,7 @@
 
 	cpu_cpu_llcc_bw: qcom,cpu-cpu-llcc-bw {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
 		qcom,active-only;
@@ -1062,7 +1062,7 @@
 
 	cpu_llcc_ddr_bw: qcom,cpu-llcc-ddr-bw {
 		compatible = "qcom,devbw";
-		governor = "bw_hwmon";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
 		qcom,active-only;
@@ -1097,7 +1097,7 @@
 
 	npu_npu_ddr_bw: qcom,npu-npu-ddr-bw {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports = <MSM_BUS_MASTER_NPU MSM_BUS_SLAVE_EBI_CH0>;
 		operating-points-v2 = <&suspendable_ddr_bw_opp_table>;
 	};
@@ -1187,7 +1187,7 @@
 
 	cpu0_cpu_llcc_lat: qcom,cpu0-cpu-llcc-lat {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
 		qcom,active-only;
@@ -1208,7 +1208,7 @@
 
 	cpu4_cpu_llcc_lat: qcom,cpu4-cpu-llcc-lat {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_AMPSS_M0 MSM_BUS_SLAVE_LLCC>;
 		qcom,active-only;
@@ -1232,7 +1232,7 @@
 
 	cpu0_llcc_ddr_lat: qcom,cpu0-llcc-ddr-lat {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
 		qcom,active-only;
@@ -1253,7 +1253,7 @@
 
 	cpu4_llcc_ddr_lat: qcom,cpu4-llcc-ddr-lat {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
 		qcom,active-only;
@@ -1278,7 +1278,7 @@
 
 	cpu4_cpu_ddr_latfloor: qcom,cpu4-cpu-ddr-latfloor {
 		compatible = "qcom,devbw";
-		governor = "simple_ondemand";
+		governor = "performance";
 		qcom,src-dst-ports =
 			<MSM_BUS_MASTER_LLCC MSM_BUS_SLAVE_EBI_CH0>;
 		qcom,active-only;
