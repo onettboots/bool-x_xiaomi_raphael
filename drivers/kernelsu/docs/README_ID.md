@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | **Bahasa Indonesia** | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | **Bahasa Indonesia** | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next secara resmi mendukung sebagian besar kernel Android mulai dari 4.
  - Kernel GKI 1.0 (4.19 - 5.4) perlu dibangun ulang dengan driver KernelSU.
  - Kernel EOL (<4.14) juga perlu dibangun ulang dengan driver KernelSU (3.18+ bersifat eksperimental dan mungkin memerlukan beberapa backport fungsi).
 
-Saat ini, hanya `arm64-v8a` yang didukung.
+Saat ini, hanya `arm64-v8a`, `armeabi-v7a` & `x86_64` yang didukung.
 
 ## Penggunaan
 
-- [Petunjuk instalasi](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [Petunjuk instalasi](https://ksunext.org/pages/installation.html)
 
 ## Keamanan
 

@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ui
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,7 +40,6 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.dergoogler.mmrl.platform.Platform
 import com.ramcosta.composedestinations.DestinationsNavHost
 import com.ramcosta.composedestinations.animations.NavHostAnimatedDestinationStyle
 import com.ramcosta.composedestinations.generated.destinations.ExecuteModuleActionScreenDestination
@@ -54,7 +54,6 @@ import com.rifsxd.ksunext.ui.theme.KernelSUTheme
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import com.rifsxd.ksunext.ui.util.install
-import com.rifsxd.ksunext.ui.webui.initPlatform
 
 class MainActivity : ComponentActivity() {
 
@@ -72,7 +71,13 @@ class MainActivity : ComponentActivity() {
         if (isManager) install()
 
         setContent {
-            KernelSUTheme {
+            // Read AMOLED mode preference
+            val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+            val amoledMode = prefs.getBoolean("enable_amoled", false)
+
+            KernelSUTheme (
+                amoledMode = amoledMode
+            ) {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
                 val currentDestination = navController.currentBackStackEntryAsState()?.value?.destination
@@ -81,11 +86,6 @@ class MainActivity : ComponentActivity() {
                     FlashScreenDestination.route -> false // Hide for FlashScreenDestination
                     ExecuteModuleActionScreenDestination.route -> false // Hide for ExecuteModuleActionScreen
                     else -> true
-                }
-
-                // pre-init platform to faster start WebUI X activities
-                LaunchedEffect(Unit) {
-                    initPlatform()
                 }
 
                 Scaffold(

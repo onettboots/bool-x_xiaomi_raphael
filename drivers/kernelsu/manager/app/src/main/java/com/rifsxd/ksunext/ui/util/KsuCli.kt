@@ -37,15 +37,31 @@ private fun ksuDaemonOverlayfsPath(): String {
     return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud_overlayfs.so"
 }
 
+fun readMountSystemFile(): Boolean {
+    val shell = getRootShell()
+    val filePath = "/data/adb/ksu/mount_system"
+    val result = ShellUtils.fastCmd(shell, "cat $filePath").trim()
+    return result == "OVERLAYFS"
+}
+
 // Get the path based on the user's choice
 fun getKsuDaemonPath(): String {
-    val prefs = ksuApp.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val useOverlayFs = prefs.getBoolean("use_overlay_fs", false)
+    val useOverlayFs = readMountSystemFile()
     
     return if (useOverlayFs) {
         ksuDaemonOverlayfsPath()
     } else {
         ksuDaemonMagicPath()
+    }
+}
+
+fun updateMountSystemFile(useOverlayFs: Boolean) {
+    val shell = getRootShell()
+    val filePath = "/data/adb/ksu/mount_system"
+    if (useOverlayFs) {
+        ShellUtils.fastCmd(shell, "echo -n OVERLAYFS > $filePath")
+    } else {
+        ShellUtils.fastCmd(shell, "echo -n MAGIC_MOUNT > $filePath")
     }
 }
 
@@ -89,17 +105,17 @@ fun createRootShell(globalMnt: Boolean = false): Shell {
     val builder = Shell.Builder.create()
     return try {
         if (globalMnt) {
-            builder.build(getKsuDaemonPath(), "debug", "su", "-g")
+            builder.build(ksuDaemonMagicPath(), "debug", "su", "-g")
         } else {
-            builder.build(getKsuDaemonPath(), "debug", "su")
+            builder.build(ksuDaemonMagicPath(), "debug", "su")
         }
     } catch (e: Throwable) {
         Log.w(TAG, "ksu failed: ", e)
         try {
             if (globalMnt) {
-                builder.build("su")
-            } else {
                 builder.build("su", "-mm")
+            } else {
+                builder.build("su")
             }
         } catch (e: Throwable) {
             Log.e(TAG, "su failed: ", e)
@@ -443,7 +459,7 @@ fun getFileName(context: Context, uri: Uri): String {
 
 fun moduleBackupDir(): String? {
     val shell = getRootShell()
-    val baseBackupDir = "/data/adb/ksu/modules_bak"
+    val baseBackupDir = "/sdcard/.ksunext/modules"
     val resultBase = ShellUtils.fastCmd(shell, "mkdir -p $baseBackupDir").trim()
     if (resultBase.isNotEmpty()) return null
 
@@ -462,60 +478,42 @@ fun moduleBackup(): Boolean {
 
     val checkEmptyCommand = "if [ -z \"$(ls -A /data/adb/modules)\" ]; then echo 'empty'; fi"
     val resultCheckEmpty = ShellUtils.fastCmd(shell, checkEmptyCommand).trim()
-
     if (resultCheckEmpty == "empty") {
         return false
     }
 
-    val backupDir = moduleBackupDir() ?: return false
-    val command = "cp -rp /data/adb/modules/* $backupDir"
-    val result = ShellUtils.fastCmd(shell, command).trim()
+    val timestamp = ShellUtils.fastCmd(shell, "date +%Y%m%d_%H%M%S").trim()
+    if (timestamp.isEmpty()) return false
 
-    return result.isEmpty()
-}
+    val tarName = "modules_backup_$timestamp.tar"
+    val tarPath = "/data/local/tmp/$tarName"
+    val internalBackupDir = "/sdcard/.ksunext/modules"
+    val internalBackupPath = "$internalBackupDir/$tarName"
 
-fun moduleMigration(): Boolean {
-    val shell = getRootShell()
-    val command = "cp -rp /data/adb/modules/* /data/adb/modules_update"
-    val result = ShellUtils.fastCmd(shell, command).trim()
+    val tarCmd = "tar -cpf $tarPath -C /data/adb/modules $(ls /data/adb/modules)"
+    val tarResult = ShellUtils.fastCmd(shell, tarCmd).trim()
+    if (tarResult.isNotEmpty()) return false
 
-    return result.isEmpty()
+    ShellUtils.fastCmd(shell, "mkdir -p $internalBackupDir")
+
+    val cpResult = ShellUtils.fastCmd(shell, "cp $tarPath $internalBackupPath").trim()
+    if (cpResult.isNotEmpty()) return false
+
+    ShellUtils.fastCmd(shell, "rm -f $tarPath")
+
+    return true
 }
 
 fun moduleRestore(): Boolean {
     val shell = getRootShell()
 
-    val command = "ls -t /data/adb/ksu/modules_bak | head -n 1"
-    val latestBackupDir = ShellUtils.fastCmd(shell, command).trim()
+    val findTarCmd = "ls -t /sdcard/.ksunext/modules/modules_backup_*.tar 2>/dev/null | head -n 1"
+    val tarPath = ShellUtils.fastCmd(shell, findTarCmd).trim()
+    if (tarPath.isEmpty()) return false
 
-    if (latestBackupDir.isEmpty()) return false
-
-    val sourceDir = "/data/adb/ksu/modules_bak/$latestBackupDir"
-    val destinationDir = "/data/adb/modules_update"
-
-    val createDestDirCommand = "mkdir -p $destinationDir"
-    ShellUtils.fastCmd(shell, createDestDirCommand)
-
-    val moveCommand = "cp -rp $sourceDir/* $destinationDir"
-    val result = ShellUtils.fastCmd(shell, moveCommand).trim()
-
-    return result.isEmpty()
-}
-
-fun allowlistBackupDir(): String? {
-    val shell = getRootShell()
-    val baseBackupDir = "/data/adb/ksu/allowlist_bak"
-    val resultBase = ShellUtils.fastCmd(shell, "mkdir -p $baseBackupDir").trim()
-    if (resultBase.isNotEmpty()) return null
-
-    val timestamp = ShellUtils.fastCmd(shell, "date +%Y%m%d_%H%M%S").trim()
-    if (timestamp.isEmpty()) return null
-
-    val newBackupDir = "$baseBackupDir/$timestamp"
-    val resultNewDir = ShellUtils.fastCmd(shell, "mkdir -p $newBackupDir").trim()
-
-    if (resultNewDir.isEmpty()) return newBackupDir
-    return null
+    val extractCmd = "tar -xpf $tarPath -C /data/adb/modules_update"
+    val extractResult = ShellUtils.fastCmd(shell, extractCmd).trim()
+    return extractResult.isEmpty()
 }
 
 fun allowlistBackup(): Boolean {
@@ -523,34 +521,50 @@ fun allowlistBackup(): Boolean {
 
     val checkEmptyCommand = "if [ -z \"$(ls -A /data/adb/ksu/.allowlist)\" ]; then echo 'empty'; fi"
     val resultCheckEmpty = ShellUtils.fastCmd(shell, checkEmptyCommand).trim()
-
     if (resultCheckEmpty == "empty") {
         return false
     }
 
-    val backupDir = allowlistBackupDir() ?: return false
-    val command = "cp -rp /data/adb/ksu/.allowlist $backupDir"
-    val result = ShellUtils.fastCmd(shell, command).trim()
+    val timestamp = ShellUtils.fastCmd(shell, "date +%Y%m%d_%H%M%S").trim()
+    if (timestamp.isEmpty()) return false
 
-    return result.isEmpty()
+    val tarName = "allowlist_backup_$timestamp.tar"
+    val tarPath = "/data/local/tmp/$tarName"
+    val internalBackupDir = "/sdcard/.ksunext/allowlist"
+    val internalBackupPath = "$internalBackupDir/$tarName"
+
+    val tarCmd = "tar -cpf $tarPath -C /data/adb/ksu .allowlist"
+    val tarResult = ShellUtils.fastCmd(shell, tarCmd).trim()
+    if (tarResult.isNotEmpty()) return false
+
+    ShellUtils.fastCmd(shell, "mkdir -p $internalBackupDir")
+
+    val cpResult = ShellUtils.fastCmd(shell, "cp $tarPath $internalBackupPath").trim()
+    if (cpResult.isNotEmpty()) return false
+
+    ShellUtils.fastCmd(shell, "rm -f $tarPath")
+
+    return true
 }
 
 fun allowlistRestore(): Boolean {
     val shell = getRootShell()
 
-    val command = "ls -t /data/adb/ksu/allowlist_bak | head -n 1"
-    val latestBackupDir = ShellUtils.fastCmd(shell, command).trim()
+    // Find the latest allowlist tar backup in /sdcard/.ksunext/allowlist
+    val findTarCmd = "ls -t /sdcard/.ksunext/allowlist/allowlist_backup_*.tar 2>/dev/null | head -n 1"
+    val tarPath = ShellUtils.fastCmd(shell, findTarCmd).trim()
+    if (tarPath.isEmpty()) return false
 
-    if (latestBackupDir.isEmpty()) return false
+    // Extract the tar to /data/adb/ksu (restores .allowlist folder with permissions)
+    val extractCmd = "tar -xpf $tarPath -C /data/adb/ksu"
+    val extractResult = ShellUtils.fastCmd(shell, extractCmd).trim()
+    return extractResult.isEmpty()
+}
 
-    val sourceDir = "/data/adb/ksu/allowlist_bak/$latestBackupDir"
-    val destinationDir = "/data/adb/ksu/"
-
-    val createDestDirCommand = "mkdir -p $destinationDir"
-    ShellUtils.fastCmd(shell, createDestDirCommand)
-
-    val moveCommand = "cp -rp $sourceDir/.allowlist $destinationDir"
-    val result = ShellUtils.fastCmd(shell, moveCommand).trim()
+fun moduleMigration(): Boolean {
+    val shell = getRootShell()
+    val command = "cp -rp /data/adb/modules/* /data/adb/modules_update"
+    val result = ShellUtils.fastCmd(shell, command).trim()
 
     return result.isEmpty()
 }
@@ -605,6 +619,13 @@ fun currentMountSystem(): String {
     val cmd = "module mount"
     val result = ShellUtils.fastCmd(shell, "${getKsuDaemonPath()} $cmd").trim()
     return result.substringAfter(":").substringAfter(" ").trim()
+}
+
+fun getModuleSize(dir: File): Long {
+    val shell = getRootShell()
+    val cmd = "du -sb '${dir.absolutePath}' | awk '{print \$1}'"
+    val result = ShellUtils.fastCmd(shell, cmd).trim()
+    return result.toLongOrNull() ?: 0L
 }
 
 fun setAppProfileTemplate(id: String, template: String): Boolean {

@@ -1,5 +1,6 @@
 package com.rifsxd.ksunext.ui.screen
 
+import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.os.Parcelable
@@ -33,6 +34,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
@@ -115,6 +119,19 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     var flashing by rememberSaveable {
         mutableStateOf(FlashingStatus.FLASHING)
+    }
+
+    val context = LocalContext.current
+
+    val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
+    val view = LocalView.current
+    DisposableEffect(flashing) {
+        view.keepScreenOn = flashing == FlashingStatus.FLASHING
+        onDispose {
+            view.keepScreenOn = false
+        }
     }
 
     BackHandler(enabled = flashing == FlashingStatus.FLASHING) {
@@ -199,14 +216,43 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
             }
 
             if (flashIt is FlashIt.FlashBoot && (flashing == FlashingStatus.SUCCESS || flashing == FlashingStatus.FAILED)) {
-                // Close button for LKM flashing
-                ExtendedFloatingActionButton(
-                    text = { Text(text = stringResource(R.string.close)) },
-                    icon = { Icon(Icons.Filled.Close, contentDescription = null) },
-                    onClick = {
-                        navigator.popBackStack()
+                val isLocalPatch = flashIt.boot != null && !flashIt.ota
+                val isDirectOrOta = flashIt.boot == null || flashIt.ota
+
+                if (flashing == FlashingStatus.FAILED) {
+                    // Always show close on failure
+                    ExtendedFloatingActionButton(
+                        text = { Text(text = stringResource(R.string.close)) },
+                        icon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                        onClick = {
+                            navigator.popBackStack()
+                        }
+                    )
+                } else if (flashing == FlashingStatus.SUCCESS) {
+                    if (isLocalPatch) {
+                        // Local patching: show only Close
+                        ExtendedFloatingActionButton(
+                            text = { Text(text = stringResource(R.string.close)) },
+                            icon = { Icon(Icons.Filled.Close, contentDescription = null) },
+                            onClick = {
+                                navigator.popBackStack()
+                            }
+                        )
+                    } else if (isDirectOrOta) {
+                        // Direct install or OTA inactive slot: show only Reboot
+                        ExtendedFloatingActionButton(
+                            onClick = {
+                                scope.launch {
+                                    withContext(Dispatchers.IO) {
+                                        reboot()
+                                    }
+                                }
+                            },
+                            icon = { Icon(Icons.Filled.Refresh, contentDescription = stringResource(R.string.reboot)) },
+                            text = { Text(text = stringResource(R.string.reboot)) }
+                        )
                     }
-                )
+                }
             }
         },
         contentWindowInsets = WindowInsets.safeDrawing,
@@ -227,7 +273,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
             }
             Text(
                 modifier = Modifier.padding(8.dp),
-                text = text,
+                text = if (developerOptionsEnabled) logContent.toString() else text,
                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                 fontFamily = FontFamily.Monospace,
                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
