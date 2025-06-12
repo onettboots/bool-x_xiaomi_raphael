@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | **ภาษาไทย** | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | **ภาษาไทย** | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next รองรับแบบเป็นทางการตั้
  - GKI 1.0 (4.19 - 5.4) เคอร์เนลจะต้องรีบิ้วร่วมกับไดร์เวอร์ของ KernelSU
  - EOL (<4.14) เคอร์เนลก็ต้องรีบิ้วร่วมกับไดร์เวอร์ของ KernelSU เช่นกัน (3.18+ ยังเป็นเวอร์ชั่นทดลอง และยังต้องเขียนฟังก์ชั่นหลังบ้านเพิ่มเติม)
 
-ในขณะนี้, มีแค่สถาปัตยกรรม `arm64-v8a` ที่รองรับเท่านั้น
+ในขณะนี้, มีแค่สถาปัตยกรรม `arm64-v8a`, `armeabi-v7a` & `x86_64` ที่รองรับเท่านั้น
 
 ## การใช้งาน
 
-- [คำแนะนำในการติดตั้ง](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [คำแนะนำในการติดตั้ง](https://ksunext.org/pages/installation.html)
 
 ## ความปลอดภัย
 

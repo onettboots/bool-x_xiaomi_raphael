@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | **한국어** | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | **한국어** | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next는 공식적으로 대부분의 4.4부터 6.6의 안드로이드 �
  - GKI 1.0 (4.19 - 5.4) 커널은 KernelSU 드라이버로 다시 빌드해야 합니다.
  - EOL (<4.14) 커널도 역시 KernelSU 드라이버로 다시 빌드해야 합니다.(3.18+는 실험적이며 일부 함수의 이식이 필요할 수 있습니다.).
 
-현재는, `arm64-v8a`만 지원됩니다.
+현재는, `arm64-v8a`, `armeabi-v7a` & `x86_64` 만 지원됩니다.
 
 ## 사용 방법
 
-- [설치 방법](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [설치 방법](https://ksunext.org/pages/installation.html)
 
 ## 보안
 

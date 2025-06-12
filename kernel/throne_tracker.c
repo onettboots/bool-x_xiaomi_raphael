@@ -5,6 +5,7 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/version.h>
+#include <linux/namei.h>
 
 #include "allowlist.h"
 #include "klog.h" // IWYU pragma: keep
@@ -13,9 +14,13 @@
 #include "throne_tracker.h"
 #include "kernel_compat.h"
 
+#include <linux/kthread.h>
+#include <linux/sched.h>
+
 uid_t ksu_manager_uid = KSU_INVALID_UID;
 
-#define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list.tmp"
+static struct task_struct *throne_thread;
+#define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
 
 struct uid_data {
 	struct list_head list;
@@ -115,6 +120,7 @@ struct my_dir_context {
 	void *private_data;
 	int depth;
 	int *stop;
+	struct super_block* root_sb;
 };
 // https://docs.kernel.org/filesystems/porting.html
 // filldir_t (readdir callbacks) calling conventions have changed. Instead of returning 0 or -E... it returns bool now. false means "no more" (as -E... used to) and true - "keep going" (as 0 in old calling conventions). Rationale: callers never looked at specific -E... values anyway. -> iterate_shared() instances require no changes at all, all filldir_t ones in the tree converted.
@@ -135,6 +141,8 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
 	char dirpath[DATA_PATH_LEN];
+	int err;
+	struct path path;
 
 	if (!my_ctx) {
 		pr_err("Invalid context\n");
@@ -161,6 +169,18 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		return FILLDIR_ACTOR_CONTINUE;
 	}
 
+	err = kern_path(dirpath, 0, &path);
+
+	if (err) {
+		pr_err("get dirpath %s err: %d\n", dirpath, err);
+		return FILLDIR_ACTOR_CONTINUE;
+	}
+
+	if (my_ctx->root_sb != path.dentry->d_inode->i_sb) {
+		pr_info("skip cross fs: %s", dirpath);
+		return FILLDIR_ACTOR_CONTINUE;
+	}
+
 	if (d_type == DT_DIR && my_ctx->depth > 0 &&
 	    (my_ctx->stop && !*my_ctx->stop)) {
 		struct data_path *data = kmalloc(sizeof(struct data_path), GFP_ATOMIC);
@@ -170,7 +190,11 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 			return FILLDIR_ACTOR_CONTINUE;
 		}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 8, 0)
+		strlcpy(data->dirpath, dirpath, DATA_PATH_LEN);
+#else
 		strscpy(data->dirpath, dirpath, DATA_PATH_LEN);
+#endif
 		data->depth = my_ctx->depth - 1;
 		list_add_tail(&data->list, my_ctx->data_path_list);
 	} else {
@@ -214,9 +238,18 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 
 void search_manager(const char *path, int depth, struct list_head *uid_data)
 {
-	int i, stop = 0;
+	int i, stop = 0, err;
 	struct list_head data_path_list;
+	struct path kpath;
+	struct super_block* root_sb;
 	INIT_LIST_HEAD(&data_path_list);
+
+	err = kern_path(path, 0, &kpath);
+
+	if (err) {
+		pr_err("get search root %s err: %d\n", path, err);
+		return;
+	}
 
 	// Initialize APK cache list
 	struct apk_path_hash *pos, *n;
@@ -226,9 +259,15 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 	// First depth
 	struct data_path data;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 8, 0)
+	strlcpy(data.dirpath, path, DATA_PATH_LEN);
+#else
 	strscpy(data.dirpath, path, DATA_PATH_LEN);
+#endif
 	data.depth = depth;
 	list_add_tail(&data.list, &data_path_list);
+
+	root_sb = kpath.dentry->d_inode->i_sb;
 
 	for (i = depth; i >= 0; i--) {
 		struct data_path *pos, *n;
@@ -239,7 +278,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 						      .parent_dir = pos->dirpath,
 						      .private_data = uid_data,
 						      .depth = pos->depth,
-						      .stop = &stop };
+						      .stop = &stop,
+							  .root_sb = root_sb };
 			struct file *file;
 
 			if (!stop) {
@@ -284,7 +324,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	return exist;
 }
 
-void track_throne()
+static void track_throne_function()
 {
 	struct file *fp =
 		ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
@@ -361,12 +401,14 @@ void track_throne()
 		if (ksu_is_manager_uid_valid()) {
 			pr_info("manager is uninstalled, invalidate it!\n");
 			ksu_invalidate_manager_uid();
+			goto prune;
 		}
 		pr_info("Searching manager...\n");
 		search_manager("/data/app", 2, &uid_list);
 		pr_info("Search manager finished\n");
 	}
 
+prune:
 	// then prune the allowlist
 	ksu_prune_allowlist(is_uid_exist, &uid_list);
 out:
@@ -374,6 +416,23 @@ out:
 	list_for_each_entry_safe (np, n, &uid_list, list) {
 		list_del(&np->list);
 		kfree(np);
+	}
+}
+
+static int throne_tracker_thread(void *data)
+{
+	pr_info("%s: pid: %d started\n", __func__, current->pid);
+	track_throne_function();
+	throne_thread = NULL;
+	pr_info("%s: pid: %d exit!\n", __func__, current->pid);
+	return 0;
+}
+
+void track_throne()
+{
+	throne_thread = kthread_run(throne_tracker_thread, NULL, "throne_tracker");
+	if (IS_ERR(throne_thread)) {
+		throne_thread = NULL;
 	}
 }
 

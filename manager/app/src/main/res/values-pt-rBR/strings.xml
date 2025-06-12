@@ -12,13 +12,19 @@
     <string name="home">Início</string>
     <string name="home_not_installed">Não instalado</string>
     <string name="home_click_to_install">Clique para instalar</string>
+    <string name="lkm_mode_deprecated">O modo LKM agora está obsoleto!</string>
+    <string name="lkm_alternative_suggestion">Instale o kernel GKI ou integre o KernelSU Next ao seu dispositivo.</string>
     <string name="home_working">Em execução</string>
     <string name="home_working_version">Versão: %d</string>
     <string name="home_superuser_count">SuperUsuários: %d</string>
     <string name="home_module_count">Módulos: %d</string>
+    <string name="home_module_update_count">Atualizações: %d</string>
     <string name="home_failure">Assinatura KernelSU Next v2 não encontrada no kernel! [ !KSU_NEXT || != size/hash ]</string>
     <string name="home_failure_tip">Peça ao seu desenvolvedor de kernel para integrar o KernelSU Next!</string>
     <string name="home_kernel">Versão do kernel</string>
+    <string name="hook_mode">Modo do hook</string>
+    <string name="enable">Ativar</string>
+    <string name="disable">Desativar</string>
     <string name="enabled">Ativado</string>
     <string name="disabled">Desativado</string>
     <string name="susfs_supported">Suportado</string>
@@ -27,6 +33,7 @@
     <string name="home_susfs_sus_su">SuS SU</string>
     <string name="home_android">Versão do Android</string>
     <string name="home_manager_version">Versão do gerenciador</string>
+    <string name="home_abi">ABI</string>
     <string name="home_selinux_status">Status do SELinux</string>
     <string name="selinux_status_disabled">Desativado</string>
     <string name="selinux_status_enforcing">Impondo</string>
@@ -38,13 +45,16 @@
     <string name="module_empty">Nenhum módulo instalado</string>
     <string name="module">Módulo</string>
     <string name="module_install_prompt_with_name">Os seguintes módulos serão instalados: %1$s</string>
-    <string name="module_sort_a_to_z">Ordenar (A-Z)</string>
-    <string name="module_sort_z_to_a">Ordenar (Z-A)</string>
+    <string name="module_sort_a_to_z">Ordenar (A → Z)</string>
+    <string name="module_sort_z_to_a">Ordenar (Z → A)</string>
+    <string name="module_size_low_to_high">Ordenar (Menor → Maior)</string>
+    <string name="module_size_high_to_low">Ordenar (Maior → Menor)</string>
     <string name="uninstall">Desinstalar</string>
     <string name="restore">Restaurar</string>
     <string name="module_install">Instalar</string>
     <string name="install">Instalar</string>
     <string name="reboot">Reiniciar</string>
+    <string name="uninstalled">Desinstalado</string>
     <string name="settings">Configurações</string>
     <string name="reboot_userspace">Reinicialização suave</string>
     <string name="reboot_recovery">Reiniciar em modo Recovery</string>
@@ -96,6 +106,7 @@
     <string name="proceed">Prosseguir</string>
     <string name="cancel">Cancelar</string>
     <string name="later">Mais tarde</string>
+    <string name="lkm_warning_message">O patch LKM depende de componentes de código fechado. Deseja continuar?</string>
     <string name="home_next_kernelsu">🔥 Compilação next</string>
     <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
     <string name="home_next_kernelsu_body">Branch next experimental. Confira no GitHub!</string>
@@ -123,12 +134,13 @@
     <string name="require_kernel_version">A versão atual do KernelSU Next %1$d é muito baixa para o gerenciador funcionar corretamente. Por favor, atualize para a versão %2$d ou superior!</string>
     <string name="settings_umount_modules_default">Desmontar módulos</string>
     <string name="settings_umount_modules_default_summary">O valor padrão global para \"Desmontar módulos\" em Perfil do Aplicativo. Se ativado, ele removerá todas as modificações do módulo no sistema para apps que não possuem um perfil definido.</string>
-    <string name="settings_susfs_toggle">Ocultar ganchos kprobe</string>
-    <string name="settings_susfs_toggle_summary">Esta opção desativa os ganchos kprobe criados pelo ksu e, em vez disso, ativa os ganchos embutidos não-kprobe, implementando a mesma funcionalidade que seria aplicada a um kernel não-GKI, que não oferece suporte para kprobe.</string>
+    <string name="settings_susfs_toggle">Ocultar hook kprobes</string>
+    <string name="settings_susfs_toggle_summary">Esta opção desativa os hook kprobes criados pelo ksu e, em vez disso, ativa os hooks embutidos não-kprobes, implementando a mesma funcionalidade que seria aplicada a um kernel não-GKI, que não oferece suporte para kprobe.</string>
     <string name="profile_umount_modules_summary">Ativar esta opção permitirá que o KernelSU Next restaure quaisquer arquivos modificados pelos módulos para este app.</string>
     <string name="profile_selinux_domain">Domínio</string>
     <string name="profile_selinux_rules">Regras</string>
     <string name="module_update">Atualizar</string>
+    <string name="module_updated">Atualizado</string>
     <string name="module_downloading">Baixando módulo %s</string>
     <string name="module_start_downloading">Começando a baixar %s</string>
     <string name="new_version_available">Nova versão %s está disponível, clique para atualizar.</string>
@@ -136,6 +148,10 @@
     <string name="close">Fechar</string>
     <string name="force_stop_app">Forçar parada</string>
     <string name="restart_app">Reiniciar</string>
+    <string name="settings_amoled_mode">Modo AMOLED</string>
+    <string name="settings_amoled_mode_summary">Ative um tema preto puro útil para telas AMOLED para reduzir o cansaço visual e economizar bateria.</string>
+    <string name="restart_required">Reinicialização necessária</string>
+    <string name="restart_app_message">O app precisa ser reiniciado para que essa alteração tenha efeito.</string>
     <string name="failed_to_update_sepolicy">Falha ao atualizar as regras do SELinux para: %s</string>
     <string name="su_not_allowed">O acesso de SuperUsuário não é permitido para: %s</string>
     <string name="module_changelog">Registro de alterações</string>
@@ -165,6 +181,7 @@
     <string name="settings_check_update_summary">Verifique automaticamente se há atualizações ao abrir o app</string>
     <string name="grant_root_failed">Falha ao conceder acesso root!</string>
     <string name="action">Ação</string>
+    <string name="webui">WebUI</string>
     <string name="open">Abrir</string>
     <string name="enable_web_debugging">Ativar depuração do WebView</string>
     <string name="enable_web_debugging_summary">Pode ser usado para depurar o WebUI. Por favor, ative somente quando necessário.</string>
@@ -194,6 +211,13 @@
     <string name="settings_disable_su">Desativar compatibilidade su</string>
     <string name="settings_disable_su_summary">Desative temporariamente a capacidade de qualquer app obter privilégios root por meio do comando ⁠su (processos root existentes não serão afetados).</string>
     <string name="settings_language">Idioma</string>
+    <string name="settings_legacyui">Usar IU antiga</string>
+    <string name="settings_legacyui_summary">Mude para o estilo de interface do usuário anterior.</string>
+    <string name="settings_banner">Ativar banners</string>
+    <string name="settings_banner_summary">Mostre banners de fundo para módulos.</string>
     <string name="use_webuix">Usar WebUI X</string>
     <string name="use_webuix_summary">Use o WebUI X em vez do WebUI, que oferece suporte a mais APIs.</string>
+    <string name="use_webuix_eruda">Injetar Eruda no WebUI X</string>
+    <string name="use_webuix_eruda_summary">Injeta um console de depuração no WebUI X para facilitar a depuração. Requer que a depuração web esteja ativada.</string>
+    <string name="customization">Personalização</string>
 </resources>

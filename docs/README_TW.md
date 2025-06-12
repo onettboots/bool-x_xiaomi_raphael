@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | **繁體中文** | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | [简体中文](README_CN.md) | **繁體中文** | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next 正式支持大多數從 4.4 到 6.6 的 Android 內核
  - GKI 1.0 (4.19 - 5.4) 內核需要重新編譯 KernelSU 驅動程序
  - EOL (<4.14) 內核也需要重新編譯 KernelSU 驅動程序（3.18+ 是實驗性的，可能需要移植一些功能）
 
-目前僅支持 `arm64-v8a`
+目前僅支持 `arm64-v8a`, `armeabi-v7a` & `x86_64`
 
 ## 用法
 
-- [安裝說明](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [安裝說明](https://ksunext.org/pages/installation.html)
 
 ## 安全性
 

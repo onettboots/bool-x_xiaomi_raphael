@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | **Italiano** | [Polski](README_PL.md)  | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | **Italiano** | [Polski](README_PL.md)  | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next supporta ufficialmente la maggior parte dei kernel Android dalla v
  - I kernel GKI 1.0 (4.19 - 5.4) devono essere ricostruiti con il driver KernelSU.
  - Anche i kernel EOL (<4.14) devono essere ricostruiti con il driver KernelSU (la versione 3.18+ è sperimentale e potrebbe richiedere alcuni backport di funzioni).
 
-Attualmente è supportata solo l'architettura `arm64-v8a`.
+Attualmente è supportata solo l'architettura `arm64-v8a`, `armeabi-v7a` & `x86_64`.
 
 ## Utilizzo
 
-- [Istruzioni per l'installazione](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [Istruzioni per l'installazione](https://ksunext.org/pages/installation.html)
 
 ## Security
 

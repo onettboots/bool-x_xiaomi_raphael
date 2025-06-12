@@ -1,4 +1,4 @@
-[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md)  | **日本語**
+[English](README.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md)  | **日本語**
 
 # KernelSU Next
 
@@ -24,7 +24,7 @@ KernelSU Next は 4.4 から 6.6 までのほとんどの Android カーネル�
  - GKI 1.0 (4.19 - 5.4) のカーネルは、KernelSU ドライバを使用してビルドする必要があります。
  - EOL (4.14 未満) のカーネルも KernelSU ドライバを使用して再ビルドする必要があります (3.18 以降は実験中の段階であり、一部の関数のバックポートが必要になる場合があります)。
 
-現在 `arm64-v8a` アーキテクチャのみをサポートしています。
+現在 `arm64-v8a`, `armeabi-v7a` & `x86_64` アーキテクチャのみをサポートしています。
 
 ## 使い方
 

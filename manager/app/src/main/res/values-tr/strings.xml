@@ -12,13 +12,19 @@
     <string name="home">Ana Sayfa</string>
     <string name="home_not_installed">Yüklü değil</string>
     <string name="home_click_to_install">Yüklemek için tıklayın</string>
+    <string name="lkm_mode_deprecated">LKM modu artık kullanımdan kaldırıldı!</string>
+    <string name="lkm_alternative_suggestion">GKI çekirdeğini kurun veya cihazınıza KernelSU Next entegre edin.</string>
     <string name="home_working">Çalışıyor</string>
     <string name="home_working_version">Sürüm: %d</string>
     <string name="home_superuser_count">Süper kullanıcılar: %d</string>
     <string name="home_module_count">Modüller: %d</string>
+    <string name="home_module_update_count">Güncellemeler: %d</string>
     <string name="home_failure">Kernel\'de KernelSU Next v2 imzası bulunamadı! [ !KSU_NEXT || != boyut/hash ]</string>
     <string name="home_failure_tip">Kernel geliştiricinizden KernelSU Next\'i entegre etmesini isteyin!</string>
     <string name="home_kernel">Kernel sürümü</string>
+    <string name="hook_mode">Kanca Modu</string>
+    <string name="enable">Etkinleştir</string>
+    <string name="disable">Devre Dışı Bırak</string>
     <string name="enabled">Etkin</string>
     <string name="disabled">Devre dışı</string>
     <string name="susfs_supported">Destekleniyor</string>
@@ -27,6 +33,7 @@
     <string name="home_susfs_sus_su">SuS SU</string>
     <string name="home_android">Android sürümü</string>
     <string name="home_manager_version">Yönetici sürümü</string>
+    <string name="home_abi">ABI</string>
     <string name="home_selinux_status">SELinux durumu</string>
     <string name="selinux_status_disabled">Devre dışı</string>
     <string name="selinux_status_enforcing">Etkin (Enforcing)</string>
@@ -45,6 +52,7 @@
     <string name="module_install">Yükle</string>
     <string name="install">Yükle</string>
     <string name="reboot">Yeniden Başlat</string>
+    <string name="uninstalled">Kaldırıldı</string>
     <string name="settings">Ayarlar</string>
     <string name="reboot_userspace">Yumuşak Yeniden Başlat</string>
     <string name="reboot_recovery">Kurtarma Moduna Yeniden Başlat</string>
@@ -96,6 +104,7 @@
     <string name="proceed">Devam Et</string>
     <string name="cancel">İptal</string>
     <string name="later">Daha Sonra</string>
+    <string name="lkm_warning_message">LKM yaması, kapalı kaynak bileşenlere dayanır. Devam etmek istiyor musunuz?</string>
     <string name="home_next_kernelsu">🔥 Yeni Sürüm</string>
     <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
     <string name="home_next_kernelsu_body">Son deneysel dal. GitHub\'da kontrol edin!</string>
@@ -129,6 +138,7 @@
     <string name="profile_selinux_domain">Etki Alanı</string>
     <string name="profile_selinux_rules">Kurallar</string>
     <string name="module_update">Güncelle</string>
+    <string name="module_updated">Güncellendi</string>
     <string name="module_downloading">Modül indiriliyor: %s</string>
     <string name="module_start_downloading">İndirmeye başla: %s</string>
     <string name="new_version_available">%s sürümü mevcut, yükseltmek için tıklayın.</string>
@@ -136,6 +146,10 @@
     <string name="close">Kapat</string>
     <string name="force_stop_app">Zorla durdur</string>
     <string name="restart_app">Yeniden Başlat</string>
+    <string name="settings_amoled_mode">AMOLED modu</string>
+    <string name="settings_amoled_mode_summary">Göz yorgunluğunu azaltmak ve pil tasarrufu sağlamak için AMOLED ekranlara uygun saf siyah tema etkinleştirilir.</string>
+    <string name="restart_required">Yeniden Başlatma Gerekli</string>
+    <string name="restart_app_message">Bu değişikliğin etkili olması için uygulamanın yeniden başlatılması gerekiyor.</string>
     <string name="failed_to_update_sepolicy">%s için SELinux kuralları güncellenemedi.</string>
     <string name="su_not_allowed">SüperKullanıcı yetkisi verilemez: %s</string>
     <string name="module_changelog">Değişiklik Günlüğü</string>
@@ -165,6 +179,7 @@
     <string name="settings_check_update_summary">Uygulama açıldığında otomatik olarak güncellemeleri kontrol et.</string>
     <string name="grant_root_failed">Root yetkisi verilemedi!</string>
     <string name="action">Eylem</string>
+    <string name="webui">WebUI</string>
     <string name="open">Aç</string>
     <string name="enable_web_debugging">WebView hata ayıklamasını etkinleştir</string>
     <string name="enable_web_debugging_summary">WebUI hata ayıklaması için kullanılabilir. Lütfen yalnızca gerekli olduğunda etkinleştirin.</string>
@@ -194,6 +209,11 @@
     <string name="settings_disable_su">Su uyumluluğunu devre dışı bırak</string>
     <string name="settings_disable_su_summary">Geçici olarak herhangi bir uygulamanın su komutu aracılığıyla kök ayrıcalıkları elde etme yeteneğini devre dışı bırakır (mevcut kök süreçleri etkilenmez).</string>
     <string name="settings_language">Dil</string>
+    <string name="settings_legacyui">Eski Arayüzü Kullan</string>
+    <string name="settings_legacyui_summary">Önceki kullanıcı arayüzü stiline geç.</string>
     <string name="use_webuix">WebUI X\'i kullanın</string>
     <string name="use_webuix_summary">Daha fazla API\'yi destekleyen WebUI yerine WebUI X kullanın</string>
+    <string name="use_webuix_eruda">WebUI X\'e Eruda Enjekte Et</string>
+    <string name="use_webuix_eruda_summary">Hata ayıklamayı kolaylaştırmak için WebUI X\'e bir debug konsolu enjekte edin. Web hata ayıklamanın açık olması gerekir.</string>
+    <string name="customization">Özelleştirme</string>
 </resources>

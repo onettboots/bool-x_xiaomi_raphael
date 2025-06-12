@@ -1,4 +1,4 @@
-[English](README.md) | **简体中文** | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
+[English](README.md) | **简体中文** | [繁體中文](README_TW.md) | [Türkçe](README_TR.md) | [Português (Brasil)](README_PT-BR.md) | [한국어](README_KO.md) | [Français](README_FR.md) | [Bahasa Indonesia](README_ID.md) | [Русский](README_RU.md) | [Український](README_UA.md) | [ภาษาไทย](README_TH.md) | [Tiếng Việt](README_VI.md) | [Italiano](README_IT.md) | [Polski](README_PL.md) | [Български](README_BG.md) | [日本語](README_JA.md)
 
 # KernelSU Next
 
@@ -24,11 +24,11 @@ KernelSU Next 支持从 4.4 到 6.6 的大多数安卓内核
  - GKI 1.0（4.19 - 5.4）内核需要使用 KernelSU 内核驱动重新编译
  - EOL (<4.14) 内核也需要使用 KernelSU 内核驱动重新编译 (3.18+ 的版本处于试验阶段，可能需要移植一些功能)
 
-目前只支持 `arm64-v8a` 架构
+目前只支持 `arm64-v8a`, `armeabi-v7a` & `x86_64` 架构
 
 ## 用法
 
-- [安装说明](https://KernelSU-Next.github.io/KernelSU-Next/)
+- [安装说明](https://ksunext.org/pages/installation.html)
 
 ## 安全性
 
