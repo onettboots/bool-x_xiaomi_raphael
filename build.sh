@@ -44,6 +44,7 @@ SAVEHERE=$HOME/toolchains
 CONFIG=out/.config
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
+upl=$kernel_dir/upl.sh
 
 #functions
 function makeconfig() {
@@ -105,7 +106,6 @@ curl bashupload.com -T $ZIP_NAME*.zip
 function upload_boolx_action()
 {
                 ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
-		upl=$kernel_dir/upl.sh
 		cd $kernel_dir
 		#wget
 		chmod +x $upl
@@ -289,7 +289,11 @@ if [ -f $KERNEL ]; then
    echo "------------------------------------------"
    echo -e "${restore}"
    build_time
-   upload
+   if [ -f $upl ]; then
+   	upload_boolx_action
+   else
+   	upload
+   fi
    echo
 else
    echo -e "${red}"
