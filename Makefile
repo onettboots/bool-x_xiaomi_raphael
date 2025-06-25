@@ -747,20 +747,11 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 KBUILD_CFLAGS  += $(call cc-option, -Wno-format)
 KBUILD_CFLAGS  += $(call cc-option, -Wno-maybe-uninitialized)
 
-ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
-KBUILD_CFLAGS   += -O2
-else ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
-KBUILD_CFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod -fno-trapping-math -fno-math-errno -mllvm -polly --cuda-path=/dev/null
-KBUILD_AFLAGS   += -O3 -march=armv8.2-a+lse+crypto+dotprod
-KBUILD_LDFLAGS  += -O3,-Bsymbolic-functions,--as-needed -mllvm -polly
-else ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS += -Os
-endif
-
-ifeq ($(cc-name),gcc)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
-endif
+ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+KBUILD_CFLAGS   += -Os
+else
 ifeq ($(cc-name),clang)
+KBUILD_CFLAGS   += -O3
 #Enable fast FMA optimizations
 KBUILD_CFLAGS   += -ffp-contract=fast
 #Enable hot cold split optimization
@@ -776,17 +767,22 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 		   -mllvm -polly-postopts=1 \
 		   -mllvm -polly-vectorizer=stripmine
 # Polly may optimise loops with dead paths beyound what the linker
-# # can understand. This may negate the effect of the linker's DCEAdd commentMore actions
+# # can understand. This may negate the effect of the linker's DCE
 # # so we tell Polly to perfom proven DCE on the loops it optimises
 # # in order to preserve the overall effect of the linker's DCE.
-ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATIONMore actions
+ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 KBUILD_CFLAGS	+= -mllvm -polly-run-dce
 endif
 endif
-endif
 
-ifdef CONFIG_MINIMAL_TRACING_FOR_IORAPMore actions
-KBUILD_CFLAGS   += -DNOTRACE
+KBUILD_CFLAGS  += -mllvm -inline-threshold=1300
+KBUILD_CFLAGS  += -mllvm -inlinehint-threshold=2000
+KBUILD_CFLAGS  += -mllvm -unroll-threshold=900
+
+else
+KBUILD_CFLAGS   += -O2
+KBUILD_CFLAGS	+= -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
+endif
 endif
 
 # Tell gcc to never replace conditional load with a non-conditional one
