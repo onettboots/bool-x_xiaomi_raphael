@@ -43,6 +43,7 @@ static DEFINE_IDA(susfs_mnt_group_ida);
 static int susfs_mnt_id_start = DEFAULT_SUS_MNT_ID;
 static int susfs_mnt_group_start = DEFAULT_SUS_MNT_GROUP_ID;
 
+#define CL_ZYGOTE_COPY_MNT_NS BIT(24) /* used by copy_mnt_ns() */
 #define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
 #endif
 
@@ -147,7 +148,6 @@ retry:
 	return res;
 }
 #endif
-
 static int mnt_alloc_id(struct mount *mnt)
 {
 	int res;
@@ -169,22 +169,31 @@ static void mnt_free_id(struct mount *mnt)
 {
 	int id = mnt->mnt_id;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
 	// We should first check the 'mnt->mnt.susfs_mnt_id_backup', see if it is DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE
 	// if so, these mnt_id were not assigned by mnt_alloc_id() so we don't need to free it.
-	if (unlikely(mnt->mnt.susfs_mnt_id_backup == DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE)) {
+	if (unlikely(mnt_id_backup == DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE)) {
 		return;
 	}
 	// Now we can check if its mnt_id is sus
 	if (unlikely(mnt->mnt_id >= DEFAULT_SUS_MNT_ID)) {
-		ida_remove(&susfs_mnt_id_ida, mnt->mnt_id);
+		spin_lock(&mnt_id_lock);
+		ida_remove(&susfs_mnt_id_ida, id);
+		if (susfs_mnt_id_start > id)
+			susfs_mnt_id_start = id;
+		spin_unlock(&mnt_id_lock);
 		return;
 	}
 	// Lastly if 'mnt->mnt.susfs_mnt_id_backup' is not 0, then it contains a backup origin mnt_id
 	// so we free it in the original way
-	if (likely(mnt->mnt.susfs_mnt_id_backup)) {
+	if (likely(mnt_id_backup)) {
 		// If mnt->mnt.susfs_mnt_id_backup is not zero, it means mnt->mnt_id is spoofed,
 		// so here we return the original mnt_id for being freed.
-		ida_remove(&mnt_id_ida, mnt->mnt.susfs_mnt_id_backup);
+		spin_lock(&mnt_id_lock);
+		ida_remove(&mnt_id_ida, mnt_id_backup);
+		if (mnt_id_start > mnt_id_backup)
+			mnt_id_start = mnt_id_backup;
+		spin_unlock(&mnt_id_lock);
 		return;
 	}
 #endif
@@ -238,8 +247,10 @@ void mnt_release_group_id(struct mount *mnt)
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// If mnt->mnt_group_id >= DEFAULT_SUS_MNT_GROUP_ID, it means 'mnt' is also sus mount,
 	// then we free the mnt->mnt_group_id from susfs_mnt_group_ida
-	if (mnt->mnt_group_id >= DEFAULT_SUS_MNT_GROUP_ID) {
-		ida_remove(&susfs_mnt_group_ida, mnt->mnt_group_id);
+	if (id >= DEFAULT_SUS_MNT_GROUP_ID) {
+		ida_remove(&susfs_mnt_group_ida, id);
+		if (susfs_mnt_group_start > id)
+			susfs_mnt_group_start = id;
 		mnt->mnt_group_id = 0;
 		return;
 	}
@@ -1144,12 +1155,14 @@ vfs_kern_mount(struct file_system_type *type, int flags, const char *name, void 
 	struct mount *mnt;
 	struct dentry *root;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	struct mount *m;
+	struct nsproxy *nsproxy;
 	struct mnt_namespace *mnt_ns;
-	int mnt_id;
+	int last_entry_mnt_id = 0;
 #endif
+
 	if (!type)
 		return ERR_PTR(-ENODEV);
+
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// For newly created mounts, the only caller process we care is KSU
 	if (unlikely(susfs_is_current_ksu_domain())) {
@@ -1188,26 +1201,23 @@ bypass_orig_flow:
 	mnt->mnt_parent = mnt;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// - If caller process is zygote, then it is a normal mount, so we calculate the next available 
-	//   fake mnt_id for this mount
+	// If caller process is zygote, then it is a normal mount, so we just reorder the mnt_id
 	if (susfs_is_current_zygote_domain()) {
-		mnt_ns = current->nsproxy->mnt_ns;
-		if (mnt_ns) {
-			get_mnt_ns(mnt_ns);
-			rcu_read_lock();
-			mnt_id = list_first_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
-			list_for_each_entry_rcu(m, &mnt_ns->list, mnt_list) {
-				if (m->mnt_id < DEFAULT_SUS_MNT_ID) {
-					mnt_id++;
-				}
+		rcu_read_lock();
+		nsproxy = current->nsproxy;
+		if (nsproxy) {
+			mnt_ns = nsproxy->mnt_ns;
+			if (mnt_ns) {
+				mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
+		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
+				last_entry_mnt_id = list_last_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
+				mnt->mnt_id = last_entry_mnt_id + 1;
 			}
-			WRITE_ONCE(mnt->mnt.susfs_mnt_id_backup, READ_ONCE(mnt->mnt_id));
-			WRITE_ONCE(mnt->mnt_id, READ_ONCE(mnt_id));
-			rcu_read_unlock();
-			put_mnt_ns(mnt_ns);
 		}
+		rcu_read_unlock();
 	}
 #endif
+
 	lock_mount_hash();
 	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
 	unlock_mount_hash();
@@ -1237,9 +1247,9 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	struct mount *mnt;
 	int err;
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	struct mount *m;
+	struct nsproxy *nsproxy;
 	struct mnt_namespace *mnt_ns;
-	int mnt_id;
+	int last_entry_mnt_id = 0;
 	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
 	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
 
@@ -1248,10 +1258,8 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 	 * - if caller process is KSU, consider the following situation:
 	 *     1. it is NOT doing unshare => call alloc_vfsmnt() to assign a new sus mnt_id
 	 *     2. it is doing unshare => spoof the new mnt_id with the old mnt_id
-	 * - For the rest of caller process with sus old->mnt_id => call alloc_vfsmnt() to assign a new sus mnt_id
-	 * - Important notes: Here we can't determine whether the unshare is called by zygisk or not,
-	 *   so we can only patch out the unshare code in zygisk source code for now,
-	 *   but at least we can deal with old sus mounts using alloc_vfsmnt()
+	 * - If caller process is zygote and old mnt_id is sus => call alloc_vfsmnt() to assign a new sus mnt_id
+	 * - For the rest of caller process that doing unshare => call alloc_vfsmnt() to assign a new sus mnt_id only for old sus mount
 	 */
 	// Firstly, check if it is KSU process
 	if (unlikely(is_current_ksu_domain)) {
@@ -1267,15 +1275,25 @@ static struct mount *clone_mnt(struct mount *old, struct dentry *root,
 		}
 		goto bypass_orig_flow;
 	}
-	// Lastly, just check if old->mnt_id is sus
-	if (old->mnt_id >= DEFAULT_SUS_MNT_ID) {
+	// Secondly, check if it is zygote process and no matter it is doing unshare or not
+	if (likely(is_current_zygote_domain) && (old->mnt_id >= DEFAULT_SUS_MNT_ID)) {
+		/* Important Note: 
+		 *  - Here we can't determine whether the unshare is called zygisk or not,
+		 *    so we can only patch out the unshare code in zygisk source code for now
+		 *  - But at least we can deal with old sus mounts using alloc_vfsmnt()
+		 */
+		mnt = alloc_vfsmnt(old->mnt_devname, true, 0);
+		goto bypass_orig_flow;
+	}
+	// Lastly, for other process that is doing unshare operation, but only deal with old sus mount
+	if ((flag & CL_COPY_MNT_NS) && (old->mnt_id >= DEFAULT_SUS_MNT_ID)) {
 		mnt = alloc_vfsmnt(old->mnt_devname, true, 0);
 		goto bypass_orig_flow;
 	}
 	mnt = alloc_vfsmnt(old->mnt_devname, false, 0);
 bypass_orig_flow:
 #else
- 	mnt = alloc_vfsmnt(old->mnt_devname);
+	mnt = alloc_vfsmnt(old->mnt_devname);
 #endif
 	if (!mnt)
 		return ERR_PTR(-ENOMEM);
@@ -1330,29 +1348,23 @@ bypass_orig_flow:
 	mnt->mnt_parent = mnt;
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	// - If caller process is zygote, then it is a normal mount, so we calculate the next available
-	//   fake mnt_id for this mount, but there is one situation that the previous clone_mnt is not
-	//   yet attached to the current mnt_ns during copy_tree() so that it will fail to calculate
-	//   the correct fake mnt_id.
-	// - Currently we have a tmep fix for this in copy_tree(), but maybe not reliable for other devices
-	if (likely(is_current_zygote_domain) && !(flag & CL_COPY_MNT_NS)) {
-		mnt_ns = current->nsproxy->mnt_ns;
-		if (mnt_ns) {
-			get_mnt_ns(mnt_ns);
-			rcu_read_lock();
-			mnt_id = list_first_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
-			list_for_each_entry_rcu(m, &mnt_ns->list, mnt_list) {
-				if (m->mnt_id < DEFAULT_SUS_MNT_ID) {
-					mnt_id++;
-				}
+	// If caller process is zygote and not doing unshare, so we just reorder the mnt_id
+	if (likely(is_current_zygote_domain) && !(flag & CL_ZYGOTE_COPY_MNT_NS)) {
+		rcu_read_lock();
+		nsproxy = current->nsproxy;
+		if (nsproxy) {
+			mnt_ns = nsproxy->mnt_ns;
+			if (mnt_ns) {
+				mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
+		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
+				last_entry_mnt_id = list_last_entry(&mnt_ns->list, struct mount, mnt_list)->mnt_id;
+				mnt->mnt_id = last_entry_mnt_id + 1;
 			}
-			WRITE_ONCE(mnt->mnt.susfs_mnt_id_backup, READ_ONCE(mnt->mnt_id));
-			WRITE_ONCE(mnt->mnt_id, READ_ONCE(mnt_id));
-			rcu_read_unlock();
-			put_mnt_ns(mnt_ns);
 		}
+		rcu_read_unlock();
 	}
 #endif
+
 	lock_mount_hash();
 	list_add_tail(&mnt->mnt_instance, &sb->s_mounts);
 	unlock_mount_hash();
@@ -2094,9 +2106,7 @@ struct mount *copy_tree(struct mount *mnt, struct dentry *dentry,
 					int flag)
 {
 	struct mount *res, *p, *q, *r, *parent;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
-#endif
+
 	if (!(flag & CL_COPY_UNBINDABLE) && IS_MNT_UNBINDABLE(mnt))
 		return ERR_PTR(-EINVAL);
 
@@ -2112,9 +2122,6 @@ struct mount *copy_tree(struct mount *mnt, struct dentry *dentry,
 	p = mnt;
 	list_for_each_entry(r, &mnt->mnt_mounts, mnt_child) {
 		struct mount *s;
-	#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-		int attach_mnt_count = 0;
-	#endif
 		if (!is_subdir(r->mnt_mountpoint, dentry))
 			continue;
 
@@ -2144,15 +2151,6 @@ struct mount *copy_tree(struct mount *mnt, struct dentry *dentry,
 			q = clone_mnt(p, p->mnt.mnt_root, flag);
 			if (IS_ERR(q))
 				goto out;
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-			if (is_current_zygote_domain &&
-				!(flag & CL_COPY_MNT_NS) &&
-				q->mnt_id < DEFAULT_SUS_MNT_ID)
-			{
-				attach_mnt_count++;
-				q->mnt_id += attach_mnt_count;
-			}
-#endif
 			lock_mount_hash();
 			list_add_tail(&q->mnt_list, &res->mnt_list);
 			attach_mnt(q, parent, p->mnt_mp);
@@ -3347,10 +3345,13 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
 	if (user_ns != ns->user_ns)
 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
-
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 	// Always let clone_mnt() in copy_tree() know it is from copy_mnt_ns()
 	copy_flags |= CL_COPY_MNT_NS;
+	if (is_zygote_pid) {
+		// Let clone_mnt() in copy_tree() know copy_mnt_ns() is run by zygote process
+		copy_flags |= CL_ZYGOTE_COPY_MNT_NS;
+	}
 #endif
 	new = copy_tree(old, old->mnt.mnt_root, copy_flags);
 	if (IS_ERR(new)) {
@@ -3389,6 +3390,7 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 			p = next_mnt(p, old);
 	}
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+	// current->susfs_last_fake_mnt_id -> to record last valid fake mnt_id to zygote pid
 	// q->mnt.susfs_mnt_id_backup -> original mnt_id
 	// q->mnt_id -> will be modified to the fake mnt_id
 
@@ -3404,7 +3406,12 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
 			q->mnt_id = last_entry_mnt_id++;
 		}
 	}
+	// Assign the 'last_entry_mnt_id' to 'current->susfs_last_fake_mnt_id' for later use.
+	// should be fine here assuming zygote is forking/unsharing app in one single thread.
+	// Or should we put a lock here?
+	current->susfs_last_fake_mnt_id = last_entry_mnt_id;
 #endif
+
 	namespace_unlock();
 
 	if (rootmnt)
@@ -3488,12 +3495,7 @@ SYSCALL_DEFINE5(mount, char __user *, dev_name, char __user *, dir_name,
 		goto out_data;
 
 	ret = do_mount(kernel_dev, dir_name, kernel_type, flags, options);
-#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT) && defined(CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT)
-	// Just for the compatibility of Magic Mount KernelSU
-	if (!ret && susfs_is_auto_add_sus_ksu_default_mount_enabled && susfs_is_current_ksu_domain()) {
-		susfs_auto_add_sus_ksu_default_mount(dir_name);
-	}
-#endif
+
 	kfree(options);
 out_data:
 	kfree(kernel_dev);
@@ -3954,33 +3956,33 @@ const struct proc_ns_operations mntns_operations = {
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 extern void susfs_try_umount_all(uid_t uid);
 void susfs_run_try_umount_for_current_mnt_ns(void) {
-       struct mount *mnt;
-       struct mnt_namespace *mnt_ns;
+	struct mount *mnt;
+	struct mnt_namespace *mnt_ns;
 
-       mnt_ns = current->nsproxy->mnt_ns;
-       // Lock the namespace
-       namespace_lock();
-       list_for_each_entry(mnt, &mnt_ns->list, mnt_list) {
-               // Change the sus mount to be private
-               if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
-                       change_mnt_propagation(mnt, MS_PRIVATE);
-               }
-       }
-       // Unlock the namespace
-       namespace_unlock();
-       susfs_try_umount_all(current_uid().val);
+	mnt_ns = current->nsproxy->mnt_ns;
+	// Lock the namespace
+	namespace_lock();
+	list_for_each_entry(mnt, &mnt_ns->list, mnt_list) {
+		// Change the sus mount to be private
+		if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
+			change_mnt_propagation(mnt, MS_PRIVATE);
+		}
+	}
+	// Unlock the namespace
+	namespace_unlock();
+	susfs_try_umount_all(current_uid().val);
 }
 #endif
 #ifdef CONFIG_KSU_SUSFS
 bool susfs_is_mnt_devname_ksu(struct path *path) {
-       struct mount *mnt;
+	struct mount *mnt;
 
-       if (path && path->mnt) {
-               mnt = real_mount(path->mnt);
-               if (mnt && mnt->mnt_devname && !strcmp(mnt->mnt_devname, "KSU")) {
-                       return true;
-               }
-       }
-       return false;
+	if (path && path->mnt) {
+		mnt = real_mount(path->mnt);
+		if (mnt && mnt->mnt_devname && !strcmp(mnt->mnt_devname, "KSU")) {
+			return true;
+		}
+	}
+	return false;
 }
 #endif
