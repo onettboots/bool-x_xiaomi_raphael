@@ -28,7 +28,6 @@
 
 #include <linux/limits.h>
 #include <linux/stddef.h>
-#include <linux/types.h>
 
 #define ZSTD_memcpy(d,s,n) __builtin_memcpy((d),(s),(n))
 #define ZSTD_memmove(d,s,n) __builtin_memmove((d),(s),(n))
@@ -85,7 +84,7 @@ static uint64_t ZSTD_div64(uint64_t dividend, uint32_t divisor) {
 
 #include <linux/kernel.h>
 
-#define assert(x) WARN_ON((x))
+#define assert(x) WARN_ON(!(x))
 
 #endif /* ZSTD_DEPS_ASSERT */
 #endif /* ZSTD_DEPS_NEED_ASSERT */
