@@ -2904,7 +2904,7 @@ static bool use_cma_first(struct zone *zone, unsigned int order, unsigned int al
 	unsigned long watermark;
 	bool cma_first = false;
 
-	watermark = wmark_pages(zone, alloc_flags & ALLOC_WMARK_MASK);
+	watermark = zone->watermark[alloc_flags & ALLOC_WMARK_MASK];
 	/* check if GFP_MOVABLE pass previous zone_watermark_ok via the help of CMA */
 	if (zone_watermark_ok(zone, order, watermark, 0, alloc_flags & (~ALLOC_CMA))) {
 		/*
