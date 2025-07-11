@@ -10711,6 +10711,16 @@ static bool update_sd_pick_busiest(struct lb_env *env,
 		goto asym_packing;
 
 	/*
+	 * Candidate sg has no more than one task per CPU and
+	 * has higher per-CPU capacity. Migrating tasks to less
+	 * capable CPUs may harm throughput. Maximize throughput,
+	 * power/energy consequences are not considered.
+	 */
+	if (sgs->sum_nr_running <= sgs->group_weight &&
+	    capacity_greater(sg->sgc->min_capacity, capacity_of(env->dst_cpu)))
+		return false;
+
+	/*
 	 * If we have more than one misfit sg go with the biggest misfit.
 	 */
 	if (sgs->group_type == group_misfit_task &&
@@ -11486,7 +11496,6 @@ asym_active_balance(struct lb_env *env)
 static inline bool
 voluntary_active_balance(struct lb_env *env)
 {
-	struct sched_domain *sd = env->sd;
 	if (asym_active_balance(env))
 		return 1;
 
