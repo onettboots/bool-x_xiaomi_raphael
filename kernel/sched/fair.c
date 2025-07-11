@@ -274,12 +274,11 @@ unsigned int sysctl_sched_cfs_bandwidth_slice		= 5000UL;
 #endif
 
 /*
- * The margin used when comparing utilization with CPU capacity.
+ * The margin used when comparing utilization with CPU capacity:
+ * util * margin < capacity * 1024
  *
  * (default: ~20%)
  */
-#define fits_capacity(cap, max)	((cap) * 1280 < (max) * 1024)
-
 unsigned int capacity_margin				= 1280;
 
 /* Migration margins */
@@ -3887,7 +3886,8 @@ static inline unsigned long cfs_rq_load_avg(struct cfs_rq *cfs_rq)
 
 static int idle_balance(struct rq *this_rq, struct rq_flags *rf);
 
-static inline bool task_fits_capacity(struct task_struct *p, long capacity);
+static inline bool task_fits_capacity(struct task_struct *p, long capacity,
+								int cpu);
 
 static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 {
@@ -7852,9 +7852,17 @@ static int select_idle_sibling(struct task_struct *p, int prev, int target)
 }
 
 static inline bool task_fits_capacity(struct task_struct *p,
-					long capacity)
+					long capacity,
+					int cpu)
 {
-	return fits_capacity(task_util_est(p), capacity);
+	unsigned int margin;
+
+	if (capacity_orig_of(task_cpu(p)) > capacity_orig_of(cpu))
+		margin = sched_capacity_margin_down[task_cpu(p)];
+	else
+		margin = sched_capacity_margin_up[task_cpu(p)];
+
+	return capacity * 1024 > boosted_task_util(p) * margin;
 }
 
 static inline bool task_fits_max(struct task_struct *p, int cpu)
@@ -7874,7 +7882,7 @@ static inline bool task_fits_max(struct task_struct *p, int cpu)
 			is_min_capacity_cpu(cpu))
 		return false;
 
-	return task_fits_capacity(p, capacity);
+	return task_fits_capacity(p, capacity, cpu);
 }
 
 struct find_best_target_env {
