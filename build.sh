@@ -42,7 +42,6 @@ ZIP_NAME="$AK_VER"-"$DATE"
 TOOLCHAINS=$HOME/toolchains/boolx-clang
 CONFIG=out/.config
 SAVEHERE=$HOME/toolchains
-CCACHE_CDIR=$SAVEHERE/ccache
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
 upl=$kernel_dir/upl.sh
