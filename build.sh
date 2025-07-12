@@ -95,7 +95,7 @@ function make_config {
 		makeconfig ${CONFIGS}
 }
 function make_boot {
-		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
+		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR/oc
 }
 function make_zip {
 		cd $REPACK_DIR
