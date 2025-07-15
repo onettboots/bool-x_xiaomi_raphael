@@ -867,8 +867,6 @@ else
 LDFLAGS += -O3
 endif
 LDFLAGS += -mllvm -mcpu=cortex-a76
-LDFLAGS += -mllvm -regalloc-enable-advisor=release
-LDFLAGS += -mllvm -enable-ml-inliner=release
 endif
 
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
