@@ -481,12 +481,13 @@ struct binder_proc {
 	int requested_threads_started;
 	int tmp_ref;
 	struct binder_priority default_priority;
-        struct dentry *binderfs_entry;
 	struct dentry *debugfs_entry;
-        struct binder_alloc alloc;                                                              struct binder_context *context;
-        spinlock_t inner_lock;
-        spinlock_t outer_lock;
-        bool oneway_spam_detection_enabled;
+	struct binder_alloc alloc;
+	struct binder_context *context;
+	spinlock_t inner_lock;
+	spinlock_t outer_lock;
+	struct dentry *binderfs_entry;
+	bool oneway_spam_detection_enabled;
 };
 
 /**

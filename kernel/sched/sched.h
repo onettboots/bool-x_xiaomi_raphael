@@ -696,6 +696,11 @@ struct rt_rq {
 #endif
 };
 
+static inline bool rt_rq_is_runnable(struct rt_rq *rt_rq)
+{
+        return rt_rq->rt_queued && rt_rq->rt_nr_running;
+}
+
 /* Deadline class' related fields in a runqueue */
 struct dl_rq {
 	/* runqueue is an rbtree, ordered by deadline */
@@ -2210,7 +2215,12 @@ static inline unsigned long task_util(struct task_struct *p)
  *
  * Return: the (estimated) utilization for the specified CPU
  */
+
+#ifdef CONFIG_SCHED_WALT
 static inline unsigned long cpu_util(int cpu)
+#else
+static inline unsigned long __cpu_util(int cpu)
+#endif
 {
 	struct cfs_rq *cfs_rq;
 	unsigned int util;
@@ -2233,19 +2243,6 @@ static inline unsigned long cpu_util(int cpu)
 
 	return min_t(unsigned long, util, capacity_orig_of(cpu));
 }
-
-#ifdef CONFIG_HAVE_SCHED_AVG_IRQ
-static inline unsigned long cpu_util_irq(struct rq *rq)
-{
-	return rq->avg_irq.util_avg;
-}
-#else
-static inline unsigned long cpu_util_irq(struct rq *rq)
-{
-	return 0;
-}
-
-#endif
 
 struct sched_walt_cpu_load {
 	unsigned long prev_window_util;
@@ -2357,18 +2354,6 @@ cpu_util_freq(int cpu, struct sched_walt_cpu_load *walt_load)
 }
 
 #else
-
-static inline unsigned long cpu_util_rt(struct rq *rq)
-{
-	return rq->avg_rt.util_avg;
-}
-
-static inline unsigned long
-cpu_util_freq(int cpu, struct sched_walt_cpu_load *walt_load)
-{
-	struct rq *rq = cpu_rq(cpu);
-	return min(cpu_util(cpu) + cpu_util_rt(rq), capacity_orig_of(cpu));
-}
 
 #define sched_ravg_window TICK_NSEC
 #define sysctl_sched_use_walt_cpu_util 0

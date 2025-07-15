@@ -4092,18 +4092,18 @@ static inline void update_misfit_status(struct task_struct *p, struct rq *rq)
 
 static inline unsigned long _task_util_est(struct task_struct *p)
 {
-	struct util_est ue = READ_ONCE(p->se.avg.util_est);
+        struct util_est ue = READ_ONCE(p->se.avg.util_est);
 
-	return (max(ue.ewma, ue.enqueued) | UTIL_AVG_UNCHANGED);
+        return (max(ue.ewma, ue.enqueued) | UTIL_AVG_UNCHANGED);
 }
-
-static inline unsigned long task_util_est(struct task_struct *p)
+ 
+unsigned long task_util_est(struct task_struct *p)
 {
 #ifdef CONFIG_SCHED_WALT
-	if (likely(!walt_disabled && sysctl_sched_use_walt_task_util))
-		return p->ravg.demand_scaled;
+        if (likely(!walt_disabled && sysctl_sched_use_walt_task_util))
+                return p->ravg.demand_scaled;
 #endif
-	return max(task_util(p), _task_util_est(p));
+        return max(task_util(p), _task_util_est(p));
 }
 
 static inline void util_est_enqueue(struct cfs_rq *cfs_rq,

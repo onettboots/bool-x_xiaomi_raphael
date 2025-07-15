@@ -28,7 +28,6 @@ void cpufreq_add_update_util_hook(int cpu, struct update_util_data *data,
                        void (*func)(struct update_util_data *data, u64 time,
 				    unsigned int flags));
 void cpufreq_remove_update_util_hook(int cpu);
-bool cpufreq_can_do_remote_dvfs(struct cpufreq_policy *policy);
 
 static inline unsigned long map_util_freq(unsigned long util,
 					unsigned long freq, unsigned long cap)
