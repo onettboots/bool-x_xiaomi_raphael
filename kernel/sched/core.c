@@ -993,7 +993,7 @@ static inline void uclamp_boost_write(struct task_struct *p) {
 		if (kp_active_mode() == 2 || kp_active_mode() == 0 ) {
 			task_group(p)->uclamp[UCLAMP_MIN].value = 128;
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
-                        task_group(p)->latency_sensitive = 0;
+                        task_group(p)->latency_sensitive = 1;
                 }
 		if (kp_active_mode() == 1) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
@@ -1011,7 +1011,7 @@ static inline void uclamp_boost_write(struct task_struct *p) {
                 if (kp_active_mode() == 2 || kp_active_mode() == 0 ) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
-                        task_group(p)->latency_sensitive = 0;
+                        task_group(p)->latency_sensitive = 1;
                 }
                 if (kp_active_mode() == 1) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
@@ -1029,7 +1029,7 @@ static inline void uclamp_boost_write(struct task_struct *p) {
                 if (kp_active_mode() == 2 || kp_active_mode() == 0) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
                         task_group(p)->uclamp[UCLAMP_MAX].value = 1024;
-                        task_group(p)->latency_sensitive = 0;
+                        task_group(p)->latency_sensitive = 1;
                 }
                 if (kp_active_mode() == 1) {
                         task_group(p)->uclamp[UCLAMP_MIN].value = 0; 
