@@ -1,5 +1,5 @@
 .idea
 .vscode
-manager/
-userspace/
-test/
+10_enable_susfs_for_ksu.patch
+*.orig
+*.rej
