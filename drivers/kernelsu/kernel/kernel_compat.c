@@ -76,16 +76,6 @@ void ksu_android_ns_fs_check()
 	task_unlock(current);
 }
 
-int ksu_access_ok(const void *addr, unsigned long size) {
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,0,0)
-    /* For kernels before 5.0.0, pass the type argument to access_ok. */
-    return access_ok(VERIFY_READ, addr, size);
-#else
-    /* For kernels 5.0.0 and later, ignore the type argument. */
-    return access_ok(addr, size);
-#endif
-}
-
 struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) || defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
@@ -98,9 +88,7 @@ struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
 	// switch mnt_ns even if current is not wq_worker, to ensure what we open is the correct file in android mnt_ns, rather than user created mnt_ns
 	struct ksu_ns_fs_saved saved;
 	if (android_context_saved_enabled) {
-#ifdef CONFIG_KSU_DEBUG
 		pr_info("start switch current nsproxy and fs to android context\n");
-#endif
 		task_lock(current);
 		ksu_save_ns_fs(&saved);
 		ksu_load_ns_fs(&android_context_saved);
@@ -111,9 +99,7 @@ struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
 		task_lock(current);
 		ksu_load_ns_fs(&saved);
 		task_unlock(current);
-#ifdef CONFIG_KSU_DEBUG
 		pr_info("switch current nsproxy and fs back to saved successfully\n");
-#endif
 	}
 	return fp;
 }
@@ -188,26 +174,25 @@ long ksu_strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
 }
 #endif
 
-long ksu_copy_from_user_nofault(void *dst, const void __user *src, size_t size)
+int ksu_access_ok(const void *addr, unsigned long size)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-	return copy_from_user_nofault(dst, src, size);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,0,0)
+	return access_ok(addr, size);
 #else
-	// https://elixir.bootlin.com/linux/v5.8/source/mm/maccess.c#L205
-	long ret = -EFAULT;
-	mm_segment_t old_fs = get_fs();
-
-	set_fs(USER_DS);
-	// tweaked to use ksu_access_ok
-	if (ksu_access_ok(src, size)) {
-		pagefault_disable();
-		ret = __copy_from_user_inatomic(dst, src, size);
-		pagefault_enable();
-	}
-	set_fs(old_fs);
-
-	if (ret)
-		return -EFAULT;
-	return 0;
+	return access_ok(VERIFY_READ, addr, size);
 #endif
+}
+
+long ksu_strncpy_from_user_retry(char *dst, const void __user *unsafe_addr,
+				   long count)
+{
+	long ret = ksu_strncpy_from_user_nofault(dst, unsafe_addr, count);
+	if (likely(ret >= 0))
+		return ret;
+
+	// we faulted! fallback to slow path
+	if (unlikely(!ksu_access_ok(unsafe_addr, count)))
+		return -EFAULT;
+
+	return strncpy_from_user(dst, unsafe_addr, count);
 }
