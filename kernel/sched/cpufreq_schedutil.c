@@ -360,6 +360,10 @@ static void sugov_update_single(struct update_util_data *hook, u64 time,
 		sg_cpu->max = max;
 		sg_cpu->flags = flags;
 
+		sugov_calc_avg_cap(sg_policy, sg_cpu->walt_load.ws,
+				   sg_policy->policy->cur);
+
+		sugov_walt_adjust(sg_cpu, &util, &max);
 		next_f = get_next_freq(sg_policy, util, max);
 		/*
 		 * Do not reduce the frequency if the CPU has not been idle
@@ -421,6 +425,7 @@ static unsigned int sugov_next_freq_shared(struct sugov_cpu *sg_cpu, u64 time)
 		}
 
 		sugov_iowait_boost(j_sg_cpu, &util, &max);
+		sugov_walt_adjust(j_sg_cpu, &util, &max);
 	}
 
 	return get_next_freq(sg_policy, util, max);
@@ -759,6 +764,8 @@ static int sugov_init(struct cpufreq_policy *policy)
 		goto stop_kthread;
 	}
 
+	tunables->hispeed_load = DEFAULT_HISPEED_LOAD;
+	tunables->hispeed_freq = 0;
 	tunables->up_rate_limit_us = 500;
 	tunables->down_rate_limit_us = 2000;
 
