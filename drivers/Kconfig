@@ -232,4 +232,9 @@ source "drivers/trusty/Kconfig"
 source "techpack/data/drivers/Kconfig"
 
 source "drivers/kernelsu/kernel/Kconfig"
+
+comment "Lindroid DRM Loopback Driver"
+
+source "drivers/lindroid-drm-loopback/Kconfig"
+
 endmenu
