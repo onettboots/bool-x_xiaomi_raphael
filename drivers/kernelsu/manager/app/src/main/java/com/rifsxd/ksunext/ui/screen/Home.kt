@@ -650,7 +650,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
 
                     val suSFS = getSuSFS()
                     if (suSFS == "Supported") {
-                        val isSUS_SU = getSuSFSFeatures() == "CONFIG_KSU_SUSFS_SUS_SU"
+                        val isSUS_SU = hasSuSFs_SUS_SU() == "Supported"
                         val susSUMode = if (isSUS_SU) {
                             val mode = susfsSUS_SU_Mode()
                             val modeString =

@@ -26,7 +26,7 @@ $(info -- KernelSU-Next version: $(KSU_VERSION))
 ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
 else # If there is no .git file, the default version will be passed.
 #$(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU-Next a git submodule!")
-ccflags-y += -DKSU_VERSION=12800
+ccflags-y += -DKSU_VERSION=12828
 endif
 
 ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
@@ -49,12 +49,20 @@ ifeq ($(shell grep "ssize_t kernel_write" $(srctree)/fs/read_write.c | grep -q "
 ccflags-y += -DKSU_KERNEL_WRITE
 endif
 
-ifndef KSU_NEXT_EXPECTED_SIZE
-KSU_NEXT_EXPECTED_SIZE := 0x3e6
+ifndef KSU_NEXT_MANAGER_SIZE
+KSU_NEXT_MANAGER_SIZE := 0x3e6
 endif
 
-ifndef KSU_NEXT_EXPECTED_HASH
-KSU_NEXT_EXPECTED_HASH := 79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7
+ifndef KSU_NEXT_MANAGER_HASH
+KSU_NEXT_MANAGER_HASH := 79e590113c4c4c0c222978e413a5faa801666957b1212a328e46c00c69821bf7
+endif
+
+ifndef KSU_NEXT_WILD_EXPECTED_SIZE
+KSU_NEXT_WILD_EXPECTED_SIZE := 0x39b
+endif
+
+ifndef KSU_NEXT_WILD_EXPECTED_HASH
+KSU_NEXT_WILD_EXPECTED_HASH := 593d4ce870c02468639efeef631e07ca4d852d63f154be56706229f9a5be0800
 endif
 
 ifdef KSU_MANAGER_PACKAGE
@@ -62,11 +70,15 @@ ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
 $(info -- KernelSU-Next Manager package name: $(KSU_MANAGER_PACKAGE))
 endif
 
-$(info -- KernelSU-Next Manager signature size: $(KSU_NEXT_EXPECTED_SIZE))
-$(info -- KernelSU-Next Manager signature hash: $(KSU_NEXT_EXPECTED_HASH))
+$(info -- KernelSU-Next Manager signature size: $(KSU_NEXT_MANAGER_SIZE))
+$(info -- KernelSU-Next Manager signature hash: $(KSU_NEXT_MANAGER_HASH))
+$(info -- KernelSU-Next Wild Manager signature size: $(KSU_NEXT_WILD_EXPECTED_SIZE))
+$(info -- KernelSU-Next Wild Manager signature hash: $(KSU_NEXT_WILD_EXPECTED_HASH))
 
-ccflags-y += -DEXPECTED_NEXT_SIZE=$(KSU_NEXT_EXPECTED_SIZE)
-ccflags-y += -DEXPECTED_NEXT_HASH=\"$(KSU_NEXT_EXPECTED_HASH)\"
+ccflags-y += -DEXPECTED_MANAGER_SIZE=$(KSU_NEXT_MANAGER_SIZE)
+ccflags-y += -DEXPECTED_MANAGER_HASH=\"$(KSU_NEXT_MANAGER_HASH)\"
+ccflags-y += -DEXPECTED_WILD_NEXT_SIZE=$(KSU_NEXT_WILD_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_WILD_NEXT_HASH=\"$(KSU_NEXT_WILD_EXPECTED_HASH)\"
 
 ccflags-y += -DKSU_UMOUNT
 
