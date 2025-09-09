@@ -31,7 +31,7 @@
 static bool ksu_sucompat_non_kp __read_mostly = true;
 #endif
 
-extern void ksu_escape_to_root();
+extern void escape_to_root();
 
 static const char sh_path[] = "/system/bin/sh";
 static const char ksud_path[] = KSUD_PATH;
@@ -48,11 +48,13 @@ static inline void __user *userspace_stack_buffer(const void *d, size_t len)
 
 static inline char __user *sh_user_path(void)
 {
+
 	return userspace_stack_buffer(sh_path, sizeof(sh_path));
 }
 
 static inline char __user *ksud_user_path(void)
 {
+
 	return userspace_stack_buffer(ksud_path, sizeof(ksud_path));
 }
 
@@ -73,7 +75,7 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
-	char path[sizeof(su)] = {0};
+	char path[sizeof(su) + 1] = {0};
 #else
 	char path[sizeof(su) + 1];
 	memset(path, 0, sizeof(path));
@@ -127,8 +129,8 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 	}
 
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
-	char path[sizeof(su)] = {0};
-#else
+	char path[sizeof(su) + 1] = {0};
+#else	
 	char path[sizeof(su) + 1];
 	memset(path, 0, sizeof(path));
 #endif
@@ -189,7 +191,7 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 	pr_info("do_execveat_common su found\n");
 	memcpy((void *)filename->name, ksud_path, sizeof(ksud_path));
 
-	ksu_escape_to_root();
+	escape_to_root();
 
 	return 0;
 }
@@ -198,10 +200,11 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 			       void *__never_use_argv, void *__never_use_envp,
 			       int *__never_use_flags)
 {
+	//const char su[] = SU_PATH;
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
-	char path[sizeof(su)] = {0};
+	char path[sizeof(su) + 1] = {0};
 #else
-	char path[sizeof(su) + 1];
+ 	char path[sizeof(su) + 1];
 #endif
 
 #ifndef CONFIG_KSU_KPROBES_HOOK
@@ -213,7 +216,9 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	if (unlikely(!filename_user))
 		return 0;
 
-	memset(path, 0, sizeof(path));
+#ifndef CONFIG_KSU_SUSFS_SUS_SU
+ 	memset(path, 0, sizeof(path));
+#endif
 	ksu_strncpy_from_user_retry(path, *filename_user, sizeof(path));
 
 	if (likely(memcmp(path, su, sizeof(su))))
@@ -225,7 +230,7 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	pr_info("sys_execve su found\n");
 	*filename_user = ksud_user_path();
 
-	ksu_escape_to_root();
+	escape_to_root();
 
 	return 0;
 }
