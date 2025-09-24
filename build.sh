@@ -155,11 +155,11 @@ case "$cchoice" in
                 ;;
         2 )
                 echo
-                echo "Downloading Boolx-clang for X86 host."
-                wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-21/boolx-clang21.tar.gz -P $SAVEHERE
+                echo "Downloading Boolx-clang 22.0.0 for X86 host."
+                wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-22/boolx-clang22.tar.zst -P $SAVEHERE
                 cd $SAVEHERE
-                echo "Extracting Boolx Clang 21.0.0 to $HOME/toolchains/:"
-                tar -xf boolx-clang21.tar.gz
+                echo "Extracting Boolx Clang 22.0.0 to $HOME/toolchains/:"
+                tar --use-compress-program=unzstd -xf boolx-clang22x.tar.zst
                 break
                 ;;
         * )
