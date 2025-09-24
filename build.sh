@@ -122,8 +122,8 @@ function upload_boolx_action()
         sed -i '7i\* KSU+NEXT: '$KSU_VER'' $upl
         sed -i '8i\* SUSFS: '$SUSFS_VER'' $upl
         sed -i '9i\* Type: MIUI Erofs, '$OCDS'' $upl
-        sed -i '10i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-HyperMiui-erofs' $upl
-        sed -i '11i\* Clang: Boolx Clang 21.0.0"' $upl
+        sed -i '10i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/16-HyperMiui-erofs' $upl
+        sed -i '11i\* Clang: Boolx Clang 22.0.0"' $upl
         bash $upl
 }
 
@@ -147,27 +147,26 @@ else
    while read -p "Choose your architecture (1 / 2)? " cchoice
 do
 case "$cchoice" in
-	1 )
-		echo
-		echo "Downloading Boolx-clang for Aarch64 host."
-		git clone https://gitlab.com/onettboots/boolx-clang.git -b Clang-15.0 $TOOLCHAINS
-		break
-		;;
-	2 )
-		echo
-		echo "Downloading Boolx-clang for X86 host."
-		wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-21/boolx-clang21.tar.gz -P $SAVEHERE
-  		cd $SAVEHERE
- 		echo "Extracting Boolx Clang 21.0.0 to $HOME/toolchains/:"
-  		tar -xf boolx-clang21.tar.gz
-  		rm boolx-clang21.tar.gz
-		break
-		;;
-	* )
-		echo
-		echo "Invalid try again!"
-		echo
-		;;
+        1 )
+                echo
+                echo "Downloading Boolx-clang for Aarch64 host."
+                git clone https://gitlab.com/onettboots/boolx-clang.git -b Clang-15.0 $TOOLCHAINS
+                break
+                ;;
+        2 )
+                echo
+                echo "Downloading Boolx-clang 22.0.0 for X86 host."
+                wget https://github.com/onettboots/boolx-clang-build/releases/download/Boolx-22/boolx-clang22.tar.zst -P $SAVEHERE
+                cd $SAVEHERE
+                echo "Extracting Boolx Clang 22.0.0 to $HOME/toolchains/:"
+                tar --use-compress-program=unzstd -xf boolx-clang22.tar.zst
+                break
+                ;;
+        * )
+                echo
+                echo "Invalid try again!"
+                echo
+                ;;
 esac
 done
    echo -e "${restore}"
