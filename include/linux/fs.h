@@ -608,7 +608,7 @@ struct inode {
 	 *    inode_(inc|dec)_link_count
 	 */
 	union {
-		const unsigned int i_nlink = {0};
+		const unsigned int i_nlink;
 		unsigned int __i_nlink;
 	};
 	dev_t			i_rdev;
