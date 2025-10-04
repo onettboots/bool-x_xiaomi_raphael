@@ -65,6 +65,14 @@ ifndef KSU_NEXT_WILD_EXPECTED_HASH
 KSU_NEXT_WILD_EXPECTED_HASH := 593d4ce870c02468639efeef631e07ca4d852d63f154be56706229f9a5be0800
 endif
 
+ifndef KSU_RSUNTK_EXPECTED_SIZE
+KSU_RSUNTK_EXPECTED_SIZE := 0x396
+endif
+
+ifndef KSU_RSUNTK_EXPECTED_HASH
+KSU_RSUNTK_EXPECTED_HASH := f415f4ed9435427e1fdf7f1fccd4dbc07b3d6b8751e4dbcec6f19671f427870b
+endif
+
 ifdef KSU_MANAGER_PACKAGE
 ccflags-y += -DKSU_MANAGER_PACKAGE=\"$(KSU_MANAGER_PACKAGE)\"
 $(info -- KernelSU-Next Manager package name: $(KSU_MANAGER_PACKAGE))
@@ -74,11 +82,15 @@ $(info -- KernelSU-Next Manager signature size: $(KSU_NEXT_MANAGER_SIZE))
 $(info -- KernelSU-Next Manager signature hash: $(KSU_NEXT_MANAGER_HASH))
 $(info -- KernelSU-Next Wild Manager signature size: $(KSU_NEXT_WILD_EXPECTED_SIZE))
 $(info -- KernelSU-Next Wild Manager signature hash: $(KSU_NEXT_WILD_EXPECTED_HASH))
+$(info -- KernelSU RSUNTK signature size: $(KSU_RSUNTK_EXPECTED_SIZE))
+$(info -- KernelSU RSUNTK signature hash: $(KSU_RSUNTK_EXPECTED_HASH))
 
 ccflags-y += -DEXPECTED_MANAGER_SIZE=$(KSU_NEXT_MANAGER_SIZE)
 ccflags-y += -DEXPECTED_MANAGER_HASH=\"$(KSU_NEXT_MANAGER_HASH)\"
 ccflags-y += -DEXPECTED_WILD_NEXT_SIZE=$(KSU_NEXT_WILD_EXPECTED_SIZE)
 ccflags-y += -DEXPECTED_WILD_NEXT_HASH=\"$(KSU_NEXT_WILD_EXPECTED_HASH)\"
+ccflags-y += -DEXPECTED_RSUNTK_SIZE=$(KSU_RSUNTK_EXPECTED_SIZE)
+ccflags-y += -DEXPECTED_RSUNTK_HASH=\"$(KSU_RSUNTK_EXPECTED_HASH)\"
 
 ccflags-y += -DKSU_UMOUNT
 
@@ -202,7 +214,7 @@ $(eval SUSFS_VERSION=$(shell cat $(srctree)/include/linux/susfs.h | grep -E '^#d
 $(info )
 $(info -- SUSFS_VERSION: $(SUSFS_VERSION))
 else
-$(info -- You have not integrate susfs in your kernel.)
+$(info -- You have not integrated susfs in your kernel yet.)
 $(info -- Read: https://gitlab.com/simonpunk/susfs4ksu)
 endif
 # Keep a new line here!! Because someone may append config
