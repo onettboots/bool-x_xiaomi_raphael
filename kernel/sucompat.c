@@ -13,9 +13,6 @@
 #else
 #include <linux/sched.h>
 #endif
-#ifdef CONFIG_KSU_SUSFS_SUS_SU
-#include <linux/susfs_def.h>
-#endif
 
 #include "objsec.h"
 #include "allowlist.h"
@@ -48,16 +45,13 @@ static inline void __user *userspace_stack_buffer(const void *d, size_t len)
 
 static inline char __user *sh_user_path(void)
 {
-
 	return userspace_stack_buffer(sh_path, sizeof(sh_path));
 }
 
 static inline char __user *ksud_user_path(void)
 {
-
 	return userspace_stack_buffer(ksud_path, sizeof(ksud_path));
 }
-
 int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 			 int *__unused_flags)
 {
@@ -111,7 +105,6 @@ struct filename* susfs_ksu_handle_stat(int *dfd, const char __user **filename_us
 
 int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
-
 #ifndef CONFIG_KSU_KPROBES_HOOK
 	if (!ksu_sucompat_non_kp){
 		return 0;
@@ -119,9 +112,9 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 #endif
 
 #ifndef CONFIG_KSU_SUSFS_SUS_SU
-	if (!ksu_is_allow_uid(current_uid().val)) {
-		return 0;
-	}
+ 	if (!ksu_is_allow_uid(current_uid().val)) {
+ 		return 0;
+ 	}
 #endif
 
 	if (unlikely(!filename_user)) {
@@ -130,9 +123,9 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 
 #ifdef CONFIG_KSU_SUSFS_SUS_SU
 	char path[sizeof(su) + 1] = {0};
-#else	
-	char path[sizeof(su) + 1];
-	memset(path, 0, sizeof(path));
+#else
+ 	char path[sizeof(su) + 1];
+ 	memset(path, 0, sizeof(path));
 #endif
 // Remove this later!! we use syscall hook, so this will never happen!!!!!
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0) && 0
@@ -217,7 +210,7 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 		return 0;
 
 #ifndef CONFIG_KSU_SUSFS_SUS_SU
- 	memset(path, 0, sizeof(path));
+	memset(path, 0, sizeof(path));
 #endif
 	ksu_strncpy_from_user_retry(path, *filename_user, sizeof(path));
 
@@ -368,7 +361,8 @@ void ksu_sucompat_init()
 void ksu_sucompat_exit()
 {
 #ifdef CONFIG_KSU_KPROBES_HOOK
-	for (int i = 0; i < ARRAY_SIZE(su_kps); i++) {
+	int i;
+	for (i = 0; i < ARRAY_SIZE(su_kps); i++) {
 		destroy_kprobe(&su_kps[i]);
 	}
 #else
