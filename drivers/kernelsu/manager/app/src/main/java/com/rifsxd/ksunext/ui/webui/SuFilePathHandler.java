@@ -59,13 +59,6 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
     private final File mDirectory;
 
     private final Shell mShell;
-    private final Context mContext;
-    private final InsetsSupplier mInsetsSupplier;
-
-    public interface InsetsSupplier {
-        @NonNull
-        Insets get();
-    }
 
     /**
      * Creates PathHandler for app's internal storage.
@@ -87,15 +80,13 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
      * @param context {@link Context} that is used to access app's internal storage.
      * @param directory the absolute path of the exposed app internal storage directory from
      *                  which files can be loaded.
-     * @param rootShell {@link Shell} instance with root access to read files.
-     * @param insetsSupplier {@link InsetsSupplier} to provide window insets for styling web content.
      * @throws IllegalArgumentException if the directory is not allowed.
      */
+    private final Context mContext;
 
-    public SuFilePathHandler(@NonNull Context context, @NonNull File directory, Shell rootShell, @NonNull InsetsSupplier insetsSupplier) {
+    public SuFilePathHandler(@NonNull Context context, @NonNull File directory, Shell rootShell) {
         try {
             mContext = context;
-            mInsetsSupplier = insetsSupplier;
             mDirectory = new File(getCanonicalDirPath(directory));
             if (!isAllowedInternalStorageDir(context)) {
                 throw new IllegalArgumentException("The given directory \"" + directory
@@ -143,14 +134,6 @@ public final class SuFilePathHandler implements WebViewAssetLoader.PathHandler {
     @WorkerThread
     @NonNull
     public WebResourceResponse handle(@NonNull String path) {
-        if ("internal/insets.css".equals(path)) {
-            String css = mInsetsSupplier.get().getCss();
-            return new WebResourceResponse(
-                    "text/css",
-                    "utf-8",
-                    new ByteArrayInputStream(css.getBytes(StandardCharsets.UTF_8))
-            );
-        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             if ("internal/colors.css".equals(path)) {
                 String css = MonetColorsProvider.INSTANCE.getColorsCss(mContext);

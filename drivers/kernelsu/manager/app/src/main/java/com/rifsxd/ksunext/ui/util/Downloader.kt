@@ -77,21 +77,14 @@ fun checkNewVersion(): LatestVersionInfo {
                 val body = response.body?.string() ?: return defaultValue
                 val json = org.json.JSONObject(body)
                 val changelog = json.optString("body")
-                val versionTag = json.optString("tag_name", "")
 
                 val assets = json.getJSONArray("assets")
-                val pkgId = ksuApp.applicationContext.packageName
                 for (i in 0 until assets.length()) {
                     val asset = assets.getJSONObject(i)
                     val name = asset.getString("name")
-                    val isApk = name.endsWith(".apk")
-                    val isSpoofed = name.contains("spoofed", ignoreCase = true)
-                    val shouldDownload = if (pkgId == "com.rifsxd.ksunext") {
-                        isApk && !isSpoofed
-                    } else {
-                        isApk && isSpoofed
+                    if (!name.endsWith(".apk")) {
+                        continue
                     }
-                    if (!shouldDownload) continue
 
                     val regex = Regex("v(.+?)_(\\d+)-")
                     val matchResult = regex.find(name) ?: continue
@@ -102,10 +95,10 @@ fun checkNewVersion(): LatestVersionInfo {
                     return LatestVersionInfo(
                         versionCode,
                         downloadUrl,
-                        changelog,
-                        versionTag
+                        changelog
                     )
                 }
+
             }
     }
     return defaultValue
