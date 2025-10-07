@@ -47,7 +47,7 @@ echo ""
 echo "Adding commit message:"
 
 git add drivers/kernelsu/kernel/Makefile drivers/kernelsu/kernel/dksu
-git commit -s -m "drivers: kernelsu: Hardcode DKSU_VERSION to tiann/KernelSU@c62b89f
+git commit -s -m "drivers: kernelsu: Hardcode DKSU_VERSION to $CURRENT https://github.com/rifsxd/KernelSU-Next/commits/next/
 A little bit hacky way. Run (git rev-list --count HEAD) on a separate KernelSU repo"
 
 rm -rf ksu
