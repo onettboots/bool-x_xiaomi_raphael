@@ -205,6 +205,18 @@
 			};
 		};
 
+		qcom,gpu-models {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible="qcom,gpu-models";
+
+			qcom,gpu-model@0 {
+				qcom,gpu-model-id = <0>;
+				qcom,gpu-model = "Adreno640v2";
+				qcom,vk-device-id= <0x6040001>;
+			};
+		};	
+
 		/* Power levels */
 		qcom,gpu-pwrlevels {
 			#address-cells = <1>;
