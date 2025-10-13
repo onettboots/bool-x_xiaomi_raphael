@@ -130,7 +130,10 @@ function make_zip {
 
 function upload()
 {
-curl bashupload.com -T $ZIP_NAME*.zip
+		#curl bashupload.com -T $ZIP_NAME*.zip
+		source $KERNEL_DIR/.dump
+        	ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+        	sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no "$ziped" "$USER@$HOST:$REMOTE_DIR"
 }
 
 function upload_boolx_action()
