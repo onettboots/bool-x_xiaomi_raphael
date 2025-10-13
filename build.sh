@@ -12,20 +12,13 @@ restore='\033[0m'
 clear
 
 # Resources
-export LC_ALL=C && export USE_CCACHE=1
-ccache -M 10G
-export SUBARCH=arm64
 export ARCH=arm64
-export CLANG_PATH="$HOME/toolchains/boolx-clang/bin"
-export PATH=${CLANG_PATH}:${PATH}
-export CLANG_TRIPLE=${CLANG_PATH}/aarch64-linux-gnu-
-export CROSS_COMPILE=${CLANG_PATH}/aarch64-linux-gnu-
-export CROSS_COMPILE_ARM32=${CLANG_PATH}/arm-linux-gnueabi-
-# export DTC_EXT=dtc # we don needed it again
+export PATH="$HOME/toolchains/boolx-clang/bin/:$PATH"
 export CC=$HOME/toolchains/boolx-clang/bin/clang
-CLANG_DIR="$HOME/toolchains/boolx-clang"
-CLANG="${CLANG_DIR}/bin:$PATH"
-CLANG_BIN="${CLANG}/bin/"
+export LC_ALL=C
+export USE_CCACHE=1
+export CCACHE_EXEC=$(command -v ccache)
+ccache -M 10G
 TARGET_IMAGE="Image.gz-dtb"
 cpus=`expr $(nproc --all)`
 objdir="${kernel_dir}/out"
@@ -45,34 +38,27 @@ CONFIG=out/.config
 KERNEL=out/arch/arm64/boot/Image.gz-dtb
 DTBO=out/arch/arm64/boot/dtbo.img
 upl=$kernel_dir/upl.sh
-export THINLTO_CACHE_PATH=$SAVEHERE/thincache
 KER_VER=$(grep -oP '(?<=VERSION = )\d+|(?<=PATCHLEVEL = )\d+|(?<=SUBLEVEL = )\d+' Makefile | paste -sd '.')
 KSU_VER=$(cat drivers/kernelsu/kernel/dksu 2>/dev/null || echo "Disabled")
 SUSFS_VER=$(grep -oP '(?<=#define SUSFS_VERSION ")[^"]*' include/linux/susfs.h 2>/dev/null || echo "Disabled")
 OCDS=$(grep -qP "timing@1\s*{" arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-cmd.dtsi && echo "OCD" || echo "No-OCD")
-export THINLTO_CACHE_DIR=$HOME/toolchains/thincache
+export THINLTO_CACHE_DIR=/home/onettboots/toolchains/thincache
+#export CCACHE_DIR="$HOME/toolchains/boolx_ccache" #localbuild
 
 #functions
 function build_ocd() {
-                [ -f $REPACK_DIR/ocd ] && rm $REPACK_DIR/ocd
-      [ -f $REPACK_DIR/dtbo.img ] && rm $REPACK_DIR/dtbo.img
-      [ -f $REPACK_DIR/Image.gz-dtb ] && rm $REPACK_DIR/Image.gz-dtb
-      ocd_patch
-      cook dtbo.img
-      cp $DTBO $REPACK_DIR/ocd
-      git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-cmd.dtsi
-      git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-global-cmd.dtsi
+      		[ -f $REPACK_DIR/ocd ] && rm $REPACK_DIR/ocd
+      		[ -f $REPACK_DIR/dtbo.img ] && rm $REPACK_DIR/dtbo.img
+      		[ -f $REPACK_DIR/Image.gz-dtb ] && rm $REPACK_DIR/Image.gz-dtb
+      		ocd_patch
+      		cook dtbo.img
+      		cp $DTBO $REPACK_DIR/ocd
+      		git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-cmd.dtsi
+      		git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-global-cmd.dtsi
 }
 
 function makeconfig() {
-                PATH=${CLANG_BIN}:${PATH} \
-                make -s -j${cpus} \
-                LLVM=1 \
-                LLVM_IAS=1 \
-                CC="ccache clang" \
-                CROSS_COMPILE="aarch64-linux-gnu-" \
-                CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
-                O="${objdir}" ${1}
+                make -s O=out ARCH=arm64 ${CONFIGS}
 }
 
 function cook() {
@@ -89,17 +75,16 @@ function cook() {
 }
 
 function build() {
-		PATH=${CLANG_BIN}:${PATH} \
-		make -s -j${cpus} \
-		LLVM=1 \
-		LLVM_IAS=1 \
-		CC="ccache clang" \
-		CROSS_COMPILE="aarch64-linux-gnu-" \
-		CROSS_COMPILE_ARM32="arm-linux-gnueabi-" \
-		O="${objdir}" ${1} \
+		make -s -j$(nproc) \
+    		O=out \
+    		ARCH=arm64 \
+    		CC="ccache clang" \
+    		LLVM=1 \
+    		LLVM_IAS=1 \
+    		CROSS_COMPILE=aarch64-linux-gnu- \
+    		CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 		KBUILD_BUILD_USER="OnettBoots" \
-		KBUILD_BUILD_HOST="OpenELA" \
-		dtbo.img
+                KBUILD_BUILD_HOST="OpenELA"
 }
 
 function create_out {
@@ -131,9 +116,9 @@ function make_zip {
 function upload()
 {
 		#curl bashupload.com -T $ZIP_NAME*.zip
-		source $KERNEL_DIR/.dump
-        	ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
-        	sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no "$ziped" "$USER@$HOST:$REMOTE_DIR"
+		source $kernel_dir/.dump
+		ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+	        sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no "$ziped" "$USER@$HOST:$REMOTE_DIR"
 }
 
 function upload_boolx_action()
@@ -839,10 +824,12 @@ if [ -f $KERNEL ]; then
    echo "------------------------------------------"
    echo -e "${restore}"
    build_time
-   if [ -f $upl ]; then
-   	upload_boolx_action
+   if [[ -f "$kernel_dir/.dump" ]]; then
+    upload
+   elif [[ -f "$upl" ]]; then
+    upload_boolx_action
    else
-   	upload
+    echo ""
    fi
    echo
 else
