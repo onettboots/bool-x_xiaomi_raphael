@@ -1,15 +1,35 @@
 #!/bin/bash 
 
-kernel_dir="${PWD}"
+KERNEL_DIR="${PWD}"
+KERNEL=out/arch/arm64/boot/Image.gz-dtb
+DTBO=out/arch/arm64/boot/dtbo.img
 rm .version
 rm build.log
+rm $KERNEL
+rm $DTBO
 # Bash Color
+yellow='\033[01;33m'
 green='\033[01;32m'
 red='\033[01;31m'
 blink_red='\033[05;31m'
 restore='\033[0m'
 
+# Simpan info ke variabel
+HELP=$(cat <<EOF
+--------------------------------
+       Boolx Kernel Build
+================================
+  --clean  : Clean build
+  --ksu    : Build KSU Next Only
+  --susfs  : Build KSU and SUSFS
+--------------------------------
+EOF
+)
+
 clear
+echo -e "${green}"
+echo "$HELP"
+echo -e "${restore}"
 
 # Resources
 export ARCH=arm64
@@ -18,13 +38,17 @@ export CC=$HOME/toolchains/boolx-clang/bin/clang
 export LC_ALL=C
 export USE_CCACHE=1
 export CCACHE_EXEC=$(command -v ccache)
+export THINLTO_CACHE_DIR=/home/onettboots/toolchains/thincache
+#export CCACHE_DIR="$HOME/toolchains/boolx_ccache" #localbuild
 ccache -M 10G
+
+# Variables
 TARGET_IMAGE="Image.gz-dtb"
 cpus=`expr $(nproc --all)`
-objdir="${kernel_dir}/out"
+objdir="${KERNEL_DIR}/out"
 CONFIGS="raphael_defconfig"
-
-VER="V2.3-Parvez-DSP"
+CFG=arch/arm64/configs/raphael_defconfig
+VER="V2.3-Alarabi-DSP"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
@@ -35,17 +59,11 @@ ZIP_NAME="$AK_VER"-"$DATE"
 TOOLCHAINS=$HOME/toolchains/boolx-clang
 SAVEHERE=$HOME/toolchains
 CONFIG=out/.config
-KERNEL=out/arch/arm64/boot/Image.gz-dtb
-DTBO=out/arch/arm64/boot/dtbo.img
-upl=$kernel_dir/upl.sh
+upl=$KERNEL_DIR/upl.sh
 KER_VER=$(grep -oP '(?<=VERSION = )\d+|(?<=PATCHLEVEL = )\d+|(?<=SUBLEVEL = )\d+' Makefile | paste -sd '.')
-KSU_VER=$(cat drivers/kernelsu/kernel/dksu 2>/dev/null || echo "Disabled")
-SUSFS_VER=$(grep -oP '(?<=#define SUSFS_VERSION ")[^"]*' include/linux/susfs.h 2>/dev/null || echo "Disabled")
 OCDS=$(grep -qP "timing@1\s*{" arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-cmd.dtsi && echo "OCD" || echo "No-OCD")
-export THINLTO_CACHE_DIR=/home/onettboots/toolchains/thincache
-#export CCACHE_DIR="$HOME/toolchains/boolx_ccache" #localbuild
 
-#functions
+# functions
 function build_ocd() {
       		[ -f $REPACK_DIR/ocd ] && rm $REPACK_DIR/ocd
       		[ -f $REPACK_DIR/dtbo.img ] && rm $REPACK_DIR/dtbo.img
@@ -55,10 +73,6 @@ function build_ocd() {
       		cp $DTBO $REPACK_DIR/ocd
       		git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-cmd.dtsi
       		git restore arch/arm64/boot/dts/qcom/dsi-panel-ss-fhd-ea8076-global-cmd.dtsi
-}
-
-function makeconfig() {
-                make -s O=out ARCH=arm64 ${CONFIGS}
 }
 
 function cook() {
@@ -75,7 +89,7 @@ function cook() {
 }
 
 function build() {
-		make -s -j$(nproc) \
+		make -j$(nproc) \
     		O=out \
     		ARCH=arm64 \
     		CC="ccache clang" \
@@ -87,28 +101,102 @@ function build() {
                 KBUILD_BUILD_HOST="OpenELA"
 }
 
+function progress() {
+		filezip=$(ls $ZIP_MOVE/*.zip 2>/dev/null | wc -l)
+
+		if (( filezip == 1 )); then
+		  total_lines=16
+		elif (( filezip > 1 )); then
+		  total_lines=65
+		else
+  		  total_lines=4250
+		fi
+
+		count=0
+		bar_length=50
+		while IFS= read -r line; do
+
+		    ((count++))
+		    percent=$(( count * 100 / total_lines ))
+		    (( percent > 100 )) && percent=100
+
+		    filled=$(( percent * bar_length / 100 ))
+		    empty=$(( bar_length - filled ))
+
+		    #echo "$line"
+
+		    printf "\rBuilding: [%-${bar_length}s] %3d%%" \
+		        "$(printf '#%.0s' $(seq 1 $filled))$(printf '.%.0s' $(seq 1 $empty))" \
+		        "$percent"
+
+		done
+
+}
+#function progress() {
+#		total=35
+#		pos=0
+#		direction=1
+#
+#		while true; do
+#		  bar=$(printf '%*s' "$total" '')
+#		  bar="${bar:0:pos}*################*${bar:pos+1}"
+#
+#		  printf "\r Building: [%s]" "$bar"
+#
+#		  ((pos += direction))
+#		  if (( pos == total - 1 )); then
+#		    direction=-1
+#		  elif (( pos == 0 )); then
+#		    direction=1
+#		  fi
+#
+#		  if [ -f "$KERNEL" ]; then
+#		  exit 0
+#		  fi
+#		  sleep 0.1
+#		done
+#}
 function create_out {
 		echo
 		git clone https://github.com/onettboots/boolx_anykernel.git $REPACK_DIR && mkdir $ZIP_MOVE
 }
-function clean_all {
-		echo
-		echo -e "${red}Cleaning Kernel Projects .... ${restore}"
-		cd ${kernel_dir}
-		make -s clean
-		make -s -j${cpus} mrproper O=${objdir}
-		rm -rf out
-}
 function make_config {
 		echo
-		makeconfig ${CONFIGS}
+		make -s O=out ARCH=arm64 ${CONFIGS}
 }
 function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
 }
 function make_zip {
 		cd $REPACK_DIR
-		zip -r9 `echo $ZIP_NAME`.zip *
+		ksu=$(cd $KERNEL_DIR && grep -q '^CONFIG_KSU=y' $CFG && echo "y" || echo "n")
+		susfs=$(cd $KERNEL_DIR && grep -q '^CONFIG_KSU_SUSFS=y' $CFG && echo "y" || echo "n")
+
+		if [[ $ksu == "y" && $susfs == "y" ]]; then
+		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME-KSUNEXT-SUSFS`.zip
+		  ZIPSTRING=`echo $ZIP_NAME-KSUNEXT-SUSFS`
+		  zip -r9 `echo $ZIP_NAME-KSUNEXT-SUSFS`.zip *
+		  KSU_VER=$(cat $KERNEL_DIR/drivers/kernelsu/kernel/dksu 2>/dev/null)
+		  SUSFS_VER=$(grep -oP '(?<=#define SUSFS_VERSION ")[^"]*' $KERNEL_DIR/include/linux/susfs.h 2>/dev/null)
+		elif [[ $ksu == "y" && $susfs == "n" ]]; then
+		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME-KSUNEXT`.zip
+		  ZIPSTRING=`echo $ZIP_NAME-KSUNEXT`
+		  zip -r9 `echo $ZIP_NAME-KSUNEXT`.zip *
+		  KSU_VER=$(cat $KERNEL_DIR/drivers/kernelsu/kernel/dksu 2>/dev/null)
+		  SUSFS_VER=Disabled
+		elif [[ $ksu == "n" && $susfs == "n" ]]; then
+		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+		  ZIPSTRING=`echo $ZIP_NAME`
+		  zip -r9 `echo $ZIP_NAME`.zip *
+		  KSU_VER=Disabled
+                  SUSFS_VER=Disabled
+		else
+		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+		  ZIPSTRING=`echo $ZIP_NAME`
+		  zip -r9 `echo $ZIP_NAME`.zip *
+		  KSU_VER=Disabled
+                  SUSFS_VER=Disabled
+		fi
 		mv  `echo $ZIP_NAME`*.zip $ZIP_MOVE
 		cd $KERNEL_DIR
 }
@@ -116,18 +204,18 @@ function make_zip {
 function upload()
 {
 		#curl bashupload.com -T $ZIP_NAME*.zip
-		source $kernel_dir/.dump
-		ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
-	        sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no "$ziped" "$USER@$HOST:$REMOTE_DIR"
+		source $KERNEL_DIR/.dump
+		#ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+	        sshpass -p "$PASSWORD" scp -o StrictHostKeyChecking=no "$ZIPED" "$USER@$HOST:$REMOTE_DIR"
 }
 
 function upload_boolx_action()
 {
-                ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
-		cd $kernel_dir
+                #ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
+		cd $KERNEL_DIR
 		#wget
 		chmod +x $upl
-		sed -i "4i\FILE_PATH=$ziped" $upl
+		sed -i "4i\FILE_PATH=$ZIPED" $upl
 		BUILDDATE=`date +"%Y-%m-%d"`
 		sed -i '5i\CAPTION="* Build Date: '$BUILDDATE'' $upl
 		sed -i '6i\* Kernel Version: '$KER_VER'' $upl
@@ -137,7 +225,7 @@ function upload_boolx_action()
 		sed -i '10i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-DSPcr' $upl
             sed -i '11i\* Clang: Boolx Clang 22.0.0' $upl
             sed -i '12i\' $upl
-            sed -i '13i\*NOTES: Rename the file '$ZIP_NAME'.zip to '$ZIP_NAME'-ocd.zip to support OverClock Display up to 90hz"' $upl
+            sed -i '13i\*NOTES: Rename the file '$ZIPSTRING'.zip to '$ZIPSTRING'-ocd.zip to support OverClock Display up to 90hz"' $upl
             bash $upl
 }
 
@@ -660,13 +748,13 @@ echo "----------------------"
 echo "Checking Toolchains:"
 echo "----------------------"
 echo -e "${restore}"
-
+sleep 1
 if [ -d $TOOLCHAINS ]; then
-   echo -e "${green}"
+   echo -e "${red}"
    echo "Bool-x clang is ready..!!"
    echo -e "${restore}"
 else
-   echo -e "${red}"
+   echo -e "${green}"
    echo "Toolchains Architecture Host:"
    echo "1. ARCH64"
    echo "2. X86"
@@ -697,16 +785,22 @@ esac
 done
    echo -e "${restore}"
 fi
+sleep 1
+clear
+echo -e "${green}"
+#echo "-----------------------"
+echo "$HELP"
+#echo "-----------------------"
+echo -e "${restore}"
 
 echo -e "${green}"
 echo "----------------------------------"
 echo "Checking for Anykernel flashable:"
 echo "----------------------------------"
 echo -e "${restore}"
-
-
+sleep 1
 if [ -d $REPACK_DIR ] && [ -d $ZIP_MOVE ]; then
-   echo -e "${green}"
+   echo -e "${red}"
    echo "Anykernel is ready skipping..!!"
    echo -e "${restore}"
 else
@@ -715,99 +809,74 @@ else
    create_out
    echo -e "${restore}"
 fi
-
+sleep 1
+clear
 echo -e "${green}"
-echo "------------------"
-echo "CLEAN OPTIONS:"
-echo "------------------"
-while read -p "Do you want to clean build (y/n)? " cchoice
-do
-case "$cchoice" in
-	y|Y )
-	    echo -e "${red}"
-		clean_all
-		echo -e "${restore}"
-		echo -e "${green}"
-		echo "All Cleaned now."
-		echo -e "${restore}"
-		break
-		;;
-	n|N )
-		rm $KERNEL
-		break
-		;;
-	* )
-		echo -e "${red}"
-		echo "Invalid try again!"
-		echo -e "${restore}"
-		;;
-esac
-done
+echo "$HELP"
+echo -e "${restore}"
+echo -e "${green}"
+
+echo "-----------------------"
+echo " USAGE :"
+echo "-----------------------"
 echo -e "${restore}"
 
-if [ -f $CONFIG ]; then
-   echo -e "${green}"
-   while read -p "Old config is exist do you want replace with new config ? (y/n)? " cchoice
-do
-case "$cchoice" in
-	y|Y )
-		make_config
-		echo
-		break
-		;;
-	n|N )
-		break
-		;;
-	* )
-		echo
-		echo "Invalid try again!"
-		echo
-		;;
-esac
+sleep 1
+enable_ksu=n
+enable_susfs=n
+
+function clean_all {
+	rm -rf out
+    echo -e "${red}""- Clean build""${restore}"
+}
+
+for arg in "$@"; do
+    case "$arg" in
+        --ksu) enable_ksu=y;;
+        --susfs) enable_susfs=y;;
+	--clean) clean_all;;
+    esac
 done
-   echo -e "${restore}"
-else
-   echo -e "${green}"
-   echo -e "${restore}"
-fi
 
-if [ -f $CONFIG ]; then
-   echo -e "${green}"
-   echo -e "${restore}"
+if grep -q "^CONFIG_KSU=" "$CFG"; then
+    sed -i "s/^CONFIG_KSU=.*/CONFIG_KSU=$enable_ksu/" "$CFG"
 else
-   echo -e "${green}"
-   echo "-------------------------------------"
-   echo "Making Configs:"
-   echo "-------------------------------------"
-   echo -e "${restore}"
-   echo -e "${red}"
-   make_config
-   echo -e "${restore}"
+    echo "CONFIG_KSU=$enable_ksu" >> "$CFG"
 fi
+sleep 0.5
+echo -e "${red}- KSU $( [ $enable_ksu = y ] && echo Enabled || echo Disabled )${restore}"
 
+sleep 0.5
+if grep -q "^CONFIG_KSU_SUSFS=" "$CFG"; then
+    sed -i "s/^CONFIG_KSU_SUSFS=.*/CONFIG_KSU_SUSFS=$enable_susfs/" "$CFG"
+else
+    echo "CONFIG_KSU_SUSFS=$enable_susfs" >> "$CFG"
+fi
+sleep 0.5
+echo -e "${red}- SUSFS $( [ $enable_susfs = y ] && echo Enabled || echo Disabled )${restore}"
+sleep 0.5
+echo -e "${red}""- 60HZ by default""${restore}"
+sleep 0.5
+echo -e "${red}""- Patch OCD Support by renaming zip file""${restore}"
+sleep 0.5
 echo -e "${green}"
-echo "-----------------"
-echo "Building Kernel:"
-echo "-----------------"
+echo "-----------------------"
+echo " Starting Build !"
+echo "-----------------------"
 echo -e "${restore}"
 
-cd ${kernel_dir}
+cd ${KERNEL_DIR}
+make_config
 build_ocd
-build ${TARGET_IMAGE}
-
+echo -e "${yellow}"
+build ${TARGET_IMAGE} | tee logs.txt | progress
+echo -e "${restore}"
 function build_time {
    DATE_END=$(date +"%s")
    DIFF=$(($DATE_END - $DATE_START))
    echo "Time: $(($DIFF / 60)) minute(s) and $(($DIFF % 60)) seconds."
 }
 
-echo -e "${green}"
-echo "----------------------"
-echo "Checking output files"
-echo "----------------------"
-echo -e "${restore}"
-sleep 3
-    
 if [ -f $KERNEL ]; then
    echo -e "${green}"
    echo "------------------------------------------"
@@ -824,7 +893,7 @@ if [ -f $KERNEL ]; then
    echo "------------------------------------------"
    echo -e "${restore}"
    build_time
-   if [[ -f "$kernel_dir/.dump" ]]; then
+   if [[ -f "$KERNEL_DIR/.dump" ]]; then
     upload
    elif [[ -f "$upl" ]]; then
     upload_boolx_action
@@ -840,7 +909,9 @@ else
    echo -e "${restore}"
    build_time
 fi
-
 echo
 
-rm -rf $upl
+# End
+#rm -rf $upl
+cd $KERNEL_DIR
+git restore $CFG
