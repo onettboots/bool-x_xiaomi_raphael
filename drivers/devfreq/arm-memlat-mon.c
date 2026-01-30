@@ -98,7 +98,7 @@ static inline unsigned long read_event(struct event_data *event)
 	unsigned long ev_count;
 	u64 total, enabled, running;
 
-	if (!event->pevent)
+	if (!event->pevent || perf_event_read_local(event->pevent, &total, &enabled, &running))
 		return 0;
 
 	total = perf_event_read_value(event->pevent, &enabled, &running);
