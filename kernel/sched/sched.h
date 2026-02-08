@@ -2528,6 +2528,19 @@ static inline u64 irq_time_read(int cpu)
 }
 #endif /* CONFIG_IRQ_TIME_ACCOUNTING */
 
+#ifdef CONFIG_SCHED_POC_SELECTOR
+extern struct static_key_true sched_poc_enabled;
+extern struct static_key_true sched_poc_single_word;
+extern void __set_cpu_idle_state(int cpu, int state);
+static __always_inline void set_cpu_idle_state(int cpu, int state)
+{
+	if (static_key_true(&sched_poc_enabled))
+		__set_cpu_idle_state(cpu, state);
+}
+#else
+static inline void set_cpu_idle_state(int cpu, int state) { }
+#endif
+
 #ifdef CONFIG_CPU_FREQ
 DECLARE_PER_CPU(struct update_util_data *, cpufreq_update_util_data);
 

@@ -1382,6 +1382,70 @@ sd_init(struct sched_domain_topology_level *tl,
 	if (sd->flags & SD_SHARE_PKG_RESOURCES)
 		atomic_set(&sd->shared->nr_busy_cpus, sd_weight);
 
+#ifdef CONFIG_SCHED_POC_SELECTOR
+		{
+			int range = cpumask_last(sd_span) - sd_id + 1;
+			int nr_words = DIV_ROUND_UP(range, 64);
+			int i;
+
+			sd->shared->poc_cpu_base = sd_id;
+			if (nr_words <= POC_MASK_WORDS_MAX) {
+				sd->shared->poc_nr_words = nr_words;
+				sd->shared->poc_fast_eligible = true;
+				/* Disable single-word optimization if this LLC needs 2 words */
+				if (nr_words > 1)
+					static_branch_disable(&sched_poc_single_word);
+			} else {
+				sd->shared->poc_nr_words = 0;
+				sd->shared->poc_fast_eligible = false;
+			}
+			for (i = 0; i < POC_MASK_WORDS_MAX; i++) {
+				atomic64_set(&sd->shared->poc_idle_cpus[i], 0);
+				atomic64_set(&sd->shared->poc_idle_cores[i], 0);
+			}
+
+#ifdef CONFIG_SCHED_SMT
+			/*
+			 * Pre-compute SMT sibling masks for Level 4.
+			 */
+			memset(sd->shared->poc_smt_siblings, 0,
+			       sizeof(sd->shared->poc_smt_siblings));
+			if (sd->shared->poc_fast_eligible) {
+				int cpu_iter;
+
+				for_each_cpu(cpu_iter, sd_span) {
+					int bit = cpu_iter - sd_id;
+					int w = bit >> 6;
+					int sibling;
+					u64 mask = 0;
+
+					for_each_cpu(sibling, cpu_smt_mask(cpu_iter)) {
+						int sib_bit, sib_w;
+
+						if (sibling == cpu_iter)
+							continue;
+						sib_bit = sibling - sd_id;
+						sib_w = sib_bit >> 6;
+						/*
+						 * Only include siblings in the same word.
+						 */
+						if (sib_w == w &&
+						    sib_bit >= 0 &&
+						    sib_bit < POC_MASK_WORDS_MAX * 64)
+							mask |= 1ULL << (sib_bit & 63);
+					}
+					if (bit >= 0 && bit < POC_MASK_WORDS_MAX * 64)
+						sd->shared->poc_smt_siblings[bit] = mask;
+				}
+			}
+#endif /* CONFIG_SCHED_SMT */
+			/*
+			 * Cluster support removed for 4.14 backport due to
+			 * lack of cpu_clustergroup_mask / topology support.
+			 */
+		}
+#endif /* CONFIG_SCHED_POC_SELECTOR */
+
 	sd->private = sdd;
 
 	return sd;

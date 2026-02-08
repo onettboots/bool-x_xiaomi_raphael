@@ -1376,6 +1376,32 @@ config DEFAULT_USE_ENERGY_AWARE
 
 	  Say N if unsure.
 
+config SCHED_POC_SELECTOR
+	bool "Piece-Of-Cake Fast Idle CPU Selector"
+	depends on SMP
+	default y
+	help
+	  Idle CPU selector using cached bitmasks inspired by the scx_cake BPF
+	  scheduler. Reduces select_idle_cpu overhead by using bitmap scanning.
+
+	  This optimization does not affect scheduler fairness - it only
+	  speeds up the process of finding an idle CPU for task wakeup.
+
+	  If unsure, say Y.
+
+config SCHED_POC_SELECTOR_DEBUG
+	bool "POC Selector debug counters"
+	depends on SCHED_POC_SELECTOR && SYSFS
+	default n
+	help
+	  Expose per-level hit counters and per-CPU selection counters
+	  via sysfs (/sys/kernel/poc_selector/).
+
+	  Counters: hit, fallthrough, sticky, llc_hit, per-CPU selected.
+	  SMT search count can be derived as (hit - sticky - llc_hit).
+
+	  If unsure, say N.
+
 config SYSFS_DEPRECATED
 	bool "Enable deprecated sysfs features to support old userspace tools"
 	depends on SYSFS

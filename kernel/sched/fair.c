@@ -7732,6 +7732,10 @@ static int select_idle_cpu(struct task_struct *p, struct sched_domain *sd, int t
 	return cpu;
 }
 
+#ifdef CONFIG_SCHED_POC_SELECTOR
+#include "poc_selector.c"
+#endif
+
 /*
  * Try and locate an idle core/thread in the LLC cache domain.
  */
@@ -7742,6 +7746,28 @@ static inline int __select_idle_sibling(struct task_struct *p, int prev, int tar
 
 	if ((available_idle_cpu(target) && !cpu_isolated(target)) || sched_idle_cpu(target))
 		return target;
+
+#ifdef CONFIG_SCHED_POC_SELECTOR
+	{
+		struct sched_domain_shared *sd_share;
+
+		sd_share = rcu_dereference(per_cpu(sd_llc_shared, target));
+		if (sd_share &&
+		    static_key_true(&sched_poc_enabled) &&
+		    likely(p->nr_cpus_allowed >= sd->span_weight) &&
+		    likely(sd_share->poc_fast_eligible)) {
+			int poc_cpu = select_idle_cpu_poc(has_idle_core, target, sd_share);
+			if (poc_cpu >= 0) {
+				POC_DBG_INC_HIT();
+				POC_DBG_INC_SELECTED(poc_cpu);
+				return poc_cpu;
+			}
+			POC_DBG_INC_FALLTHROUGH();
+			goto idle_cpu_fallbacks;
+		}
+	}
+idle_cpu_fallbacks:
+#endif
 
 	/*
 	 * If the previous cpu is cache affine and idle, don't be stupid.

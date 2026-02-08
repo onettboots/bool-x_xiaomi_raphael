@@ -93,6 +93,25 @@ struct sched_domain_shared {
 	atomic_t	nr_busy_cpus;
 	int		has_idle_cores;
 
+#ifdef CONFIG_SCHED_POC_SELECTOR
+#define POC_MASK_WORDS_MAX	2	/* up to 128 CPUs per LLC */
+	/*
+	 * POC Selector: per-LLC atomic64 idle masks (cake inspired)
+	 *
+	 * Cacheline-aligned: LOCK-prefixed writes to these bitmaps on
+	 * every idle transition must not invalidate the cache line
+	 * containing nr_busy_cpus / has_idle_cores.
+	 */
+	atomic64_t	poc_idle_cpus[POC_MASK_WORDS_MAX] ____cacheline_aligned;
+	atomic64_t	poc_idle_cores[POC_MASK_WORDS_MAX];	/* physical core idle mask */
+#ifdef CONFIG_SCHED_SMT
+	u64		poc_smt_siblings[POC_MASK_WORDS_MAX * 64]; /* pre-computed SMT sibling masks */
+#endif
+	int			poc_cpu_base;		/* smallest CPU ID in this LLC */
+	int			poc_nr_words;		/* number of active 64-bit words */
+	bool		poc_fast_eligible;	/* true when LLC CPU range fits */
+#endif
+
 	bool            overutilized;
 };
 

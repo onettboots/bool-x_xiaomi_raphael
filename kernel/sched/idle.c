@@ -244,8 +244,11 @@ static void do_idle(void)
 	quiet_vmstat();
         tick_nohz_idle_enter();
 
-        while (!need_resched()) {
-                check_pgt_cache();
+	/* POC Selector: mark CPU as idle */
+	set_cpu_idle_state(cpu, 1);
+
+	while (!need_resched()) {
+		check_pgt_cache();
 
                 if (cpu_is_offline(smp_processor_id())) {
                         tick_nohz_idle_stop_tick_protected();
@@ -270,6 +273,9 @@ static void do_idle(void)
                 }
                 arch_cpu_idle_exit();
         }
+
+	/* POC Selector: mark CPU as busy */
+	set_cpu_idle_state(cpu, 0);
 
 	/*
 	 * Since we fell out of the loop above, we know TIF_NEED_RESCHED must
