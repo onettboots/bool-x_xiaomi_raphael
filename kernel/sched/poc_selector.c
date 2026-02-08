@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Piece-Of-Cake (POC) CPU Selector (Backport for 4.14)
- *
- * Fast idle CPU selector inspired by RitzDaCat's scx_cake scheduler
- *
- * Uses per-LLC atomic64_t bitmask arrays for O(1) idle CPU lookup.
- *
- * Copyright (C) 2026 Masahito Suzuki
+ * FINAL FIX V4: Fix cpumask types and sysctl variables
  */
 
 #ifdef CONFIG_SCHED_POC_SELECTOR
@@ -16,9 +11,10 @@
 #include <linux/static_key.h>
 #include <linux/sysctl.h>
 #include <linux/cpu.h>
+#include <linux/topology.h> /* Penting untuk topology_sibling_cpumask */
 
 #define SCHED_POC_SELECTOR_AUTHOR   "Masahito Suzuki"
-#define SCHED_POC_SELECTOR_VERSION  "1.8-bp-4.14"
+#define SCHED_POC_SELECTOR_VERSION  "1.8-bp-4.14-fix-v4"
 
 #ifdef CONFIG_SCHED_SMT
 #define IF_SMT(code) code
@@ -29,21 +25,18 @@
 /**************************************************************
  * Static keys:
  */
-
 struct static_key_true sched_poc_enabled = STATIC_KEY_TRUE_INIT;
 struct static_key_true sched_poc_single_word = STATIC_KEY_TRUE_INIT;
 
 /**************************************************************
  * Per-CPU variables:
  */
-
 #define POC_HASH_MULT 0x9E3779B9U
 static DEFINE_PER_CPU(u32, poc_rr_counter);
 
 /**************************************************************
  * Debug counters:
  */
-
 #ifdef CONFIG_SCHED_POC_SELECTOR_DEBUG
 static DEFINE_PER_CPU(u32, poc_dbg_hit);
 static DEFINE_PER_CPU(u32, poc_dbg_fallthrough);
@@ -81,11 +74,9 @@ static DEFINE_PER_CPU(atomic_t, poc_dbg_selected);
 #if defined(__x86_64__) && defined(__BMI__)
 #define POC_CTZ64(v) ((int)__builtin_ctzll(v))
 #define POC_CTZ64_NAME "HW (TZCNT)"
-
 #elif defined(__aarch64__)
 #define POC_CTZ64(v) ((int)__builtin_ctzll(v))
 #define POC_CTZ64_NAME "HW (RBIT+CLZ)"
-
 /* Tier 2: x86-64 without BMI1 */
 #elif defined(__x86_64__)
 static __always_inline int poc_ctz64_bsf(u64 v)
@@ -96,7 +87,6 @@ static __always_inline int poc_ctz64_bsf(u64 v)
 }
 #define POC_CTZ64(v) poc_ctz64_bsf(v)
 #define POC_CTZ64_NAME "HW (BSF)"
-
 #else
 /* Tier 3: SW Fallback */
 #define DEBRUIJN_CTZ64_CONST 0x03F79D71B4CA8B09ULL
@@ -157,8 +147,8 @@ static bool is_idle_core_poc(int cpu, struct sched_domain_shared *sd_share)
 	int nr_words = sd_share->poc_nr_words;
 	int sibling;
 
-	/* 4.14 uses different iterator for SMT */
-	for_each_cpu(sibling, cpu_smt_mask(cpu)) {
+	/* FIX: Gunakan topology_sibling_cpumask untuk 4.14 */
+	for_each_cpu(sibling, topology_sibling_cpumask(cpu)) {
 		int bit  = sibling - base;
 		int word = bit >> 6;
 		int pos  = bit & 63;
@@ -198,7 +188,8 @@ void __set_cpu_idle_state(int cpu, int state)
 	smp_mb__after_atomic();
 
 	if (sched_smt_active()) {
-		int core     = cpumask_first(cpu_smt_mask(cpu));
+		/* FIX: Gunakan topology_sibling_cpumask */
+		int core     = cpumask_first(topology_sibling_cpumask(cpu));
 		int core_bit = core - sd_share->poc_cpu_base;
 		int core_w   = core_bit >> 6;
 		int core_pos = core_bit & 63;
@@ -342,7 +333,7 @@ static __always_inline int select_idle_cpu_poc(bool has_idle_core,
 				int target,
 				struct sched_domain_shared *sd_share)
 {
-	if (static_key_true(&sched_poc_single_word))
+	if (static_branch_likely(&sched_poc_single_word))
 		return select_idle_cpu_poc_1(has_idle_core, target, sd_share);
 	else
 		return select_idle_cpu_poc_2(has_idle_core, target, sd_share);
@@ -353,6 +344,10 @@ static __always_inline int select_idle_cpu_poc(bool has_idle_core,
  */
 
 #ifdef CONFIG_SYSCTL
+
+/* FIX: Define variabel lokal untuk sysctl */
+static int zero = 0;
+static int one = 1;
 
 static void poc_resync_idle_state(void)
 {
@@ -365,7 +360,7 @@ static void poc_resync_idle_state(void)
 static int sched_poc_sysctl_handler(struct ctl_table *table, int write,
 				    void __user *buffer, size_t *lenp, loff_t *ppos)
 {
-	unsigned int val = static_key_true(&sched_poc_enabled) ? 1 : 0;
+	unsigned int val = static_branch_likely(&sched_poc_enabled) ? 1 : 0;
 	struct ctl_table tmp = {
 		.data    = &val,
 		.maxlen  = sizeof(val),
@@ -375,7 +370,6 @@ static int sched_poc_sysctl_handler(struct ctl_table *table, int write,
 	int ret = proc_douintvec_minmax(&tmp, write, buffer, lenp, ppos);
 
 	if (!ret && write) {
-		/* 4.14 doesn't have cpus_read_lock, use get_online_cpus */
 		get_online_cpus();
 		if (val) {
 			static_branch_enable(&sched_poc_enabled);
@@ -407,7 +401,6 @@ static int __init sched_poc_sysctl_init(void)
 		"POC Selector", SCHED_POC_SELECTOR_VERSION,
 		SCHED_POC_SELECTOR_AUTHOR, POC_CTZ64_NAME, POC_PTSELECT_NAME);
 
-	/* 4.14 compatible sysctl registration */
 	register_sysctl_paths(kern_path, sched_poc_sysctls);
 	return 0;
 }
@@ -442,14 +435,14 @@ static u64 poc_dbg_sum_percpu(u32 __percpu *var)
 #define DEFINE_POC_DBG_ATTR(ctr) \
 static ssize_t poc_dbg_##ctr##_show(struct kobject *kobj, \
 		struct kobj_attribute *attr, char *buf) \
-+{ \
+{ \
 	return scnprintf(buf, PAGE_SIZE, "%llu\n", \
 			  poc_dbg_sum_percpu(&poc_dbg_##ctr)); \
-+} \
-+static struct kobj_attribute poc_attr_##ctr = { \
+} \
+static struct kobj_attribute poc_attr_##ctr = { \
 	.attr = { .name = #ctr, .mode = 0444 }, \
 	.show = poc_dbg_##ctr##_show, \
-+}
+}
 
 DEFINE_POC_DBG_ATTR(hit);
 DEFINE_POC_DBG_ATTR(fallthrough);
@@ -499,13 +492,13 @@ static struct kobj_attribute poc_attr_reset = {
 #define DEFINE_POC_HW_ATTR(fname, namestr) \
 static ssize_t poc_hw_##fname##_show(struct kobject *kobj, \
 		struct kobj_attribute *attr, char *buf) \
-+{ \
+{ \
 	return scnprintf(buf, PAGE_SIZE, "%s\n", namestr); \
-+} \
-+static struct kobj_attribute poc_hw_attr_##fname = { \
+} \
+static struct kobj_attribute poc_hw_attr_##fname = { \
 	.attr = { .name = #fname, .mode = 0444 }, \
 	.show = poc_hw_##fname##_show, \
-+}
+}
 
 DEFINE_POC_HW_ATTR(ctz, POC_CTZ64_NAME);
 DEFINE_POC_HW_ATTR(ptselect, POC_PTSELECT_NAME);

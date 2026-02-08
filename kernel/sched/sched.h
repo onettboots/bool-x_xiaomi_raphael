@@ -2534,7 +2534,7 @@ extern struct static_key_true sched_poc_single_word;
 extern void __set_cpu_idle_state(int cpu, int state);
 static __always_inline void set_cpu_idle_state(int cpu, int state)
 {
-	if (static_key_true(&sched_poc_enabled))
+	if (static_branch_likely(&sched_poc_enabled))
 		__set_cpu_idle_state(cpu, state);
 }
 #else

@@ -7750,13 +7750,17 @@ static inline int __select_idle_sibling(struct task_struct *p, int prev, int tar
 #ifdef CONFIG_SCHED_POC_SELECTOR
 	{
 		struct sched_domain_shared *sd_share;
+		int has_idle_core_poc = 0;
+
+		if (sched_smt_active())
+			has_idle_core_poc = test_idle_cores(target, false);
 
 		sd_share = rcu_dereference(per_cpu(sd_llc_shared, target));
 		if (sd_share &&
-		    static_key_true(&sched_poc_enabled) &&
+		    static_branch_likely(&sched_poc_enabled) &&
 		    likely(p->nr_cpus_allowed >= sd->span_weight) &&
 		    likely(sd_share->poc_fast_eligible)) {
-			int poc_cpu = select_idle_cpu_poc(has_idle_core, target, sd_share);
+			int poc_cpu = select_idle_cpu_poc(has_idle_core_poc, target, sd_share);
 			if (poc_cpu >= 0) {
 				POC_DBG_INC_HIT();
 				POC_DBG_INC_SELECTED(poc_cpu);

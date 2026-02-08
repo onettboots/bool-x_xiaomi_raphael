@@ -1384,7 +1384,13 @@ sd_init(struct sched_domain_topology_level *tl,
 
 #ifdef CONFIG_SCHED_POC_SELECTOR
 		{
-			int range = cpumask_last(sd_span) - sd_id + 1;
+			/* FIX: Definisikan sd_span dan sd_id manual untuk kernel 4.14 */
+			const struct cpumask *sd_span = sched_domain_span(sd);
+			int sd_id = cpumask_first(sd_span);
+
+			/* FIX 4.14: cpumask_last tidak ada, gunakan find_last_bit */
+			int last_cpu = find_last_bit(cpumask_bits(sd_span), nr_cpumask_bits);
+			int range = last_cpu - sd_id + 1;
 			int nr_words = DIV_ROUND_UP(range, 64);
 			int i;
 
@@ -1419,7 +1425,8 @@ sd_init(struct sched_domain_topology_level *tl,
 					int sibling;
 					u64 mask = 0;
 
-					for_each_cpu(sibling, cpu_smt_mask(cpu_iter)) {
+					/* FIX: Gunakan topology_sibling_cpumask */
+					for_each_cpu(sibling, topology_sibling_cpumask(cpu_iter)) {
 						int sib_bit, sib_w;
 
 						if (sibling == cpu_iter)
