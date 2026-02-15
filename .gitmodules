@@ -1,4 +1,4 @@
 [submodule "drivers/kernelsu"]
 	path = drivers/kernelsu
 	url = https://github.com/maxsteeel/KernelSU-Next
-	branch = pershoot-susfs-legacy
+	branch = legacy-old-susfs
