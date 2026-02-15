@@ -80,7 +80,6 @@ void task_mem(struct seq_file *m, struct mm_struct *mm)
 		    " kB\nVmExe:\t", text >> 10, 8);
 	seq_put_decimal_ull_width(m,
 		    " kB\nVmLib:\t", lib >> 10, 8);
-	seq_put_decimal_ull_width(m,
 	SEQ_PUT_DEC(" kB\nVmSwap:\t", swap);
 	seq_puts(m, " kB\n");
 	hugetlb_report_usage(m, mm);
@@ -465,8 +464,6 @@ bypass_orig_flow:
 
 	start = vma->vm_start;
 	end = vma->vm_end;
-	if (show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino))
-		return;
 
 	/*
 	 * Print the dentry name for named mappings, and a
