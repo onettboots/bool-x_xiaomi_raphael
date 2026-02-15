@@ -1,3 +1,4 @@
 [submodule "drivers/kernelsu"]
 	path = drivers/kernelsu
 	url = https://github.com/sidex15/KernelSU-Next
+	branch = legacy-susfs
