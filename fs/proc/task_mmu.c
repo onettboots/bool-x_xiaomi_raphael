@@ -464,6 +464,7 @@ bypass_orig_flow:
 
 	start = vma->vm_start;
 	end = vma->vm_end;
+	show_vma_header_prefix(m, start, end, flags, pgoff, dev, ino);
 
 	/*
 	 * Print the dentry name for named mappings, and a
