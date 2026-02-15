@@ -89,7 +89,7 @@ function cook() {
 }
 
 function build() {
-		make -j$(nproc) \
+		make -s -j$(nproc) \
     		O=out \
     		ARCH=arm64 \
     		CC="ccache clang" \
@@ -167,6 +167,16 @@ function make_config {
 function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
 }
+function check_ksuver {
+		KSU_VERSION=10200
+		KSU_GIT_VERSION=$(cd $KERNEL_DIR/drivers/kernelsu && git rev-list --count HEAD)
+		let KSU_VER=KSU_VERSION+KSU_GIT_VERSION
+}
+
+function check_ksutag {
+                KSU_TAG=$(cd $KERNEL_DIR/drivers/kernelsu && git describe --tags --abbrev=0)
+}
+
 function make_zip {
 		cd $REPACK_DIR
 		ksu=$(cd $KERNEL_DIR && grep -q '^CONFIG_KSU=y' $CFG && echo "y" || echo "n")
@@ -176,25 +186,27 @@ function make_zip {
 		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME-KSUNEXT-SUSFS`.zip
 		  ZIPSTRING=`echo $ZIP_NAME-KSUNEXT-SUSFS`
 		  zip -r9 `echo $ZIP_NAME-KSUNEXT-SUSFS`.zip *
-		  KSU_VER=$(cat $KERNEL_DIR/drivers/kernelsu/kernel/dksu 2>/dev/null)
+		  check_ksuver && check_ksutag
 		  SUSFS_VER=$(grep -oP '(?<=#define SUSFS_VERSION ")[^"]*' $KERNEL_DIR/include/linux/susfs.h 2>/dev/null)
 		elif [[ $ksu == "y" && $susfs == "n" ]]; then
 		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME-KSUNEXT`.zip
 		  ZIPSTRING=`echo $ZIP_NAME-KSUNEXT`
 		  zip -r9 `echo $ZIP_NAME-KSUNEXT`.zip *
-		  KSU_VER=$(cat $KERNEL_DIR/drivers/kernelsu/kernel/dksu 2>/dev/null)
+		  check_ksuver && check_ksutag
 		  SUSFS_VER=Disabled
 		elif [[ $ksu == "n" && $susfs == "n" ]]; then
 		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME`.zip
 		  ZIPSTRING=`echo $ZIP_NAME`
 		  zip -r9 `echo $ZIP_NAME`.zip *
 		  KSU_VER=Disabled
+		  KSU_TAG=Disabled
                   SUSFS_VER=Disabled
 		else
 		  ZIPED=$ZIP_MOVE/`echo $ZIP_NAME`.zip
 		  ZIPSTRING=`echo $ZIP_NAME`
 		  zip -r9 `echo $ZIP_NAME`.zip *
 		  KSU_VER=Disabled
+		  KSU_TAG=Disabled
                   SUSFS_VER=Disabled
 		fi
 		mv  `echo $ZIP_NAME`*.zip $ZIP_MOVE
@@ -212,20 +224,21 @@ function upload()
 function upload_boolx_action()
 {
                 #ziped=$ZIP_MOVE/`echo $ZIP_NAME`.zip
-		cd $KERNEL_DIR
-		#wget
-		chmod +x $upl
-		sed -i "4i\FILE_PATH=$ZIPED" $upl
-		BUILDDATE=`date +"%Y-%m-%d"`
-		sed -i '5i\CAPTION="* Build Date: '$BUILDDATE'' $upl
-		sed -i '6i\* Kernel Version: '$KER_VER'' $upl
-		sed -i '7i\* KSU+NEXT: '$KSU_VER'' $upl
-		sed -i '8i\* SUSFS: '$SUSFS_VER'' $upl
-		sed -i '9i\* Type: DSP, Mi Thermal, '$OCDS'' $upl
-		sed -i '10i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-DSPcr' $upl
-            sed -i '11i\* Clang: Boolx Clang 22.0.0' $upl
-            sed -i '12i\' $upl
-            sed -i '13i\*NOTES: Rename the file '$ZIPSTRING'.zip to '$ZIPSTRING'-ocd.zip to support OverClock Display up to 90hz"' $upl
+                cd $KERNEL_DIR
+                #wget
+                chmod +x $upl
+                sed -i "4i\FILE_PATH=$ZIPED" $upl
+                BUILDDATE=`date +"%Y-%m-%d"`
+                sed -i '5i\CAPTION="* Build Date: '$BUILDDATE'' $upl
+                sed -i '6i\* Kernel Version: '$KER_VER'' $upl
+                sed -i '7i\* KSU+NEXT: '$KSU_VER'' $upl
+                sed -i '8i\* KSU+NEXT Tag: '$KSU_TAG'' $upl
+                sed -i '9i\* SUSFS: '$SUSFS_VER'' $upl
+                sed -i '10i\* Type: DSP, Mi Thermal, '$OCDS'' $upl
+                sed -i '11i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-DSPcr' $upl
+            sed -i '12i\* Clang: Boolx Clang 22.0.0' $upl
+            sed -i '13i\' $upl
+            sed -i '14i\*NOTES: Rename the file '$ZIPSTRING'.zip to '$ZIPSTRING'-ocd.zip to support OverClock Display up to 90hz"' $upl
             bash $upl
 }
 
@@ -869,7 +882,8 @@ cd ${KERNEL_DIR}
 make_config
 build_ocd
 echo -e "${yellow}"
-build ${TARGET_IMAGE} | tee logs.txt | progress
+#build ${TARGET_IMAGE} | tee logs.txt | progress
+build ${TARGET_IMAGE}
 echo -e "${restore}"
 function build_time {
    DATE_END=$(date +"%s")
