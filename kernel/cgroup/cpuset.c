@@ -1791,6 +1791,7 @@ static ssize_t cpuset_write_resmask_wrapper(struct kernfs_open_file *of,
 					 char *buf, size_t nbytes, loff_t off)
 {
 #ifdef CONFIG_CPUSET_ASSIST
+	char name_buf[NAME_MAX + 1];
 	static struct cs_target cs_targets[] = {
 		{ "audio-app",		CONFIG_CPUSET_AUDIO_APP },
 		{ "background",		CONFIG_CPUSET_BG },
@@ -1807,7 +1808,8 @@ static ssize_t cpuset_write_resmask_wrapper(struct kernfs_open_file *of,
 		for (i = 0; i < ARRAY_SIZE(cs_targets); i++) {
 			struct cs_target tgt = cs_targets[i];
 
-			if (!strcmp(cs->css.cgroup->kn->name, tgt.name))
+			cgroup_name(cs->css.cgroup, name_buf, sizeof(name_buf));
+			if (!strcmp(name_buf, tgt.name))
 				return cpuset_write_resmask_assist(of, tgt,
 								   nbytes, off);
 		}
