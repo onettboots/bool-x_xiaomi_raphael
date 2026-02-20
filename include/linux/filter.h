@@ -1075,22 +1075,22 @@ static inline bool bpf_prog_ebpf_jited(const struct bpf_prog *fp)
 	return fp->jited && bpf_jit_is_ebpf();
 }
 
-static inline bool bpf_jit_blinding_enabled(void)
+static inline bool bpf_jit_blinding_enabled(struct bpf_prog *prog)
 {
-	/* These are the prerequisites, should someone ever have the
-	 * idea to call blinding outside of them, we make sure to
-	 * bail out.
-	 */
-	if (!bpf_jit_is_ebpf())
-		return false;
-	if (!bpf_jit_enable)
-		return false;
-	if (!bpf_jit_harden)
-		return false;
-	if (bpf_jit_harden == 1 && capable(CAP_SYS_ADMIN))
-		return false;
+        /* These are the prerequisites, should someone ever have the
+         * idea to call blinding outside of them, we make sure to
+         * bail out.
+         */
+        if (!bpf_jit_is_ebpf())
+                return false;
+        if (!prog->jit_requested)
+                return false;
+        if (!bpf_jit_harden)
+                return false;
+        if (bpf_jit_harden == 1 && capable(CAP_SYS_ADMIN))
+                return false;
 
-	return true;
+        return true;
 }
 
 static inline bool bpf_jit_kallsyms_enabled(void)

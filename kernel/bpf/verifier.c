@@ -6612,11 +6612,11 @@ static int check_cfg(struct bpf_verifier_env *env)
 	int ret = 0;
 	int i, t;
 
-	insn_state = env->cfg.insn_state = kvcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
+	insn_state = env->cfg.insn_state = kvzalloc(insn_cnt * sizeof(int), GFP_KERNEL);
 	if (!insn_state)
 		return -ENOMEM;
 
-	insn_stack = env->cfg.insn_stack = kvcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
+	insn_stack = env->cfg.insn_stack = kvzalloc(insn_cnt * sizeof(int), GFP_KERNEL);
 	if (!insn_stack) {
 		kvfree(insn_state);
 		return -ENOMEM;
@@ -6769,7 +6769,7 @@ static int check_btf_func(struct bpf_verifier_env *env,
 	urecord = u64_to_user_ptr(attr->func_info);
 	min_size = min_t(u32, krec_size, urec_size);
 
-	krecord = kvcalloc(nfuncs, krec_size, GFP_KERNEL | __GFP_NOWARN);
+	krecord = kvzalloc(nfuncs * krec_size, GFP_KERNEL | __GFP_NOWARN);
 	if (!krecord)
 		return -ENOMEM;
 
@@ -6879,7 +6879,7 @@ static int check_btf_line(struct bpf_verifier_env *env,
 	/* Need to zero it in case the userspace may
 	 * pass in a smaller bpf_line_info object.
 	 */
-	linfo = kvcalloc(nr_linfo, sizeof(struct bpf_line_info),
+	linfo = kvzalloc(nr_linfo * sizeof(struct bpf_line_info),
 			 GFP_KERNEL | __GFP_NOWARN);
 	if (!linfo)
 		return -ENOMEM;
@@ -9614,7 +9614,7 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 			goto skip_full_check;
 	}
 
-	env->explored_states = kvcalloc(state_htab_size(env),
+	env->explored_states = kvzalloc(state_htab_size(env) *
 				       sizeof(struct bpf_verifier_state_list *),
 				       GFP_USER);
 	ret = -ENOMEM;

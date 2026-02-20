@@ -6825,7 +6825,7 @@ bool bpf_sock_is_valid_access(int off, int size, enum bpf_access_type type,
 		return bpf_ctx_narrow_access_ok(off, size, size_default);
 	case bpf_ctx_range(struct bpf_sock, dst_port):
 		field_size = size == size_default ?
-			size_default : sizeof_field(struct bpf_sock, dst_port);
+			size_default : FIELD_SIZEOF(struct bpf_sock, dst_port);
 		bpf_ctx_record_field_size(info, field_size);
 		return bpf_ctx_narrow_access_ok(off, size, field_size);
 	case offsetofend(struct bpf_sock, dst_port) ...
@@ -8483,7 +8483,7 @@ static u32 sk_skb_convert_ctx_access(enum bpf_access_type type,
 		break;
 	case offsetof(struct __sk_buff, cb[0]) ...
 	     offsetofend(struct __sk_buff, cb[4]) - 1:
-		BUILD_BUG_ON(sizeof_field(struct sk_skb_cb, data) < 20);
+		BUILD_BUG_ON(FIELD_SIZEOF(struct sk_skb_cb, data) < 20);
 		BUILD_BUG_ON((offsetof(struct sk_buff, cb) +
 			      offsetof(struct sk_skb_cb, data)) %
 			     sizeof(__u64));

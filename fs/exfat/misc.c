@@ -55,7 +55,7 @@ void __exfat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 #define SECS_PER_MIN    (60)
 #define TIMEZONE_SEC(x)	((x) * 15 * SECS_PER_MIN)
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 static void exfat_adjust_tz(struct timespec64 *ts, u8 tz_off)
 #else
 static void exfat_adjust_tz(struct timespec *ts, u8 tz_off)
@@ -75,7 +75,7 @@ static inline int exfat_tz_offset(struct exfat_sb_info *sbi)
 }
 
 /* Convert a EXFAT time/date pair to a UNIX date (seconds since 1 1 70). */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 void exfat_get_entry_time(struct exfat_sb_info *sbi, struct timespec64 *ts,
 		u8 tz, __le16 time, __le16 date, u8 time_cs)
 #else
@@ -105,7 +105,7 @@ void exfat_get_entry_time(struct exfat_sb_info *sbi, struct timespec *ts,
 }
 
 /* Convert linear UNIX date to a EXFAT time/date pair. */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 void exfat_set_entry_time(struct exfat_sb_info *sbi, struct timespec64 *ts,
 		u8 *tz, __le16 *time, __le16 *date, u8 *time_cs)
 #else
@@ -153,7 +153,7 @@ void exfat_set_entry_time(struct exfat_sb_info *sbi, struct timespec *ts,
 }
 
 /* atime has only a 2-second resolution */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
 void exfat_truncate_atime(struct timespec64 *ts)
 #else
 void exfat_truncate_atime(struct timespec *ts)
@@ -162,6 +162,16 @@ void exfat_truncate_atime(struct timespec *ts)
 	ts->tv_sec = round_down(ts->tv_sec, 2);
 	ts->tv_nsec = 0;
 }
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0)
+void exfat_truncate_inode_atime(struct inode *inode)
+{
+	struct timespec64 atime = inode_get_atime(inode);
+
+	exfat_truncate_atime(&atime);
+	inode_set_atime_to_ts(inode, atime);
+}
+#endif
 
 u16 exfat_calc_chksum16(void *data, int len, u16 chksum, int type)
 {

@@ -223,7 +223,7 @@ do { \
 	if (!IS_ENABLED(CONFIG_PREEMPT_RT) && \
 	    time_after(jiffies, (old_ts) + HZ / 10)) { \
 		preempt_disable(); \
-		rcu_softirq_qs(); \
+		rcu_sched_qs(); \
 		preempt_enable(); \
 		(old_ts) = jiffies; \
 	} \
