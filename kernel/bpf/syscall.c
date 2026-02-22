@@ -771,11 +771,19 @@ static int map_lookup_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = __bpf_copy_key(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
-	}
+	if (map->key_size <= sizeof(key_onstack)) {
+                key = key_onstack;
+                if (copy_from_user(key, ukey, map->key_size)) {
+                        err = -EFAULT;
+                        goto err_put;
+                }
+        } else {
+                key = __bpf_copy_key(ukey, map->key_size);
+                if (IS_ERR(key)) {
+                        err = PTR_ERR(key);
+                        goto err_put;
+                }
+        }
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
 	    map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH ||
@@ -911,11 +919,19 @@ static int map_update_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = __bpf_copy_key(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
-	}
+	if (map->key_size <= sizeof(key_onstack)) {
+                key = key_onstack;
+                if (copy_from_user(key, ukey, map->key_size)) {
+                        err = -EFAULT;
+                        goto err_put;
+                }
+        } else {
+                key = __bpf_copy_key(ukey, map->key_size);
+                if (IS_ERR(key)) {
+                        err = PTR_ERR(key);
+                        goto err_put;
+                }
+        }
 
 	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
 	    map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH ||
@@ -1023,11 +1039,19 @@ static int map_delete_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
-	key = __bpf_copy_key(ukey, map->key_size);
-	if (IS_ERR(key)) {
-		err = PTR_ERR(key);
-		goto err_put;
-	}
+	if (map->key_size <= sizeof(key_onstack)) {
+                key = key_onstack;
+                if (copy_from_user(key, ukey, map->key_size)) {
+                        err = -EFAULT;
+                        goto err_put;
+                }
+        } else {
+                key = __bpf_copy_key(ukey, map->key_size);
+                if (IS_ERR(key)) {
+                        err = PTR_ERR(key);
+                        goto err_put;
+                }
+        }
 
 	if (bpf_map_is_dev_bound(map)) {
 		err = bpf_map_offload_delete_elem(map, key);
