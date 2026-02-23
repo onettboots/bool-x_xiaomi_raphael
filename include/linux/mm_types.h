@@ -339,6 +339,10 @@ struct vm_area_struct {
 	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
 #endif
 	struct vm_userfaultfd_ctx vm_userfaultfd_ctx;
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	seqcount_t vm_sequence;
+	atomic_t vm_ref_count;		/* see vma_get(), vma_put() */
+#endif
 } __randomize_layout;
 
 struct core_thread {
@@ -356,7 +360,10 @@ struct kioctx_table;
 struct mm_struct {
 	struct vm_area_struct *mmap;		/* list of VMAs */
 	struct rb_root mm_rb;
-	u32 vmacache_seqnum;                   /* per-thread vmacache */
+#ifdef CONFIG_SPECULATIVE_PAGE_FAULT
+	rwlock_t mm_rb_lock;
+#endif
+	u64 vmacache_seqnum;                   /* per-thread vmacache */
 #ifdef CONFIG_MMU
 	unsigned long (*get_unmapped_area) (struct file *filp,
 				unsigned long addr, unsigned long len,
@@ -508,21 +515,22 @@ struct mm_struct {
 	/* HMM needs to track a few things per mm */
 	struct hmm *hmm;
 #endif
+
 #ifdef CONFIG_LRU_GEN
-        struct {
-                /* this mm_struct is on lru_gen_mm_list */
-                struct list_head list;
-                /*
-                * Set when switching to this mm_struct, as a hint of
-                * whether it has been used since the last time per-node
-                * page table walkers cleared the corresponding bits.
-                */
-                unsigned long bitmap;
+	struct {
+		/* this mm_struct is on lru_gen_mm_list */
+		struct list_head list;
+		/*
+		* Set when switching to this mm_struct, as a hint of
+		* whether it has been used since the last time per-node
+		* page table walkers cleared the corresponding bits.
+		*/
+		unsigned long bitmap;
 #ifdef CONFIG_MEMCG
-                /* points to the memcg of "owner" above */
-                struct mem_cgroup *memcg;
+		/* points to the memcg of "owner" above */
+		struct mem_cgroup *memcg;
 #endif
-        } lru_gen;
+	} lru_gen;
 #endif /* CONFIG_LRU_GEN */
 } __randomize_layout;
 
@@ -545,10 +553,10 @@ static inline cpumask_t *mm_cpumask(struct mm_struct *mm)
 #ifdef CONFIG_LRU_GEN
 
 struct lru_gen_mm_list {
-        /* mm_struct list for page table walkers */
-        struct list_head fifo;
-        /* protects the list above */
-        spinlock_t lock;
+	/* mm_struct list for page table walkers */
+	struct list_head fifo;
+	/* protects the list above */
+	spinlock_t lock;
 };
 
 void lru_gen_add_mm(struct mm_struct *mm);
@@ -559,24 +567,25 @@ void lru_gen_migrate_mm(struct mm_struct *mm);
 
 static inline void lru_gen_init_mm(struct mm_struct *mm)
 {
-        INIT_LIST_HEAD(&mm->lru_gen.list);
-        mm->lru_gen.bitmap = 0;
+	INIT_LIST_HEAD(&mm->lru_gen.list);
+	mm->lru_gen.bitmap = 0;
 #ifdef CONFIG_MEMCG
-        mm->lru_gen.memcg = NULL;
+	mm->lru_gen.memcg = NULL;
 #endif
 }
 
 static inline void lru_gen_use_mm(struct mm_struct *mm)
 {
-        /*
-         * When the bitmap is set, page reclaim knows this mm_struct has been
-         * used since the last time it cleared the bitmap. So it might be worth
-         * walking the page tables of this mm_struct to clear the accessed bit.
-         */
-        WRITE_ONCE(mm->lru_gen.bitmap, -1);
+	/*
+	 * When the bitmap is set, page reclaim knows this mm_struct has been
+	 * used since the last time it cleared the bitmap. So it might be worth
+	 * walking the page tables of this mm_struct to clear the accessed bit.
+	 */
+	WRITE_ONCE(mm->lru_gen.bitmap, -1);
 }
 
 #else /* !CONFIG_LRU_GEN */
+
 static inline void lru_gen_add_mm(struct mm_struct *mm)
 {
 }
