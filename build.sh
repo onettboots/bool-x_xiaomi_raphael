@@ -89,7 +89,7 @@ function cook() {
 }
 
 function build() {
-		make -s -j$(nproc) \
+		make -j$(nproc) \
     		O=out \
     		ARCH=arm64 \
     		CC="ccache clang" \
@@ -882,8 +882,7 @@ cd ${KERNEL_DIR}
 make_config
 build_ocd
 echo -e "${yellow}"
-#build ${TARGET_IMAGE} | tee logs.txt | progress
-build ${TARGET_IMAGE}
+build ${TARGET_IMAGE} | tee logs.txt | progress
 echo -e "${restore}"
 function build_time {
    DATE_END=$(date +"%s")
@@ -926,6 +925,6 @@ fi
 echo
 
 # End
-#rm -rf $upl
+rm -rf $upl
 cd $KERNEL_DIR
 git restore $CFG
