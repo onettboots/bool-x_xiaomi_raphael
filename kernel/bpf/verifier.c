@@ -4655,16 +4655,16 @@ static int adjust_ptr_min_max_vals(struct bpf_verifier_env *env,
 		/* fall-through */
 	case PTR_TO_PACKET_END:
 	case PTR_TO_SOCKET:
+	case PTR_TO_SOCKET_OR_NULL:
 	case PTR_TO_SOCK_COMMON:
+	case PTR_TO_SOCK_COMMON_OR_NULL:
 	case PTR_TO_TCP_SOCK:
+	case PTR_TO_TCP_SOCK_OR_NULL:
 	case PTR_TO_XDP_SOCK:
-reject:
 		verbose(env, "R%d pointer arithmetic on %s prohibited\n",
 			dst, reg_type_str[ptr_reg->type]);
 		return -EACCES;
 	default:
-		if (reg_type_may_be_null(ptr_reg->type))
-			goto reject;
 		break;
 	}
 
@@ -6613,14 +6613,14 @@ static int check_cfg(struct bpf_verifier_env *env)
 	int i, t;
 
 	insn_state = env->cfg.insn_state = kvcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
-        if (!insn_state)
-                return -ENOMEM;
+	if (!insn_state)
+		return -ENOMEM;
 
-        insn_stack = env->cfg.insn_stack = kvcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
-        if (!insn_stack) {
-                kvfree(insn_state);
-                return -ENOMEM;
-        }
+	insn_stack = env->cfg.insn_stack = kvcalloc(insn_cnt, sizeof(int), GFP_KERNEL);
+	if (!insn_stack) {
+		kvfree(insn_state);
+		return -ENOMEM;
+	}
 
 	insn_state[0] = DISCOVERED; /* mark 1st insn as discovered */
 	insn_stack[0] = 0; /* 0 is the first instruction */
@@ -6880,7 +6880,7 @@ static int check_btf_line(struct bpf_verifier_env *env,
 	 * pass in a smaller bpf_line_info object.
 	 */
 	linfo = kvcalloc(nr_linfo, sizeof(struct bpf_line_info),
-                         GFP_KERNEL | __GFP_NOWARN);
+			 GFP_KERNEL | __GFP_NOWARN);
 	if (!linfo)
 		return -ENOMEM;
 
@@ -9615,8 +9615,8 @@ int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 	}
 
 	env->explored_states = kvcalloc(state_htab_size(env),
-                                       sizeof(struct bpf_verifier_state_list *),
-                                       GFP_USER);
+				       sizeof(struct bpf_verifier_state_list *),
+				       GFP_USER);
 	ret = -ENOMEM;
 	if (!env->explored_states)
 		goto skip_full_check;
