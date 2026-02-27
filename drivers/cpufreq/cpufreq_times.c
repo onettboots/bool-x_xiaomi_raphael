@@ -32,10 +32,6 @@ static DECLARE_HASHTABLE(uid_hash_table, UID_HASH_BITS);
 /* task->time_in_state */
 static  __cacheline_aligned_in_smp DEFINE_SPINLOCK(task_time_in_state_lock);
 /* task->concurrent_active_time */
-static  __cacheline_aligned_in_smp DEFINE_SPINLOCK(task_concurrent_active_time_lock);
-/* task->concurrent_policy_time */
-static  __cacheline_aligned_in_smp DEFINE_SPINLOCK(task_concurrent_policy_time_lock);
-/* uid_hash_table */
 static __cacheline_aligned_in_smp DEFINE_SPINLOCK(uid_lock);
 
 struct concurrent_times {
@@ -314,27 +310,12 @@ static int concurrent_policy_time_seq_show(struct seq_file *m, void *v)
 
 void cpufreq_task_times_init(struct task_struct *p)
 {
-	void *temp;
-	unsigned long flags;
-	unsigned int max_state = READ_ONCE(next_offset);
+        unsigned long flags;
 
-	/* We use one array to avoid multiple allocs per task */
-	temp = kcalloc(max_state, sizeof(p->time_in_state[0]), GFP_ATOMIC);
-	if (!temp)
-		return;
-
-	spin_lock_irqsave(&task_time_in_state_lock, flags);
-	p->time_in_state = temp;
-	spin_unlock_irqrestore(&task_time_in_state_lock, flags);
-	p->max_state = max_state;
-
-	spin_lock_irqsave(&task_concurrent_active_time_lock, flags);
-	p->concurrent_active_time = NULL;
-	spin_unlock_irqrestore(&task_concurrent_active_time_lock, flags);
-
-	spin_lock_irqsave(&task_concurrent_policy_time_lock, flags);
-	p->concurrent_policy_time = NULL;
-	spin_unlock_irqrestore(&task_concurrent_policy_time_lock, flags);
+        spin_lock_irqsave(&task_time_in_state_lock, flags);
+        p->time_in_state = NULL;
+        spin_unlock_irqrestore(&task_time_in_state_lock, flags);
+        p->max_state = 0;
 }
 
 /* Caller must hold task_time_in_state_lock */
