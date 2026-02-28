@@ -168,7 +168,7 @@ function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
 }
 function check_ksuver {
-		KSU_VERSION=10200
+		KSU_VERSION=30118
 		KSU_GIT_VERSION=$(cd $KERNEL_DIR/drivers/kernelsu && git rev-list --count HEAD)
 		let KSU_VER=KSU_VERSION+KSU_GIT_VERSION
 }
