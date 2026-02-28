@@ -16,7 +16,7 @@
 
 #define BOEFFLA_WL_BLOCKER_VERSION	"1.1.0"
 
-#define LIST_WL_DEFAULT				"otg_default;usbpd0;alarmtimer;usb;2-0028;epoll_hvdcp_opti_file:;epoll_hvdcp_opti_file:NETLINK"
+#define LIST_WL_DEFAULT				""
 
 #define LENGTH_LIST_WL				255
 #define LENGTH_LIST_WL_DEFAULT		100
