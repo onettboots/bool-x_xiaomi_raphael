@@ -9160,9 +9160,9 @@ int ipa3_pci_drv_probe(
 		return -EOPNOTSUPP;
 	}
 
-	result = pci_request_region(pci_dev, 0, "IPA Memory");
+	result = pci_request_regions(pci_dev, "IPA Memory");
 	if (result < 0) {
-		IPAERR("pci_request_region() failed\n");
+		IPAERR("pci_request_regions() failed\n");
 		pci_disable_device(pci_dev);
 		return -EOPNOTSUPP;
 	}
@@ -9176,7 +9176,7 @@ int ipa3_pci_drv_probe(
 	 */
 	if (get_ipa_dts_configuration(&platform_dev, &ipa3_res) != 0) {
 		IPAERR("get_ipa_dts_configuration() failed\n");
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return -EOPNOTSUPP;
 	}
@@ -9188,7 +9188,7 @@ int ipa3_pci_drv_probe(
 				     &bar0_offset);
 	if (result) {
 		IPAERR(":get resource failed for emulator-bar0-offset!\n");
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return -ENODEV;
 	}
@@ -9244,7 +9244,7 @@ int ipa3_pci_drv_probe(
 	result = ipa3_bind_api_controller(ipa_drv_res->ipa_hw_type, api_ctrl);
 	if (result != 0) {
 		IPAERR("ipa3_bind_api_controller() failed\n");
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return result;
 	}
@@ -9253,14 +9253,14 @@ int ipa3_pci_drv_probe(
 
 	if (dma_set_mask(dev, DMA_BIT_MASK(bits)) != 0) {
 		IPAERR("dma_set_mask(%pK, %u) failed\n", dev, bits);
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return -EOPNOTSUPP;
 	}
 
 	if (dma_set_coherent_mask(dev, DMA_BIT_MASK(bits)) != 0) {
 		IPAERR("dma_set_coherent_mask(%pK, %u) failed\n", dev, bits);
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return -EOPNOTSUPP;
 	}
@@ -9275,7 +9275,7 @@ int ipa3_pci_drv_probe(
 	if (result) {
 		IPAERR("ipa3_init failed\n");
 		pci_clear_master(pci_dev);
-		pci_release_region(pci_dev, 0);
+		pci_release_regions(pci_dev);
 		pci_disable_device(pci_dev);
 		return result;
 	}
