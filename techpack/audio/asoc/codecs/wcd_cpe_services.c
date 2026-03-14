@@ -995,7 +995,7 @@ static enum cpe_svc_result broadcast_boot_event(
 static enum cpe_process_result cpe_boot_initialize(struct cpe_info *t_info,
 	enum cpe_svc_result *cpe_rc)
 {
-	enum cpe_process_result rc = CPE_SVC_FAILED;
+	enum cpe_process_result rc = (enum cpe_process_result)CPE_SVC_FAILED;
 	struct cpe_svc_notification payload;
 	struct cmi_core_svc_event_system_boot *p = NULL;
 
@@ -1990,50 +1990,50 @@ enum cmi_api_result cmi_deregister(void *reg_handle)
 
 enum cmi_api_result cmi_send_msg(void *message)
 {
-	enum cmi_api_result rc = CMI_API_SUCCESS;
-	struct cpe_send_msg *msg = NULL;
-	struct cmi_hdr *hdr;
+        enum cmi_api_result rc = CMI_API_SUCCESS;
+        struct cpe_send_msg *msg = NULL;
+        struct cmi_hdr *hdr;
 
-	CPE_SVC_GRAB_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
-	hdr = CMI_GET_HEADER(message);
-	msg = kzalloc(sizeof(struct cpe_send_msg),
-		      GFP_ATOMIC);
-	if (!msg) {
-		CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
-		return CPE_SVC_NO_MEMORY;
-	}
+        CPE_SVC_GRAB_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
+        hdr = CMI_GET_HEADER(message);
+        msg = kzalloc(sizeof(struct cpe_send_msg),
+                      GFP_ATOMIC);
+        if (!msg) {
+                CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
+                return (enum cmi_api_result)CPE_SVC_NO_MEMORY;
+        }
 
-	if (CMI_HDR_GET_OBM_FLAG(hdr) == CMI_OBM_FLAG_OUT_BAND)
-		msg->isobm = 1;
-	else
-		msg->isobm = 0;
+        if (CMI_HDR_GET_OBM_FLAG(hdr) == CMI_OBM_FLAG_OUT_BAND)
+                msg->isobm = 1;
+        else
+                msg->isobm = 0;
 
-	msg->size = sizeof(struct cmi_hdr) +
-			CMI_HDR_GET_PAYLOAD_SIZE(hdr);
+        msg->size = sizeof(struct cmi_hdr) +
+                        CMI_HDR_GET_PAYLOAD_SIZE(hdr);
 
-	msg->payload = kzalloc(msg->size, GFP_ATOMIC);
-	if (!msg->payload) {
-		kfree(msg);
-		CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
-		return CPE_SVC_NO_MEMORY;
-	}
+        msg->payload = kzalloc(msg->size, GFP_ATOMIC);
+        if (!msg->payload) {
+                kfree(msg);
+                CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
+                return (enum cmi_api_result)CPE_SVC_NO_MEMORY;
+        }
 
-	msg->address = 0;
-	memcpy((void *)msg->payload, message, msg->size);
+        msg->address = 0;
+        memcpy((void *)msg->payload, message, msg->size);
 
 	rc = (enum cmi_api_result) cpe_send_cmd_to_thread(
-			cpe_d.cpe_default_handle,
-			CPE_CMD_SEND_MSG,
-			(void *)msg, false);
+                        cpe_d.cpe_default_handle,
+                        CPE_CMD_SEND_MSG,
+                        (void *)msg, false);
 
-	if (rc != 0) {
-		pr_err("%s: Failed to queue message\n", __func__);
-		kfree(msg->payload);
-		kfree(msg);
-	}
+        if (rc != 0) {
+                pr_err("%s: Failed to queue message\n", __func__);
+                kfree(msg->payload);
+                kfree(msg);
+        }
 
-	CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
-	return rc;
+        CPE_SVC_REL_LOCK(&cpe_d.cpe_api_mutex, "cpe_api");
+        return rc;
 }
 
 enum cpe_svc_result cpe_svc_ftm_test(void *cpe_handle, u32 *status)
