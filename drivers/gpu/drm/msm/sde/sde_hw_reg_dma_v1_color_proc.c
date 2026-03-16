@@ -834,6 +834,7 @@ void reg_dmav1_setup_dspp_igcv31(struct sde_hw_dspp *ctx, void *cfg)
 		return;
 	}
 
+
 	addr[0] = lut_cfg->c0;
 	addr[1] = lut_cfg->c1;
 	addr[2] = lut_cfg->c2;
@@ -1915,7 +1916,7 @@ static int reg_dmav1_setup_vig_igc_common(struct sde_hw_reg_dma_ops *dma_ops,
 				hw_cfg->len, sizeof(struct drm_msm_igc_lut));
 	}
 
-	data = kcalloc(VIG_1D_LUT_IGC_LEN, sizeof(u32), GFP_KERNEL);
+	data = kzalloc(VIG_1D_LUT_IGC_LEN * sizeof(u32), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
@@ -2179,7 +2180,7 @@ void reg_dmav1_setup_dma_igcv5(struct sde_hw_pipe *ctx, void *cfg,
 		return;
 	}
 
-	data = kcalloc(DMA_1D_LUT_IGC_LEN, sizeof(u32), GFP_KERNEL);
+	data = kzalloc(DMA_1D_LUT_IGC_LEN * sizeof(u32), GFP_KERNEL);
 	if (!data) {
 		DRM_ERROR("failed to allocate memory for igc\n");
 		return;

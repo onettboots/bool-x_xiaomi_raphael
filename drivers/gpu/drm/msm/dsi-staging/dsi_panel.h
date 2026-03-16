@@ -37,6 +37,11 @@
 
 #define DSI_MODE_MAX 5
 
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+#define BUF_LEN_MAX    256
+#define MAX_READ_LOCKDOWN_COUNT 200
+#endif
+
 enum dsi_panel_rotation {
 	DSI_PANEL_ROTATE_NONE = 0,
 	DSI_PANEL_ROTATE_HV_FLIP,
@@ -86,13 +91,6 @@ struct dsi_dfps_capabilities {
 	bool dfps_support;
 };
 
-struct dsi_qsync_capabilities {
-	/* qsync disabled if qsync_min_fps = 0 */
-	u32 qsync_min_fps;
-	u32 *qsync_min_fps_list;
-	int qsync_min_fps_list_len;
-};
-
 struct dsi_dyn_clk_caps {
 	bool dyn_clk_support;
 	u32 *bit_clk_list;
@@ -126,9 +124,6 @@ struct dsi_backlight_config {
 	u32 bl_scale;
 	u32 bl_scale_ad;
 	bool bl_inverted_dbv;
-	u32 bl_doze_lpm;
-	u32 bl_doze_hbm;
-	u32 real_bl_level;
 
 	int en_gpio;
 	bool dcs_type_ss;
@@ -177,13 +172,33 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	int esd_err_irq_gpio;
+	int esd_err_irq;
+	int esd_err_irq_flags;
+#endif
 };
 
 #define BRIGHTNESS_ALPHA_PAIR_LEN 2
 struct brightness_alpha_pair {
-	u16 brightness;
-	u8 alpha;
+	u32 brightness;
+	u32 alpha;
 };
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+struct lockdowninfo_cfg {
+	u8 lockdowninfo[16];
+	bool lockdowninfo_read_done;
+};
+
+struct dsi_read_config {
+	bool enabled;
+	struct dsi_panel_cmd_set read_cmd;
+	u32 cmds_rlen;
+	u32 valid_bits;
+	u8 rbuf[BUF_LEN_MAX];
+};
+#endif
 
 struct dsi_panel {
 	const char *name;
@@ -201,6 +216,7 @@ struct dsi_panel {
 	struct dsi_cmd_engine_cfg cmd_config;
 	enum dsi_op_mode panel_mode;
 	bool panel_mode_switch_enabled;
+    bool hbm_requested;
 
 	struct dsi_dfps_capabilities dfps_caps;
 	struct dsi_dyn_clk_caps dyn_clk_caps;
@@ -219,8 +235,6 @@ struct dsi_panel {
 
 	struct dsi_parser_utils utils;
 
-	u32 init_delay_us;
-
 	bool lp11_init;
 	bool ulps_feature_enabled;
 	bool ulps_suspend_enabled;
@@ -229,7 +243,7 @@ struct dsi_panel {
 
 	bool panel_initialized;
 	bool te_using_watchdog_timer;
-	struct dsi_qsync_capabilities qsync_caps;
+	u32 qsync_min_fps;
 
 	char dsc_pps_cmd[DSI_CMD_PPS_SIZE];
 	enum dsi_dms_mode dms_mode;
@@ -238,23 +252,21 @@ struct dsi_panel {
 	int power_mode;
 	enum dsi_panel_physical_type panel_type;
 
-	int hbm_mode;
-	bool resend_ea;
-	bool resend_ea_hbm;
-
 	struct brightness_alpha_pair *fod_dim_lut;
-	struct brightness_alpha_pair *dc_dim_lut;
-	unsigned int fod_dim_lut_len;
-	unsigned int dc_dim_lut_len;
-	u8 fod_dim_alpha;
-	u8 dc_dim_alpha;
-	bool fod_hbm_enabled;
-	bool fod_ui;
-	bool force_fod_ui;
-	bool force_fod_dim_alpha;
-	bool dc_dim;
-	bool force_dc_dim_alpha;
-	bool was_dc_dim;
+	u32 fod_dim_lut_count;
+
+	bool cphy_esd_check;
+	struct delayed_work esd_work;
+
+	bool sync_pen_fps;
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	bool is_tddi_flag;
+	bool tddi_doubleclick_flag;
+	bool panel_dead_flag;
+
+	struct lockdowninfo_cfg lockdowninfo_read;
+#endif
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -279,7 +291,7 @@ static inline void dsi_panel_release_panel_lock(struct dsi_panel *panel)
 
 static inline bool dsi_panel_is_type_oled(struct dsi_panel *panel)
 {
-	return true;
+	return (panel->panel_type == DSI_DISPLAY_PANEL_TYPE_OLED);
 }
 
 struct dsi_panel *dsi_panel_get(struct device *parent,
@@ -375,18 +387,29 @@ int dsi_panel_parse_esd_reg_read_configs(struct dsi_panel *panel);
 
 void dsi_panel_ext_bridge_put(struct dsi_panel *panel);
 
-u8 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
-u8 dsi_panel_get_dc_dim_alpha(struct dsi_panel *panel);
-
-int dsi_panel_apply_hbm_mode(struct dsi_panel *panel);
-
-void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
-		struct dsi_display_mode *mode, u32 frame_threshold_us);
+int dsi_panel_set_hbm(struct dsi_panel *panel, bool status);
 
 int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
-bool dsi_panel_get_fod_ui(struct dsi_panel *panel);
-void dsi_panel_set_fod_ui(struct dsi_panel *panel, bool status);
-bool dsi_panel_get_force_fod_ui(struct dsi_panel *panel);
-bool dsi_panel_get_dc_dim(struct dsi_panel *panel);
+
+u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
+
+int dsi_panel_set_esd_check(struct dsi_panel *panel);
+
+int dsi_panel_sync_pen_fps(struct dsi_panel *panel,
+				struct dsi_display_mode *adj_mode);
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+int dsi_panel_esd_irq_ctrl(struct dsi_panel *panel, bool enable);
+
+ssize_t dsi_panel_lockdown_info_read(unsigned char *plockdowninfo);
+
+int dsi_panel_write_cmd_set(struct dsi_panel *panel, struct dsi_panel_cmd_set *cmd_sets);
+
+int dsi_panel_read_cmd_set(struct dsi_panel *panel, struct dsi_read_config *read_config);
+
+void dsi_panel_doubleclick_enable(bool on);
+
+int dsi_panel_lockdowninfo_param_read(struct dsi_panel *panel);
+#endif
 
 #endif /* _DSI_PANEL_H_ */

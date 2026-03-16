@@ -1299,6 +1299,9 @@ struct drm_gem_object *msm_gem_import(struct drm_device *dev,
 
 	mutex_unlock(&msm_obj->lock);
 	return obj;
+
+	drm_gem_object_unreference_unlocked(obj);
+	return ERR_PTR(ret);
 }
 
 static void *_msm_gem_kernel_new(struct drm_device *dev, uint32_t size,

@@ -557,12 +557,21 @@
 	soc: soc { };
 
 	firmware: firmware {
-		android {
-			boot_devices = "soc/1d84000.ufshc";
-			compatible = "android,firmware";
-			shared_meta: vbmeta {
-			};
+                android {
+                        boot_devices = "soc/1d84000.ufshc";
+                        shared_meta {
+                                parts = "vbmeta,boot,system,vendor,dtbo";
+				};
+                        };
+		android_q_fstab {
+        			odm {
+                		status = "disabled";
+        			};
+        			vendor {
+                		status = "disabled";
+        			};
 		};
+		
 	};
 
 	reserved_memory: reserved-memory {

@@ -1073,28 +1073,17 @@ EXPORT_SYMBOL(mipi_dsi_dcs_set_tear_scanline);
  */
 
 int mipi_dsi_dcs_set_display_brightness_ss(struct mipi_dsi_device *dsi,
-					u16 brightness, size_t num_params)
+                                        u16 brightness)
 {
-	u8 payload[2];
-	ssize_t err;
+        u8 payload[2] = { brightness >> 8, brightness & 0xff };
+        ssize_t err;
 
-	switch (num_params) {
-	case 1:
-		payload[0] = brightness & 0xff;
-		break;
-	case 2:
-		payload[0] = brightness >> 8;
-		payload[1] = brightness & 0xff;
-		break;
-	default:
-		return -EINVAL;
-	}
-	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
-				 payload, num_params);
-	if (err < 0)
-		return err;
+        err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
+                                 payload, sizeof(payload));
+        if (err < 0)
+                return err;
 
-	return 0;
+        return 0;
 }
 
 /**
@@ -1111,28 +1100,17 @@ int mipi_dsi_dcs_set_display_brightness_ss(struct mipi_dsi_device *dsi,
  * Return: 0 on success or a negative error code on failure.
  */
 int mipi_dsi_dcs_set_display_brightness(struct mipi_dsi_device *dsi,
-					u16 brightness, size_t num_params)
+                                        u16 brightness)
 {
-	u8 payload[2];
-	ssize_t err;
+        u8 payload[2] = { brightness & 0xff, brightness >> 8 };
+        ssize_t err;
 
-	switch (num_params) {
-	case 1:
-		payload[0] = brightness & 0xff;
-		break;
-	case 2:
-		payload[0] = brightness >> 8;
-		payload[1] = brightness & 0xff;
-		break;
-	default:
-		return -EINVAL;
-	}
-	err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
-				 payload, num_params);
-	if (err < 0)
-		return err;
+        err = mipi_dsi_dcs_write(dsi, MIPI_DCS_SET_DISPLAY_BRIGHTNESS,
+                                 payload, sizeof(payload));
+        if (err < 0)
+                return err;
 
-	return 0;
+        return 0;
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness);
 
@@ -1150,33 +1128,20 @@ EXPORT_SYMBOL(mipi_dsi_dcs_set_display_brightness);
  * Return: 0 on success or a negative error code on failure.
  */
 int mipi_dsi_dcs_get_display_brightness(struct mipi_dsi_device *dsi,
-					u16 *brightness, size_t num_params)
+                                        u16 *brightness)
 {
-	u8 payload[2];
-	ssize_t err;
+        ssize_t err;
 
-	if (!(num_params == 1 || num_params == 2))
-		return -EINVAL;
+        err = mipi_dsi_dcs_read(dsi, MIPI_DCS_GET_DISPLAY_BRIGHTNESS,
+                                brightness, sizeof(*brightness));
+        if (err <= 0) {
+                if (err == 0)
+                        err = -ENODATA;
 
-	err = mipi_dsi_dcs_read(dsi, MIPI_DCS_GET_DISPLAY_BRIGHTNESS,
-				payload, num_params);
-	if (err <= 0) {
-		if (err == 0)
-			err = -ENODATA;
+                return err;
+        }
 
-		return err;
-	}
-
-	switch (num_params) {
-	case 1:
-		*brightness = payload[0];
-		break;
-	case 2:
-		*brightness = payload[0] << 8 || payload[1];
-		break;
-	}
-
-	return 0;
+        return 0;
 }
 EXPORT_SYMBOL(mipi_dsi_dcs_get_display_brightness);
 

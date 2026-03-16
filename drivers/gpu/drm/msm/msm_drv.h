@@ -26,7 +26,6 @@
 #include <linux/component.h>
 #include <linux/platform_device.h>
 #include <linux/pm.h>
-#include <linux/pm_qos.h>
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/list.h>
@@ -108,7 +107,6 @@ enum msm_mdp_plane_property {
 	/* range properties */
 	PLANE_PROP_ZPOS = PLANE_PROP_BLOBCOUNT,
 	PLANE_PROP_FOD,
-	PLANE_PROP_DCDIM,
 	PLANE_PROP_ALPHA,
 	PLANE_PROP_COLOR_FILL,
 	PLANE_PROP_H_DECIMATE,
@@ -205,7 +203,6 @@ enum msm_mdp_conn_property {
 	CONNECTOR_PROP_LP,
 	CONNECTOR_PROP_FB_TRANSLATION_MODE,
 	CONNECTOR_PROP_QSYNC_MODE,
-	CONNECTOR_PROP_CMD_FRAME_TRIGGER_MODE,
 
 	/* total # of properties */
 	CONNECTOR_PROP_COUNT
@@ -503,7 +500,6 @@ struct msm_mode_info {
  *				 used instead of panel TE in cmd mode panels
  * @roi_caps:           Region of interest capability info
  * @qsync_min_fps	Minimum fps supported by Qsync feature
- * @has_qsync_min_fps_list True if dsi-supported-qsync-min-fps-list exits
  * @te_source		vsync source pin information
  */
 struct msm_display_info {
@@ -528,8 +524,6 @@ struct msm_display_info {
 	struct msm_roi_caps roi_caps;
 
 	uint32_t qsync_min_fps;
-	bool has_qsync_min_fps_list;	
-
 	uint32_t te_source;
 };
 
@@ -657,7 +651,6 @@ struct msm_drm_private {
 
 	struct task_struct *pp_event_thread;
 	struct kthread_worker pp_event_worker;
-	struct kthread_work thread_priority_work;
 
 	unsigned int num_encoders;
 	struct drm_encoder *encoders[MAX_ENCODERS];
@@ -709,9 +702,6 @@ struct msm_drm_private {
 	bool shutdown_in_progress;
 
 	struct msm_idle idle;
-	struct pm_qos_request pm_irq_req;
-	struct delayed_work pm_unreq_dwork;
-	atomic_t pm_req_set;
 };
 
 /* get struct msm_kms * from drm_device * */
@@ -738,8 +728,6 @@ void __msm_fence_worker(struct work_struct *work);
 
 int msm_atomic_commit(struct drm_device *dev,
 		struct drm_atomic_state *state, bool nonblock);
-int msm_drm_notifier_call_chain(unsigned long val, void *v);
-
 struct drm_atomic_state *msm_atomic_state_alloc(struct drm_device *dev);
 void msm_atomic_state_clear(struct drm_atomic_state *state);
 void msm_atomic_state_free(struct drm_atomic_state *state);
@@ -965,6 +953,7 @@ void __init msm_mdp_register(void);
 void __exit msm_mdp_unregister(void);
 
 void msm_idle_set_state(struct drm_encoder *encoder, bool active);
+
 #ifdef CONFIG_DEBUG_FS
 void msm_gem_describe(struct drm_gem_object *obj, struct seq_file *m);
 void msm_gem_describe_objects(struct list_head *list, struct seq_file *m);

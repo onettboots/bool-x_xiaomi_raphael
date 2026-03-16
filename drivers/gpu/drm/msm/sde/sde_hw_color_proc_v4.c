@@ -182,6 +182,7 @@ void sde_setup_dspp_igcv3(struct sde_hw_dspp *ctx, void *cfg)
 	addr[0] = lut_cfg->c0;
 	addr[1] = lut_cfg->c1;
 	addr[2] = lut_cfg->c2;
+
 	for (i = 0; i < IGC_TBL_NUM; i++) {
 		offset = IGC_C0_OFF + (i * sizeof(u32));
 

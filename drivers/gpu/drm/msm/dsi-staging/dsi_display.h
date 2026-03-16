@@ -203,6 +203,9 @@ struct dsi_display {
 
 	const char *name;
 	bool is_prim_display;
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+	bool is_first_boot;
+#endif
 	const char *display_type;
 	const char *dsi_type;
 	struct list_head list;
@@ -282,6 +285,8 @@ struct dsi_display {
 	struct dsi_display_boot_param *boot_disp;
 
 	u32 te_source;
+
+	atomic_t fod_ui;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);
@@ -391,15 +396,6 @@ int dsi_display_get_modes(struct dsi_display *display,
  */
 void dsi_display_put_mode(struct dsi_display *display,
 	struct dsi_display_mode *mode);
-
-/**
- * dsi_display_get_qsync_min_fps() - get qsync min fps for given fps
- * @display:            Handle to display.
- * @mode_fps:           Fps value of current mode
- *
- * Return: error code.
- */
-int dsi_display_get_qsync_min_fps(void *dsi_display, u32 mode_fps);
 
 /**
  * dsi_display_find_mode() - retrieve cached DSI mode given relevant params
@@ -723,5 +719,17 @@ int dsi_display_get_panel_vfp(void *display,
 	int h_active, int v_active);
 
 struct dsi_display *get_main_display(void);
+
+void dsi_display_set_fod_ui(struct dsi_display *display, bool status);
+
+int dsi_display_cmd_engine_enable(struct dsi_display *display);
+
+int dsi_display_cmd_engine_disable(struct dsi_display *display);
+
+int dsi_host_alloc_cmd_tx_buffer(struct dsi_display *display);
+
+#if defined(CONFIG_MACH_XIAOMI_VAYU) || defined(CONFIG_MACH_XIAOMI_NABU)
+int dsi_display_esd_irq_ctrl(struct dsi_display *display, bool enable);
+#endif
 
 #endif /* _DSI_DISPLAY_H_ */

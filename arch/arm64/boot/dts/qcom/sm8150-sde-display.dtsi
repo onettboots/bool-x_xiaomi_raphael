@@ -35,6 +35,13 @@
 #include "dsi-panel-rm69299-visionox-amoled-fhd-plus-video.dtsi"
 #include "dsi-panel-ss-fhd-ea8076-cmd.dtsi"
 #include "dsi-panel-ss-fhd-ea8076-global-cmd.dtsi"
+
+#include "dsi-panel-samsung-fhd-ea8076-f1-cmd.dtsi"
+#include "dsi-panel-samsung-fhd-ea8076-f1mp-cmd.dtsi"
+#include "dsi-panel-samsung-fhd-ea8076-f1p2-2-cmd.dtsi"
+#include "dsi-panel-samsung-fhd-ea8076-f1p2-cmd.dtsi"
+#include "dsi-panel-samsung-fhd-ea8076-f1s-cmd.dtsi"
+
 #include "dsi-panel-visionox-fhd-r66456-f11-cmd.dtsi"
 #include <dt-bindings/clock/mdss-10nm-pll-clk.h>
 

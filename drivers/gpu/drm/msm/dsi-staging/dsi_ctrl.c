@@ -216,10 +216,8 @@ static int dsi_ctrl_debugfs_init(struct dsi_ctrl *dsi_ctrl,
 	dir = debugfs_create_dir(dsi_ctrl->name, parent);
 	if (IS_ERR_OR_NULL(dir)) {
 		rc = PTR_ERR(dir);
-#ifdef CONFIG_DEBUG_FS
-		pr_err("[DSI_%d] debugfs create dir failed, rc=%d\n",
+		pr_debug("[DSI_%d] debugfs create dir failed, rc=%d\n",
 		       dsi_ctrl->cell_index, rc);
-#endif
 		goto error;
 	}
 
@@ -848,24 +846,21 @@ int dsi_ctrl_pixel_format_to_bpp(enum dsi_pixel_format dst_format)
 }
 
 static int dsi_ctrl_update_link_freqs(struct dsi_ctrl *dsi_ctrl,
-	struct dsi_host_config *config, void *clk_handle,
-	struct dsi_display_mode *mode)
+	struct dsi_host_config *config, void *clk_handle)
 {
 	int rc = 0;
 	u32 num_of_lanes = 0;
-	u32 bpp, frame_time_us;
+	u32 bpp;
+	u64 refresh_rate = TICKS_IN_MICRO_SECOND;
 	u64 h_period, v_period, bit_rate, pclk_rate, bit_rate_per_lane,
 				byte_clk_rate, byte_intf_clk_rate;
 	struct dsi_host_common_cfg *host_cfg = &config->common_config;
 	struct dsi_split_link_config *split_link = &host_cfg->split_link;
 	struct dsi_mode_info *timing = &config->video_timing;
 	u32 bits_per_symbol = 16, num_of_symbols = 7; /* For Cphy */
-	u64 dsi_transfer_time_us = mode->priv_info->dsi_transfer_time_us;
-	u64 min_dsi_clk_hz = mode->priv_info->min_dsi_clk_hz;
 
-	/* Get bits per pxl in desitination format */
+	/* Get bits per pxl in desitnation format */
 	bpp = dsi_ctrl_pixel_format_to_bpp(host_cfg->dst_format);
-	frame_time_us = mult_frac(1000, 1000, (timing->refresh_rate));
 
 	if (host_cfg->data_lanes & DSI_DATA_LANE_0)
 		num_of_lanes++;
@@ -879,20 +874,25 @@ static int dsi_ctrl_update_link_freqs(struct dsi_ctrl *dsi_ctrl,
 	if (split_link->split_link_enabled)
 		num_of_lanes = split_link->lanes_per_sublink;
 
-	config->common_config.num_data_lanes = num_of_lanes;
-	config->common_config.bpp = bpp;
+	if (config->bit_clk_rate_hz_override == 0) {
+		if (config->panel_mode == DSI_OP_CMD_MODE) {
+			h_period = DSI_H_ACTIVE_DSC(timing);
+			h_period += timing->overlap_pixels;
+			v_period = timing->v_active;
 
-	if (config->bit_clk_rate_hz_override != 0) {
-		bit_rate = config->bit_clk_rate_hz_override * num_of_lanes;
-	} else if (config->panel_mode == DSI_OP_CMD_MODE) {
-		/* Calculate the bit rate needed to match dsi transfer time */
-		bit_rate = min_dsi_clk_hz * frame_time_us;
-		do_div(bit_rate, dsi_transfer_time_us);
-		bit_rate = bit_rate * num_of_lanes;
+			do_div(refresh_rate, timing->mdp_transfer_time_us);
+		} else {
+			h_period = DSI_H_TOTAL_DSC(timing);
+			v_period = DSI_V_TOTAL(timing);
+			refresh_rate = timing->refresh_rate;
+		}
+		bit_rate = h_period * v_period * refresh_rate * bpp;
 	} else {
-		h_period = DSI_H_TOTAL_DSC(timing);
-		v_period = DSI_V_TOTAL(timing);
-		bit_rate = h_period * v_period * timing->refresh_rate * bpp;
+		bit_rate = config->bit_clk_rate_hz_override * num_of_lanes;
+		if (host_cfg->phy_type == DSI_PHY_TYPE_CPHY) {
+			bit_rate *= bits_per_symbol;
+			do_div(bit_rate, num_of_symbols);
+		}
 	}
 
 	pclk_rate = bit_rate;
@@ -980,24 +980,35 @@ error:
 	return rc;
 }
 
-static int dsi_ctrl_copy_and_pad_cmd(const struct mipi_dsi_packet *packet,
-				     u8 *buf, size_t len)
+static int dsi_ctrl_copy_and_pad_cmd(struct dsi_ctrl *dsi_ctrl,
+				     const struct mipi_dsi_packet *packet,
+				     u8 **buffer,
+				     u32 *size)
 {
 	int rc = 0;
+	u8 *buf = NULL;
+	u32 len, i;
 	u8 cmd_type = 0;
 
-	if (unlikely(len < packet->size))
-		return -EINVAL;
+	len = packet->size;
+	len += 0x3; len &= ~0x03; /* Align to 32 bits */
 
-	memcpy(buf, packet->header, sizeof(packet->header));
-	if (packet->payload_length)
-		memcpy(buf + sizeof(packet->header), packet->payload,
-		       packet->payload_length);
-	if (packet->size < len)
-		memset(buf + packet->size, 0xFF, len - packet->size);
+	buf = devm_kzalloc(&dsi_ctrl->pdev->dev, len * sizeof(u8), GFP_KERNEL);
+	if (!buf)
+		return -ENOMEM;
+
+	for (i = 0; i < len; i++) {
+		if (i >= packet->size)
+			buf[i] = 0xFF;
+		else if (i < sizeof(packet->header))
+			buf[i] = packet->header[i];
+		else
+			buf[i] = packet->payload[i - sizeof(packet->header)];
+	}
 
 	if (packet->payload_length > 0)
 		buf[3] |= BIT(6);
+
 
 	/* send embedded BTA for read commands */
 	cmd_type = buf[2] & 0x3f;
@@ -1006,6 +1017,9 @@ static int dsi_ctrl_copy_and_pad_cmd(const struct mipi_dsi_packet *packet,
 	    (cmd_type == MIPI_DSI_GENERIC_READ_REQUEST_1_PARAM) ||
 	    (cmd_type == MIPI_DSI_GENERIC_READ_REQUEST_2_PARAM))
 		buf[3] |= BIT(5);
+
+	*buffer = buf;
+	*size = len;
 
 	return rc;
 }
@@ -1127,13 +1141,11 @@ int dsi_message_validate_tx_mode(struct dsi_ctrl *dsi_ctrl,
 			pr_err("Cannot transfer,size is greater than 4096\n");
 			return -ENOTSUPP;
 		}
-	} else if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
-		const size_t transfer_size = dsi_ctrl->cmd_len + cmd_len + 4;
+	}
 
-		if (transfer_size > DSI_EMBEDDED_MODE_DMA_MAX_SIZE_BYTES) {
-			pr_err("Cannot transfer, size: %zu is greater than %d\n",
-			       transfer_size,
-			       DSI_EMBEDDED_MODE_DMA_MAX_SIZE_BYTES);
+	if (*flags & DSI_CTRL_CMD_FETCH_MEMORY) {
+		if ((dsi_ctrl->cmd_len + cmd_len + 4) > SZ_4K) {
+			pr_err("Cannot transfer,size is greater than 4096\n");
 			return -ENOTSUPP;
 		}
 	}
@@ -1150,9 +1162,9 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 	struct dsi_ctrl_cmd_dma_fifo_info cmd;
 	struct dsi_ctrl_cmd_dma_info cmd_mem;
 	u32 hw_flags = 0;
-	u32 length;
+	u32 length = 0;
 	u8 *buffer = NULL;
-	u32 line_no = 0x1;
+	u32 cnt = 0, line_no = 0x1;
 	u8 *cmdbuf;
 	struct dsi_mode_info *timing;
 	struct dsi_ctrl_hw_ops dsi_hw_ops = dsi_ctrl->hw.ops;
@@ -1167,10 +1179,6 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		rc = -ENOTSUPP;
 		goto error;
 	}
-
-	pr_debug("cmd tx type=%02x cmd=%02x len=%d last=%d\n", msg->type,
-		 msg->tx_len ? *((u8 *)msg->tx_buf) : 0, msg->tx_len,
-		 (msg->flags & MIPI_DSI_MSG_LASTCOMMAND) != 0);
 
 	if (flags & DSI_CTRL_CMD_NON_EMBEDDED_MODE) {
 		cmd_mem.offset = dsi_ctrl->cmd_buffer_iova;
@@ -1197,22 +1205,20 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		goto error;
 	}
 
-	length = ALIGN(packet.size, 4);
+	rc = dsi_ctrl_copy_and_pad_cmd(dsi_ctrl,
+			&packet,
+			&buffer,
+			&length);
+	if (rc) {
+		pr_err("[%s] failed to copy message, rc=%d\n",
+				dsi_ctrl->name, rc);
+		goto error;
+	}
 
 	if ((msg->flags & MIPI_DSI_MSG_LASTCOMMAND))
-		packet.header[3] |= BIT(7);//set the last cmd bit in header.
+		buffer[3] |= BIT(7);//set the last cmd bit in header.
 
 	if (flags & DSI_CTRL_CMD_FETCH_MEMORY) {
-		msm_gem_sync(dsi_ctrl->tx_cmd_buf);
-		cmdbuf = dsi_ctrl->vaddr + dsi_ctrl->cmd_len;
-
-		rc = dsi_ctrl_copy_and_pad_cmd(&packet, cmdbuf, length);
-		if (rc) {
-			pr_err("[%s] failed to copy message, rc=%d\n",
-					dsi_ctrl->name, rc);
-			goto error;
-		}
-
 		/* Embedded mode config is selected */
 		cmd_mem.offset = dsi_ctrl->cmd_buffer_iova;
 		cmd_mem.en_broadcast = (flags & DSI_CTRL_CMD_BROADCAST) ?
@@ -1221,6 +1227,12 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 			true : false;
 		cmd_mem.use_lpm = (msg->flags & MIPI_DSI_MSG_USE_LPM) ?
 			true : false;
+
+		cmdbuf = (u8 *)(dsi_ctrl->vaddr);
+
+		msm_gem_sync(dsi_ctrl->tx_cmd_buf);
+		for (cnt = 0; cnt < length; cnt++)
+			cmdbuf[dsi_ctrl->cmd_len + cnt] = buffer[cnt];
 
 		dsi_ctrl->cmd_len += length;
 
@@ -1232,20 +1244,6 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl,
 		}
 
 	} else if (flags & DSI_CTRL_CMD_FIFO_STORE) {
-		buffer = devm_kzalloc(&dsi_ctrl->pdev->dev, length,
-					   GFP_KERNEL);
-		if (!buffer) {
-			rc = -ENOMEM;
-			goto error;
-		}
-
-		rc = dsi_ctrl_copy_and_pad_cmd(&packet, buffer, length);
-		if (rc) {
-			pr_err("[%s] failed to copy message, rc=%d\n",
-					dsi_ctrl->name, rc);
-			goto error;
-		}
-
 		cmd.command =  (u32 *)buffer;
 		cmd.size = length;
 		cmd.en_broadcast = (flags & DSI_CTRL_CMD_BROADCAST) ?
@@ -1459,10 +1457,8 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 	bool short_resp = false;
 	bool read_done = false;
 	u32 dlen, diff, rlen;
-	unsigned char *buff = NULL;
+	unsigned char *buff;
 	char cmd;
-	u32 buffer_sz = 0, header_offset = 0;
-	u8 *head = NULL;
 
 	if (!msg) {
 		pr_err("Invalid msg\n");
@@ -1475,12 +1471,6 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 		short_resp = true;
 		rd_pkt_size = msg->rx_len;
 		total_read_len = 4;
-
-		/*
-		 * buffer size: header + data
-		 * No 32 bits alignment issue, thus offset is 0
-		 */
-		buffer_sz = 4;
 	} else {
 		short_resp = false;
 		current_read_len = 10;
@@ -1490,25 +1480,8 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 			rd_pkt_size = current_read_len;
 
 		total_read_len = current_read_len + 6;
-
-		/*
-		 * buffer size: header + data + footer, rounded up to 4 bytes
-		 * Out of bound can occurs is rx_len is not aligned to size 4.
-		 * We are reading 32 bits registers, and converting
-		 * the data to CPU endianness, thus inserting garbage data
-		 * at the beginning of buffer.
-		 */
-		buffer_sz = (((4 + msg->rx_len + 2) + 3) >> 2) << 2;
-		if (buffer_sz < 16)
-			buffer_sz = 16;
 	}
-
-	buff = kzalloc(buffer_sz, GFP_KERNEL);
-	if (!buff) {
-		rc = -ENOMEM;
-		goto error;
-	}
-	head = buff;
+	buff = msg->rx_buf;
 
 	while (!read_done) {
 		rc = dsi_set_max_return_size(dsi_ctrl, msg, rd_pkt_size);
@@ -1565,15 +1538,13 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 		}
 	}
 
-	buff = head;
-
 	if (hw_read_cnt < 16 && !short_resp)
-		header_offset = (16 - hw_read_cnt);
+		buff = msg->rx_buf + (16 - hw_read_cnt);
 	else
-		header_offset = 0;
+		buff = msg->rx_buf;
 
 	/* parse the data read from panel */
-	cmd = buff[header_offset];
+	cmd = buff[0];
 	switch (cmd) {
 	case MIPI_DSI_RX_ACKNOWLEDGE_AND_ERROR_REPORT:
 		pr_err("Rx ACK_ERROR 0x%x\n", cmd);
@@ -1581,15 +1552,15 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 		break;
 	case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_1BYTE:
 	case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_1BYTE:
-		rc = dsi_parse_short_read1_resp(msg, &buff[header_offset]);
+		rc = dsi_parse_short_read1_resp(msg, buff);
 		break;
 	case MIPI_DSI_RX_GENERIC_SHORT_READ_RESPONSE_2BYTE:
 	case MIPI_DSI_RX_DCS_SHORT_READ_RESPONSE_2BYTE:
-		rc = dsi_parse_short_read2_resp(msg, &buff[header_offset]);
+		rc = dsi_parse_short_read2_resp(msg, buff);
 		break;
 	case MIPI_DSI_RX_GENERIC_LONG_READ_RESPONSE:
 	case MIPI_DSI_RX_DCS_LONG_READ_RESPONSE:
-		rc = dsi_parse_long_read_resp(msg, &buff[header_offset]);
+		rc = dsi_parse_long_read_resp(msg, buff);
 		break;
 	default:
 		pr_warn("Invalid response: 0x%x\n", cmd);
@@ -1597,7 +1568,6 @@ static int dsi_message_rx(struct dsi_ctrl *dsi_ctrl,
 	}
 
 error:
-	kfree(buff);
 	return rc;
 }
 
@@ -1784,7 +1754,7 @@ static int dsi_enable_io_clamp(struct dsi_ctrl *dsi_ctrl,
 static int dsi_ctrl_dts_parse(struct dsi_ctrl *dsi_ctrl,
 				  struct device_node *of_node)
 {
-	u32 index = 0, frame_threshold_time_us = 0;
+	u32 index = 0;
 	int rc = 0;
 
 	if (!dsi_ctrl || !of_node) {
@@ -1812,15 +1782,6 @@ static int dsi_ctrl_dts_parse(struct dsi_ctrl *dsi_ctrl,
 
 	dsi_ctrl->split_link_supported = of_property_read_bool(of_node,
 					"qcom,split-link-supported");
-
-	rc = of_property_read_u32(of_node, "frame-threshold-time-us",
-			&frame_threshold_time_us);
-	if (rc) {
-		pr_debug("frame-threshold-time not specified, defaulting\n");
-		frame_threshold_time_us = 2666;
-	}
-
-	dsi_ctrl->frame_threshold_time_us = frame_threshold_time_us;
 
 	return 0;
 }
@@ -2079,7 +2040,12 @@ int dsi_ctrl_drv_init(struct dsi_ctrl *dsi_ctrl, struct dentry *parent)
 		goto error;
 	}
 
-	dsi_ctrl_debugfs_init(dsi_ctrl, parent);
+	rc = dsi_ctrl_debugfs_init(dsi_ctrl, parent);
+	if (rc) {
+		pr_err("[DSI_%d] failed to init debug fs, rc=%d\n",
+		       dsi_ctrl->cell_index, rc);
+		goto error;
+	}
 
 error:
 	mutex_unlock(&dsi_ctrl->ctrl_lock);
@@ -2971,7 +2937,6 @@ error:
  * dsi_ctrl_update_host_config() - update dsi host configuration
  * @dsi_ctrl:          DSI controller handle.
  * @config:            DSI host configuration.
- * @mode:              DSI host mode selected.
  * @flags:             dsi_mode_flags modifying the behavior
  *
  * Updates driver with new Host configuration to use for host initialization.
@@ -2982,7 +2947,6 @@ error:
  */
 int dsi_ctrl_update_host_config(struct dsi_ctrl *ctrl,
 				struct dsi_host_config *config,
-				struct dsi_display_mode *mode,
 				int flags, void *clk_handle)
 {
 	int rc = 0;
@@ -3006,8 +2970,7 @@ int dsi_ctrl_update_host_config(struct dsi_ctrl *ctrl,
 		 * for dynamic clk switch case link frequence would
 		 * be updated dsi_display_dynamic_clk_switch().
 		 */
-		rc = dsi_ctrl_update_link_freqs(ctrl, config, clk_handle,
-				mode);
+		rc = dsi_ctrl_update_link_freqs(ctrl, config, clk_handle);
 		if (rc) {
 			pr_err("[%s] failed to update link frequencies, rc=%d\n",
 			       ctrl->name, rc);

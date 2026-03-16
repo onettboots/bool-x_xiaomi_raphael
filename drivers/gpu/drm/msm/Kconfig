@@ -179,13 +179,6 @@ config DRM_MSM_DSI_14NM_PHY
 	help
 	  Choose this option if DSI PHY on 8996 is used on the platform.
 
-config EXPOSURE_ADJUSTMENT
-	bool "Enable exposure adjustment driver"
-	depends on DRM_MSM
-	help
-          The EXPOSURE ADJUSTMENT provides exposure adjustment function without change
-          panel hardware brightness to avoid PWM flicker on OLED devices.
-
 config DRM_SDE_EVTLOG_DEBUG
 	bool "Enable event logging in MSM DRM"
 	depends on DRM_MSM
@@ -209,11 +202,3 @@ config FENCE_DEBUG
 	bool "Print fence name to userspace"
 	depends on DRM_MSM
 	default n
-
-config DSI_FEATURES
-	bool "Force enable ULPS and PHY poweroff"
-	depends on DRM_MSM
-	default n
-	help
-	  If features can't be enabled in the display drivers in arch/
-	  use this switch to force the use of ULPS and PHY poweroff.
