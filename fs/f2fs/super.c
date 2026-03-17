@@ -1,4 +1,4 @@
-k// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0
 /*
  * fs/f2fs/super.c
  *
@@ -521,7 +521,6 @@ static int f2fs_set_zstd_level(struct f2fs_sb_info *sbi, const char *str)
 	F2FS_OPTION(sbi).compress_level = level;
 	return 0;
 }
-#endif
 #endif
 
 static int parse_options(struct super_block *sb, char *options, bool is_remount)
