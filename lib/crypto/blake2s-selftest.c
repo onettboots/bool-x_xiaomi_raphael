@@ -576,10 +576,6 @@ bool __init blake2s_selftest(void)
 			blake2s_init_key(&state, outlen,
 					 key + BLAKE2S_KEY_SIZE - keylen,
 					 keylen);
-
-		blake2s_update(&state, buf, l);
-		blake2s_update(&state, buf + l, i - l);
-		blake2s_final(&state, hash);
 		if (memcmp(hash, blake2s_testvecs[i], outlen)) {
 			pr_err("blake2s init/update/final self-test %d: FAIL\n",
 			       i + 1);

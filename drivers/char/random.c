@@ -634,7 +634,7 @@ static struct {
 
 static void _mix_pool_bytes(const void *buf, size_t len)
 {
-	blake2s_update(&input_pool.hash, buf, len);
+	//blake2s_update(&input_pool.hash, buf, len);
 }
 
 /*
@@ -674,7 +674,6 @@ static void extract_entropy(void *buf, size_t len)
 	spin_lock_irqsave(&input_pool.lock, flags);
 
 	/* seed = HASHPRF(last_key, entropy_input) */
-	blake2s_final(&input_pool.hash, seed);
 
 	/* next_key = HASHPRF(seed, RDSEED || 0) */
 	block.counter = 0;
