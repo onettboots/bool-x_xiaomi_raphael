@@ -779,6 +779,7 @@ struct st_data {
 
 static void write_default_values(struct cgroup_subsys_state *css)
 {
+	char name_buf[NAME_MAX + 1];
 	static struct st_data st_targets[] = {
 		{ "audio-app",	0, 0 },
 		{ "background",	0, 0 },
@@ -791,7 +792,8 @@ static void write_default_values(struct cgroup_subsys_state *css)
 	for (i = 0; i < ARRAY_SIZE(st_targets); i++) {
 		struct st_data tgt = st_targets[i];
 
-		if (!strcmp(css->cgroup->kn->name, tgt.name)) {
+		cgroup_name(css->cgroup, name_buf, sizeof(name_buf));
+		if (!strcmp(name_buf, tgt.name)) {
 			boost_write(css, NULL, tgt.boost);
 			prefer_idle_write(css, NULL, tgt.prefer_idle);
 			pr_info("stune_assist: setting values for %s: boost=%d prefer_idle=%d\n",
