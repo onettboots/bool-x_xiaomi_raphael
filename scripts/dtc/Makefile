@@ -2,7 +2,9 @@
 # scripts/dtc makefile
 
 hostprogs-y	:= dtc
+ifeq ($(DTC_EXT),)
 always		:= $(hostprogs-y)
+endif
 
 dtc-objs	:= dtc.o flattree.o fstree.o data.o livetree.o treesource.o \
 		   srcpos.o checks.o util.o
@@ -27,3 +29,6 @@ HOSTCFLAGS_dtc-parser.tab.o := $(HOSTCFLAGS_DTC)
 
 # dependencies on generated files need to be listed explicitly
 $(obj)/dtc-lexer.lex.o: $(obj)/dtc-parser.tab.h
+
+# generated files need to be cleaned explicitly
+clean-files	:= dtc-lexer.lex.c dtc-parser.tab.c dtc-parser.tab.h

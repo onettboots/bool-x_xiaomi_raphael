@@ -12,7 +12,6 @@
 
 /dts-v1/;
 
-#include "qcs405.dtsi"
 #include "sa2150p-ccard.dtsi"
 
 / {

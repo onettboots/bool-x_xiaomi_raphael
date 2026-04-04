@@ -13,7 +13,7 @@ fw-external-y := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE))
 # There are three cases to care about:
 # 1. Building kernel with CONFIG_FIRMWARE_IN_KERNEL=y -- $(fw-shipped-y) should
 #    include the firmware files to include, according to .config
-# 2. 'make modules_install', which will install firmware for modules, and
+# 2. 'make modules_install', which will install firmware for modules, and 
 #    _also_ for the in-kernel drivers when CONFIG_FIRMWARE_IN_KERNEL=n
 # 3. 'make firmware_install', which installs all firmware, unconditionally.
 
@@ -21,6 +21,17 @@ fw-external-y := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE))
 # accurate. In the latter case it doesn't matter -- it'll use $(fw-shipped-all).
 # But be aware that the config file might not be included at all.
 fw-shipped-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8) += goodix_gt9886_cfg_f11.bin goodix_gt9886_fw_f11.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_ST_FTS_V521) += st_fts_f1.ftb st_fts.ftb st_fts_e5.ftb st_fts_f1x.ftb
+fw-shipped-$(CONFIG_TOUCHSCREEN_ST_FTS_V59y) += st_fts_j2a.ftb st_fts_j2a_sdc.ftb st_fts_j2a_csot.ftb
+fw-shipped-$(CONFIG_INPUT_PRESS_NDT) += ndt_fw.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36XX) += novatek_nt36672_f10.fw
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += j20s_novatek_ts_fw01.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += j20s_novatek_ts_mp01.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += j20s_novatek_ts_fw02.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += j20s_novatek_ts_mp02.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36523_HOSTDL_SPI) += novatek_ts_fw.bin novatek_ts_mp.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36523_HOSTDL_SPI) += novatek_nt36523_fw01.bin novatek_nt36523_mp01.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36523_HOSTDL_SPI) += novatek_nt36523_fw02.bin novatek_nt36523_mp02.bin
 
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
@@ -83,7 +94,7 @@ $(obj)/%: $(obj)/%.ihex
 # Don't depend on ihex2fw if we're installing and it already exists.
 # Putting it after | in the dependencies doesn't seem sufficient when
 # we're installing after a cross-compile, because ihex2fw has dependencies
-# on stuff like /usr/lib/gcc/ppc64-redhat-linux/4.3.0/include/stddef.h and
+# on stuff like /usr/lib/gcc/ppc64-redhat-linux/4.3.0/include/stddef.h and 
 # thus wants to be rebuilt. Which it can't be, if the prebuilt kernel tree
 # is exported read-only for someone to run 'make install'.
 ifeq ($(INSTALL):$(wildcard $(obj)/ihex2fw),install:$(obj)/ihex2fw)

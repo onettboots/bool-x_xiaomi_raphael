@@ -25,7 +25,6 @@
 &vendor {
 	bluetooth: bt_wcn3990 {
 		compatible = "qca,wcn3990";
-		qca,bt-sw-ctrl-gpio = <&tlmm 50 0>; /* SW_CTRL */
 		qca,bt-vdd-core-supply = <&pm8150_l7>;
 		qca,bt-vdd-pa-supply = <&pm8150l_l2>;
 		qca,bt-vdd-ldo-supply = <&pm8150l_l11>;
@@ -549,7 +548,7 @@
 	wp-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150b_adc_tm ADC_AMUX_THM1_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -564,7 +563,7 @@
 	xo-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_XO_THERM_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -579,7 +578,7 @@
 	skin-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_AMUX_THM1_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -594,7 +593,7 @@
 	pa-therm1 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150_adc_tm ADC_AMUX_THM2_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -609,7 +608,7 @@
 	camera-flash-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM1_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -624,7 +623,7 @@
 	skin-msm-therm {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM2_PU2>;
 		wake-capable-sensor;
 		trips {
@@ -639,7 +638,7 @@
 	pa-therm2 {
 		polling-delay-passive = <0>;
 		polling-delay = <0>;
-		thermal-governor = "step_wise";
+		thermal-governor = "user_space";
 		thermal-sensors = <&pm8150l_adc_tm ADC_AMUX_THM3_PU2>;
 		wake-capable-sensor;
 		trips {
