@@ -35,6 +35,10 @@
 
 #include "zram_drv.h"
 
+#ifndef SZ_4G
+#define SZ_4G (((size_t) SZ_1G) * 4)
+#endif
+
 static DEFINE_IDR(zram_index_idr);
 /* idr index must be protected */
 static DEFINE_MUTEX(zram_index_mutex);
