@@ -48,7 +48,7 @@ cpus=`expr $(nproc --all)`
 objdir="${KERNEL_DIR}/out"
 CONFIGS="raphael_defconfig"
 CFG=arch/arm64/configs/raphael_defconfig
-VER="V2.3-Alarabi-DSP"
+VER="V2.3-Alarabi-DSP-Nethunter"
 KERNEL_DIR=`pwd`
 REPACK_DIR=$HOME/AnyKernel3
 ZIP_MOVE=$HOME/Boolx
@@ -174,7 +174,7 @@ function check_ksuver {
 }
 
 function check_ksutag {
-                KSU_TAG=$(cd $KERNEL_DIR/drivers/kernelsu && git describe --tags --abbrev=0)
+                KSU_TAG=v3.1.0-Legacy-Boolx
 }
 
 function make_zip {
@@ -234,7 +234,7 @@ function upload_boolx_action()
                 sed -i '7i\* KSU+NEXT: '$KSU_VER'' $upl
                 sed -i '8i\* KSU+NEXT Tag: '$KSU_TAG'' $upl
                 sed -i '9i\* SUSFS: '$SUSFS_VER'' $upl
-                sed -i '10i\* Type: DSP, Mi Thermal, '$OCDS'' $upl
+                sed -i '10i\* Type: DSP, Mi Thermal, Nethunter '$OCDS'' $upl
                 sed -i '11i\* Changes: https://github.com/onettboots/bool-x_xiaomi_raphael/commits/14-DSPcr' $upl
             sed -i '12i\* Clang: Boolx Clang 22.0.0' $upl
             sed -i '13i\' $upl
