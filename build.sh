@@ -89,7 +89,7 @@ function cook() {
 }
 
 function build() {
-		make -s -j$(nproc) \
+		make -j$(nproc) \
     		O=out \
     		ARCH=arm64 \
     		CC="ccache clang" \
@@ -168,13 +168,13 @@ function make_boot {
 		cp $KERNEL $REPACK_DIR && cp $DTBO $REPACK_DIR
 }
 function check_ksuver {
-		KSU_VERSION=10200
+		KSU_VERSION=30118
 		KSU_GIT_VERSION=$(cd $KERNEL_DIR/drivers/kernelsu && git rev-list --count HEAD)
 		let KSU_VER=KSU_VERSION+KSU_GIT_VERSION
 }
 
 function check_ksutag {
-                KSU_TAG=$(cd $KERNEL_DIR/drivers/kernelsu && git describe --tags --abbrev=0)
+                KSU_TAG=v3.1.0-Legacy-Boolx
 }
 
 function make_zip {
@@ -882,8 +882,7 @@ cd ${KERNEL_DIR}
 make_config
 build_ocd
 echo -e "${yellow}"
-#build ${TARGET_IMAGE} | tee logs.txt | progress
-build ${TARGET_IMAGE}
+build ${TARGET_IMAGE} | tee logs.txt | progress
 echo -e "${restore}"
 function build_time {
    DATE_END=$(date +"%s")
@@ -926,6 +925,6 @@ fi
 echo
 
 # End
-#rm -rf $upl
+rm -rf $upl
 cd $KERNEL_DIR
 git restore $CFG
