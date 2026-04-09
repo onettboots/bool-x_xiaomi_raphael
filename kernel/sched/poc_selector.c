@@ -152,11 +152,10 @@ static bool is_idle_core_poc(int cpu, struct sched_domain_shared *sd_share)
 		int bit  = sibling - base;
 		int word = bit >> 6;
 		int pos  = bit & 63;
+		u64 cpus = (u64)atomic64_read(&sd_share->poc_idle_cpus[word]);
 
 		if ((unsigned int)word >= nr_words)
 			return false;
-
-		u64 cpus = (u64)atomic64_read(&sd_share->poc_idle_cpus[word]);
 
 		if (!(cpus & (1ULL << pos)))
 			return false;
@@ -167,15 +166,14 @@ static bool is_idle_core_poc(int cpu, struct sched_domain_shared *sd_share)
 void __set_cpu_idle_state(int cpu, int state)
 {
 	struct sched_domain_shared *sd_share;
+	int bit  = cpu - sd_share->poc_cpu_base;
+        int word = bit >> 6;
+        int pos  = bit & 63;
 
 	rcu_read_lock();
 	sd_share = rcu_dereference(per_cpu(sd_llc_shared, cpu));
 	if (!sd_share)
 		goto out_unlock;
-
-	int bit  = cpu - sd_share->poc_cpu_base;
-	int word = bit >> 6;
-	int pos  = bit & 63;
 
 	if ((unsigned int)word >= sd_share->poc_nr_words)
 		goto out_unlock;

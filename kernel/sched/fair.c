@@ -7751,10 +7751,10 @@ static inline int __select_idle_sibling(struct task_struct *p, int prev, int tar
 	{
 		struct sched_domain_shared *sd_share;
 		int has_idle_core_poc = 0;
-
+#ifdef CONFIG_SCHED_SMT
 		if (sched_smt_active())
 			has_idle_core_poc = test_idle_cores(target, false);
-
+#endif
 		sd_share = rcu_dereference(per_cpu(sd_llc_shared, target));
 		if (sd_share &&
 		    static_branch_likely(&sched_poc_enabled) &&
