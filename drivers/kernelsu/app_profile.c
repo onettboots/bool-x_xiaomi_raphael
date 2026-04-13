@@ -10,6 +10,10 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
 #include <linux/sched/signal.h> // signal_struct
 #include <linux/sched/task.h>
+<<<<<<< HEAD
+=======
+#include <linux/sched/user.h>
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #endif
 #include <linux/sched.h>
 #include <linux/seccomp.h>
@@ -76,6 +80,7 @@ void setup_groups(struct root_profile *profile, struct cred *cred)
 	put_group_info(group_info);
 }
 
+<<<<<<< HEAD
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
 extern long SYS_SETNS_SYMBOL(const struct pt_regs *regs);
 static long ksu_sys_setns(int fd, int flags)
@@ -212,6 +217,8 @@ try_drop_caps:
 	return;
 }
 
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 void seccomp_filter_release(struct task_struct *tsk);
 
 void disable_seccomp(void)
@@ -275,6 +282,10 @@ void escape_with_root_profile(void)
 {
 	struct cred *cred;
     struct root_profile profile;
+<<<<<<< HEAD
+=======
+	struct user_struct *new_user;
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 	cred = prepare_creds();
 	if (!cred) {
@@ -284,8 +295,12 @@ void escape_with_root_profile(void)
 
 	if (cred->euid.val == 0) {
 		pr_warn("Already root, don't escape!\n");
+<<<<<<< HEAD
 		abort_creds(cred);
 		return;
+=======
+		goto out_abort_creds;
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	}
 
     ksu_get_root_profile(cred->uid.val, &profile);
@@ -304,6 +319,37 @@ void escape_with_root_profile(void)
     BUILD_BUG_ON(sizeof(profile.capabilities.effective) !=
                  sizeof(kernel_cap_t));
 
+<<<<<<< HEAD
+=======
+    /*
+     * Mirror the kernel set*uid path: update cred->user first, then
+     * cred->ucounts, before commit_creds(). commit_creds() moves
+     * RLIMIT_NPROC accounting based on cred->user; if uid changes while
+     * user/ucounts stay stale, the old charge can remain pinned to the
+     * previous UID.
+     * See kernel/sys.c:set_user() and kernel/cred.c:set_cred_ucounts() /
+     * commit_creds():
+     * https://github.com/torvalds/linux/blob/v5.14/kernel/sys.c
+     * https://github.com/torvalds/linux/blob/v5.14/kernel/cred.c
+     */
+    new_user = alloc_uid(cred->uid);
+    if (!new_user) {
+        goto out_abort_creds;
+    }
+
+    free_uid(cred->user);
+    cred->user = new_user;
+
+    // v5.14+ added cred->ucounts, so we must refresh it after changing uid/user:
+    // https://github.com/torvalds/linux/commit/905ae01c4ae2ae3df05bb141801b1db4b7d83c61#diff-ff6060da281bd9ef3f24e17b77a9b0b5b2ed2d7208bb69b29107bee69732bd31
+    // on older kernels, per-UID process accounting lives in user_struct.
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 14, 0)
+    if (set_cred_ucounts(cred)) {
+        goto out_abort_creds;
+    }
+#endif
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
     // setup capabilities
     // we need CAP_DAC_READ_SEARCH becuase `/data/adb/ksud` is not accessible for non root process
     // we add it here but don't add it to cap_inhertiable, it would be dropped automaticly after exec!
@@ -330,6 +376,13 @@ void escape_with_root_profile(void)
 #endif
 
     setup_mount_ns(profile.namespaces);
+<<<<<<< HEAD
+=======
+	return;
+
+out_abort_creds:
+    abort_creds(cred);
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 void escape_to_root_for_init(void) {

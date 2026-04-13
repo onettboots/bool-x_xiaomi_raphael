@@ -10,6 +10,7 @@
 #include "klog.h" // IWYU pragma: keep
 #include "kernel_compat.h"
 
+<<<<<<< HEAD
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0) ||                           \
 	defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
 #include <linux/key.h>
@@ -87,6 +88,11 @@ struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
             pr_info("switch current nsproxy and fs back to saved successfully\n");
     }
     return fp;
+=======
+struct file *ksu_filp_open_compat(const char *filename, int flags, umode_t mode)
+{
+	return filp_open(filename, flags, mode);
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 ssize_t ksu_kernel_read_compat(struct file *p, void *buf, size_t count,
@@ -134,18 +140,25 @@ int path_mount(const char *dev_name, struct path *path, const char *type_page,
 	long ret = 0;
 	char buf[384];
 
+<<<<<<< HEAD
 	char *realpath = d_path(path, buf, 384);
+=======
+	char *realpath = d_path(path, buf, sizeof(buf));
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	if (IS_ERR(realpath)) {
 		pr_err("ksu_mount: d_path failed, err: %lu\n",
 		       PTR_ERR(realpath));
 		return PTR_ERR(realpath);
 	}
 
+<<<<<<< HEAD
 	// https://github.com/backslashxx/KernelSU/blob/e02c2771b106c68f0b8a17234b5b1846664852f0/kernel/kernel_compat.c#L123
 	// This check is handy.
 	if (!(realpath && realpath != buf))
 		return -ENOENT;
 
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 	ret = do_mount(dev_name, (const char __user *)realpath, type_page,
@@ -180,8 +193,12 @@ long ksu_copy_from_user_nofault(void *dst, const void __user *src, size_t size)
 }
 
 #ifndef KSU_OPTIONAL_STRNCPY
+<<<<<<< HEAD
 inline long
 strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
+=======
+long strncpy_from_user_nofault(char *dst, const void __user *unsafe_addr,
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 				   long count)
 {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
@@ -251,4 +268,8 @@ void *ksu_compat_kvrealloc(const void *p, size_t oldsize, size_t newsize,
 	kvfree(p);
 	return newp;
 }
+<<<<<<< HEAD
 #endif
+=======
+#endif
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)

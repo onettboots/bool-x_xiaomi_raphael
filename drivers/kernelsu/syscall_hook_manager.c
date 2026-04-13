@@ -18,7 +18,10 @@
 #include "sucompat.h"
 #include "setuid_hook.h"
 #include "selinux/selinux.h"
+<<<<<<< HEAD
 #include "util.h"
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #include "kernel_compat.h"
 #include "ksud.h"
 
@@ -69,7 +72,12 @@ static void ksu_mark_running_process_locked()
 	struct task_struct *p, *t;
 	read_lock(&tasklist_lock);
 	for_each_process_thread (p, t) {
+<<<<<<< HEAD
 		if (!t->mm) { // only user processes
+=======
+		if (t->pid != 1 && !t->mm) {
+            // skip kernel threads, but always allow pid 1
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			continue;
 		}
 		int uid = task_uid(t).val;
@@ -98,13 +106,29 @@ static void ksu_mark_running_process_locked()
 void ksu_mark_running_process()
 {
 	unsigned long flags;
+<<<<<<< HEAD
 	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	if (tracepoint_reg_count <= 1) {
 		ksu_mark_running_process_locked();
+=======
+	bool should_mark = false;
+	
+	spin_lock_irqsave(&tracepoint_reg_lock, flags);
+	if (tracepoint_reg_count <= 1) {
+		should_mark = true;
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	} else {
 		pr_info("hook_manager: not mark running process since syscall tracepoint is in use\n");
 	}
 	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+<<<<<<< HEAD
+=======
+	
+	// Call this outside of tracepoint_reg_lock
+	if (should_mark) {
+		ksu_mark_running_process_locked();
+	}
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 // Get task mark status
@@ -197,6 +221,7 @@ static void destroy_kretprobe(struct kretprobe **rp_ptr)
 static int syscall_regfunc_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	unsigned long flags;
+<<<<<<< HEAD
 	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	if (tracepoint_reg_count < 1) {
 		// while install our tracepoint, mark our processes
@@ -207,12 +232,28 @@ static int syscall_regfunc_handler(struct kretprobe_instance *ri, struct pt_regs
 	}
 	tracepoint_reg_count++;
 	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+=======
+	int count;
+	
+	spin_lock_irqsave(&tracepoint_reg_lock, flags);
+	count = tracepoint_reg_count;
+	tracepoint_reg_count++;
+	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+	
+	// Execute marking logic outside the spinlock
+	if (count < 1) {
+		ksu_mark_running_process_locked();
+	} else if (count == 1) {
+		ksu_mark_all_process();
+	}
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	return 0;
 }
 
 static int syscall_unregfunc_handler(struct kretprobe_instance *ri, struct pt_regs *regs)
 {
 	unsigned long flags;
+<<<<<<< HEAD
 	spin_lock_irqsave(&tracepoint_reg_lock, flags);
 	tracepoint_reg_count--;
 	if (tracepoint_reg_count <= 0) {
@@ -223,6 +264,21 @@ static int syscall_unregfunc_handler(struct kretprobe_instance *ri, struct pt_re
 		ksu_mark_running_process_locked();
 	}
 	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+=======
+	int count;
+	
+	spin_lock_irqsave(&tracepoint_reg_lock, flags);
+	tracepoint_reg_count--;
+	count = tracepoint_reg_count;
+	spin_unlock_irqrestore(&tracepoint_reg_lock, flags);
+	
+	// Execute marking logic outside the spinlock
+	if (count <= 0) {
+		ksu_unmark_all_process();
+	} else if (count == 1) {
+		ksu_mark_running_process_locked();
+	}
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	return 0;
 }
 
@@ -234,8 +290,19 @@ static inline bool check_syscall_fastpath(int nr)
 {
 	switch (nr) {
 	case __NR_newfstatat:
+<<<<<<< HEAD
 	case __NR_faccessat:
 	case __NR_execve:
+=======
+#ifdef __NR_fstatat64
+	case __NR_fstatat64:
+#endif
+	case __NR_faccessat:
+	case __NR_execve:
+#ifdef __NR_execveat
+	case __NR_execveat:
+#endif
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	case __NR_setresuid:
 		return true;
 	default:
@@ -258,10 +325,20 @@ int ksu_handle_init_mark_tracker(const char __user **filename_user)
 	fn = (const char __user *)addr;
 
 	memset(path, 0, sizeof(path));
+<<<<<<< HEAD
 	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
 	if (ret < 0 && try_set_access_flag(addr)) {
 		ret = strncpy_from_user_nofault(path, fn, sizeof(path));
 		pr_info("ksu_handle_init_mark_tracker: %ld\n", ret);
+=======
+	
+	// Safe no-fault reading, no try_set_access_flag hacks!
+	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
+
+	if (ret < 0) {
+        // unreadable path; keep mark to avoid wrongly unmarking zygote
+        return 0;
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	}
 
 	if (unlikely(strcmp(path, KSUD_PATH) == 0)) {
@@ -281,8 +358,17 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 {
 	if (unlikely(check_syscall_fastpath(id))) {
 		if (ksu_su_compat_enabled) {
+<<<<<<< HEAD
 			// Handle newfstatat
 			if (id == __NR_newfstatat) {
+=======
+			// Handle newfstatat (y compatibilidad con arquitecturas híbridas)
+#ifdef __NR_fstatat64
+			if (id == __NR_newfstatat || id == __NR_fstatat64) {
+#else
+			if (id == __NR_newfstatat) {
+#endif
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 				int *dfd = (int *)&PT_REGS_PARM1(regs);
 				const char __user **filename_user =
 					(const char __user **)&PT_REGS_PARM2(regs);
@@ -301,11 +387,23 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 				return;
 			}
 
+<<<<<<< HEAD
 			// Handle execve
 			if (id == __NR_execve) {
 				const char __user **filename_user =
 					(const char __user **)&PT_REGS_PARM1(regs);
 				if (current->pid != 1 && is_init(get_current_cred())) {
+=======
+			// Handle execve (y compatibilidad con arquitecturas híbridas)
+#ifdef __NR_execveat
+			if (id == __NR_execve || id == __NR_execveat) {
+#else
+			if (id == __NR_execve) {
+#endif
+				const char __user **filename_user =
+					(const char __user **)&PT_REGS_PARM1(regs);
+				if (current->pid != 1 && is_init(current_cred())) {
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 					ksu_handle_init_mark_tracker(filename_user);
 				} else {
 					ksu_handle_execve_sucompat(filename_user, NULL, NULL, NULL);
@@ -314,7 +412,11 @@ static void ksu_sys_enter_handler(void *data, struct pt_regs *regs, long id)
 			}
 		}
 
+<<<<<<< HEAD
         // Handle setresuid
+=======
+		// Handle setresuid
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		if (id == __NR_setresuid) {
 			uid_t ruid = (uid_t)PT_REGS_PARM1(regs);
 			uid_t euid = (uid_t)PT_REGS_PARM2(regs);

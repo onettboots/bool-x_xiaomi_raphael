@@ -23,9 +23,19 @@ struct ksu_become_daemon_cmd {
 	__u8 token[65]; // Input: daemon token (null-terminated)
 };
 
+<<<<<<< HEAD
 struct ksu_get_info_cmd {
 	__u32 version; // Output: KERNEL_SU_VERSION
 	__u32 flags; // Output: flags (bit 0: MODULE mode)
+=======
+#define KSU_GET_INFO_FLAG_LKM (1U << 0)
+#define KSU_GET_INFO_FLAG_MANAGER (1U << 1)
+#define KSU_GET_INFO_FLAG_LATE_LOAD (1U << 2)
+
+struct ksu_get_info_cmd {
+	__u32 version; // Output: KERNEL_SU_VERSION
+	__u32 flags; // Output: KSU_GET_INFO_FLAG_* bits
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	__u32 features; // Output: max feature ID supported
 };
 
@@ -34,10 +44,29 @@ struct ksu_report_event_cmd {
 };
 
 struct ksu_set_sepolicy_cmd {
+<<<<<<< HEAD
 	__u64 cmd; // Input: sepolicy command
 	__aligned_u64 arg; // Input: sepolicy argument pointer
 };
 
+=======
+	__u64 data_len; // Input: bytes of serialized command payload
+	__aligned_u64 data; // Input: pointer to serialized payload
+};
+
+struct ksu_sepolicy_cmd_hdr {
+	__u32 cmd; // Input: command type, CMD_*
+	__u32 subcmd; // Input: command subtype
+};
+// After each ksu_sepolicy_cmd_hdr, command arguments are encoded sequentially as:
+// [u32 len][len bytes][\0], where len excludes the trailing '\0'.
+// len == 0 represents ALL.
+// Argument count is derived from cmd:
+// CMD_NORMAL_PERM=4, CMD_XPERM=5, CMD_TYPE_STATE=1, CMD_TYPE=2,
+// CMD_TYPE_ATTR=2, CMD_ATTR=1, CMD_TYPE_TRANSITION=5,
+// CMD_TYPE_CHANGE=4, CMD_GENFSCON=3.
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 struct ksu_check_safemode_cmd {
 	__u8 in_safe_mode; // Output: true if in safe mode, false otherwise
 };
@@ -152,6 +181,10 @@ struct ksu_add_try_umount_cmd {
 #define KSU_IOCTL_MANAGE_MARK _IOC(_IOC_READ|_IOC_WRITE, 'K', 16, 0)
 #define KSU_IOCTL_NUKE_EXT4_SYSFS _IOC(_IOC_WRITE, 'K', 17, 0)
 #define KSU_IOCTL_ADD_TRY_UMOUNT _IOC(_IOC_WRITE, 'K', 18, 0)
+<<<<<<< HEAD
+=======
+#define KSU_IOCTL_SET_INIT_PGRP _IO('K', 19)
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #define KSU_IOCTL_GET_HOOK_MODE _IOC(_IOC_READ, 'K', 98, 0)
 #define KSU_IOCTL_GET_VERSION_TAG _IOC(_IOC_READ, 'K', 99, 0)
 

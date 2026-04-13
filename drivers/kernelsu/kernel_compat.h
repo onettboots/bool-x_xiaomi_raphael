@@ -47,7 +47,11 @@ extern long ksu_copy_from_user_nofault(void *dst, const void __user *src, size_t
  * paramters are the same as copy_from_user
  * 0 = success
  */
+<<<<<<< HEAD
 static long ksu_copy_from_user_retry(void *to, 
+=======
+static inline long ksu_copy_from_user_retry(void *to, 
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		const void __user *from, unsigned long count)
 {
 	long ret = ksu_copy_from_user_nofault(to, from, count);
@@ -63,6 +67,31 @@ extern void *ksu_compat_kvrealloc(const void *p, size_t oldsize, size_t newsize,
 				  gfp_t flags);
 #endif
 
+<<<<<<< HEAD
+=======
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
+static inline void *ksu_kvmalloc(size_t size, gfp_t flags)
+{
+	void *buf = kmalloc(size, flags);
+	if (!buf)
+		buf = vmalloc(size);
+	
+	return buf;
+}
+
+static inline void ksu_kvfree(void *buf)
+{
+	if (is_vmalloc_addr(buf))
+		vfree(buf);
+	else
+		kfree(buf);
+}
+#define kvmalloc ksu_kvmalloc
+#define kvfree ksu_kvfree
+#endif
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 #define ksu_access_ok(addr, size) access_ok(addr, size)
 #else

@@ -5,10 +5,22 @@
 #include <linux/string.h>
 #include <linux/types.h>
 #include <linux/version.h>
+<<<<<<< HEAD
+=======
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
+#include <linux/delay.h>
+#include <linux/namei.h>
+#include <linux/cred.h>
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 #include "allowlist.h"
 #include "apk_sign.h"
 #include "klog.h" // IWYU pragma: keep
+<<<<<<< HEAD
+=======
+#include "ksu.h"
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #include "manager.h"
 #include "throne_tracker.h"
 #include "kernel_compat.h"
@@ -59,8 +71,11 @@ struct apk_path_hash {
 	struct list_head list;
 };
 
+<<<<<<< HEAD
 static struct list_head apk_path_hash_list = LIST_HEAD_INIT(apk_path_hash_list);
 
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 struct my_dir_context {
 	struct dir_context ctx;
 	struct list_head *data_path_list;
@@ -87,6 +102,13 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 {
 	struct my_dir_context *my_ctx =
 		container_of(ctx, struct my_dir_context, ctx);
+<<<<<<< HEAD
+=======
+
+	// we put the apk path we collected here
+	char *candidate_path = (char *)my_ctx->private_data;
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	char dirpath[DATA_PATH_LEN];
 
 	if (!my_ctx) {
@@ -125,6 +147,7 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 		strscpy(data->dirpath, dirpath, DATA_PATH_LEN);
 		data->depth = my_ctx->depth - 1;
 		list_add_tail(&data->list, my_ctx->data_path_list);
+<<<<<<< HEAD
 	} else {
 		if ((namelen == 8) && (strncmp(name, "base.apk", namelen) == 0)) {
 			struct apk_path_hash *pos, *n;
@@ -160,6 +183,15 @@ FILLDIR_RETURN_TYPE my_actor(struct dir_context *ctx, const char *name,
 				list_add_tail(&apk_data->list, &apk_path_hash_list);
 			}
 		}
+=======
+
+		return FILLDIR_ACTOR_CONTINUE;
+	}
+
+	// now put this on candidate_path
+	if (d_type == DT_REG && !strncmp(name, "base.apk", 8)) {
+		snprintf(candidate_path, DATA_PATH_LEN, "%s/%.*s", my_ctx->parent_dir, namelen, name);
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	}
 
 	return FILLDIR_ACTOR_CONTINUE;
@@ -171,18 +203,27 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 	struct list_head data_path_list;
 	INIT_LIST_HEAD(&data_path_list);
 
+<<<<<<< HEAD
 	// Initialize APK cache list
 	struct apk_path_hash *pos, *n;
 	list_for_each_entry (pos, &apk_path_hash_list, list) {
 		pos->exists = false;
 	}
 
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	// First depth
 	struct data_path data;
 	strscpy(data.dirpath, path, DATA_PATH_LEN);
 	data.depth = depth;
 	list_add_tail(&data.list, &data_path_list);
 
+<<<<<<< HEAD
+=======
+	// we put the apk path we collected here
+	char candidate_path[DATA_PATH_LEN];
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	for (i = depth; i >= 0; i--) {
 		struct data_path *pos, *n;
 
@@ -190,9 +231,19 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 			struct my_dir_context ctx = { .ctx.actor = my_actor,
 										.data_path_list = &data_path_list,
 										.parent_dir = pos->dirpath,
+<<<<<<< HEAD
 										.private_data = uid_data,
 										.depth = pos->depth,
 										.stop = &stop };
+=======
+										.private_data = candidate_path,
+										.depth = pos->depth,
+										.stop = &stop };
+
+			// make sure to clean buffer on every iteration
+			memset(candidate_path, 0, DATA_PATH_LEN);
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			struct file *file;
 
 			if (!stop) {
@@ -205,6 +256,25 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 
 				iterate_dir(file, &ctx.ctx);
 				filp_close(file, NULL);
+<<<<<<< HEAD
+=======
+
+				// ^ oh so thats the issue!
+				// we were calling is_manager_apk inside iterate_dir
+				// now we defer file opens after iterate_dir
+				// this way we dont open apks while inside that
+				if (!strstarts(candidate_path, "/data/ap") )
+					goto skip_iterate;
+
+				bool is_manager = is_manager_apk(candidate_path);
+				pr_info("Found new base.apk at path: %s, is_manager: %d\n", candidate_path, is_manager);
+
+				if (likely(!is_manager))
+					goto skip_iterate;
+
+				crown_manager(candidate_path, uid_data);
+				stop = 1;
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			}
 		skip_iterate:
 			list_del(&pos->list);
@@ -212,6 +282,7 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 				kfree(pos);
 		}
 	}
+<<<<<<< HEAD
 
 	// Remove stale cached APK entries
 	list_for_each_entry_safe (pos, n, &apk_path_hash_list, list) {
@@ -220,6 +291,8 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 			kfree(pos);
 		}
 	}
+=======
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 static bool is_uid_exist(uid_t uid, char *package, void *data)
@@ -238,6 +311,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	return exist;
 }
 
+<<<<<<< HEAD
 void track_throne(bool prune_only)
 {
 	struct file *fp = ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
@@ -245,6 +319,52 @@ void track_throne(bool prune_only)
 		pr_err("%s: open " SYSTEM_PACKAGES_LIST_PATH " failed: %ld\n", __func__,
 			PTR_ERR(fp));
 		return;
+=======
+// Helper to know if Android is modifying the file
+static bool is_lock_held(const char *path) 
+{
+	struct path kpath;
+
+	if (kern_path(path, 0, &kpath))
+		return true; // If we cannot find the route, we assume it is not safe
+
+	if (!kpath.dentry) {
+		path_put(&kpath);
+		return true;
+	}
+
+	// Check the VFS lock (d_lock) without blocking ourselves
+	if (!spin_trylock(&kpath.dentry->d_lock)) {
+		pr_info("%s: lock held on %s, bail out!\n", __func__, path);
+		path_put(&kpath);
+		return true;
+	}
+
+	spin_unlock(&kpath.dentry->d_lock);
+	path_put(&kpath);
+	return false;
+}
+
+struct ksu_throne_work_data {
+	struct delayed_work dwork;
+	bool prune_only;
+	int retries;
+};
+
+static struct ksu_throne_work_data throne_data;
+static DEFINE_MUTEX(throne_tracker_mutex);
+
+static bool do_track_throne_core(bool prune_only)
+{
+	if (is_lock_held(SYSTEM_PACKAGES_LIST_PATH)) {
+		return false; // The file is blocked by Android, we ask for a retry
+	}
+
+	struct file *fp = ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		pr_info("throne_tracker: %s not ready yet: %ld\n", SYSTEM_PACKAGES_LIST_PATH, PTR_ERR(fp));
+		return false; // It does not yet exist or cannot be read, we ask for a retry
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	}
 
 	struct list_head uid_list;
@@ -329,6 +449,7 @@ out:
 		list_del(&np->list);
 		kfree(np);
 	}
+<<<<<<< HEAD
 }
 
 void ksu_throne_tracker_init()
@@ -339,4 +460,74 @@ void ksu_throne_tracker_init()
 void ksu_throne_tracker_exit()
 {
 	// nothing to do
+=======
+
+	return true; // success
+}
+
+// kworker
+static void ksu_throne_work_fn(struct work_struct *work)
+{
+	struct ksu_throne_work_data *data = container_of(to_delayed_work(work), struct ksu_throne_work_data, dwork);
+	bool success;
+
+	mutex_lock(&throne_tracker_mutex);
+
+	// Temporarily lend root credentials to the kworker
+	const struct cred *saved_cred = override_creds(ksu_cred);
+
+	success = do_track_throne_core(data->prune_only);
+
+	revert_creds(saved_cred);
+	mutex_unlock(&throne_tracker_mutex);
+
+	if (!success && data->retries < 10) {
+		data->retries++;
+		pr_info("throne_tracker: retrying (%d/10) in 100ms...\n", data->retries);
+		// Reschedule exactly this work instance
+		schedule_delayed_work(&data->dwork, msecs_to_jiffies(100));
+	} else {
+		if (!success) {
+			pr_warn("throne_tracker: giving up after 10 retries.\n");
+		}
+		data->retries = 0; // Resets for future triggers
+	}
+}
+
+void track_throne(bool prune_only)
+{
+	static bool throne_tracker_first_run __read_mostly = true;
+
+	// First scan must be synchronous to not break FDE/FBEv1 on older kernels
+	if (unlikely(throne_tracker_first_run)) {
+		mutex_lock(&throne_tracker_mutex);
+		
+		const struct cred *saved_cred = override_creds(ksu_cred);
+		do_track_throne_core(prune_only);
+		revert_creds(saved_cred);
+		
+		mutex_unlock(&throne_tracker_mutex);
+		throne_tracker_first_run = false;
+		return;
+	}
+
+	// For asynchronous runs, if a work is already pending, canceling it
+	// ensures we don't clobber the prune_only state while it's waiting.
+	cancel_delayed_work_sync(&throne_data.dwork);
+
+	// Update state safely and queue the new work
+	throne_data.prune_only = prune_only;
+	throne_data.retries = 0;
+	schedule_delayed_work(&throne_data.dwork, 0);
+}
+
+void ksu_throne_tracker_init(void)
+{
+	INIT_DELAYED_WORK(&throne_data.dwork, ksu_throne_work_fn);
+}
+
+void ksu_throne_tracker_exit(void)
+{
+	cancel_delayed_work_sync(&throne_data.dwork);
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }

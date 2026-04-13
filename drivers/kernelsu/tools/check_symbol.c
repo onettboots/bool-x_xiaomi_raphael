@@ -66,6 +66,20 @@ void close_elf(ElfFile *elf)
     munmap(elf->data, elf->size);
 }
 
+<<<<<<< HEAD
+=======
+Elf64_Shdr *find_section(ElfFile *elf, const char *name)
+{
+    for (int i = 0; i < elf->ehdr->e_shnum; i++) {
+        const char *section_name = elf->shstrtab + elf->shdr[i].sh_name;
+        if (strcmp(section_name, name) == 0) {
+            return &elf->shdr[i];
+        }
+    }
+    return NULL;
+}
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 Elf64_Shdr *find_symtab(ElfFile *elf)
 {
     for (int i = 0; i < elf->ehdr->e_shnum; i++) {
@@ -114,6 +128,10 @@ int main(int argc, char *argv[])
 
     Elf64_Shdr *ko_symtab = find_symtab(&ko_elf);
     Elf64_Shdr *vmlinux_symtab = find_symtab(&vmlinux);
+<<<<<<< HEAD
+=======
+    Elf64_Shdr *ko_version_sec = find_section(&ko_elf, "__versions");
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
     if (!ko_symtab) {
         fprintf(stderr, "Error: No symbol table found in %s\n", ko_path);
@@ -129,6 +147,26 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+<<<<<<< HEAD
+=======
+    if (!ko_version_sec) {
+        fprintf(stderr, "Error: No __versions section found in %s\n", ko_path);
+        close_elf(&ko_elf);
+        close_elf(&vmlinux);
+        return 1;
+    }
+
+    if (ko_version_sec->sh_size != 0) {
+        fprintf(
+            stderr,
+            "Error: __versions section in %s must have size 0 (actual=%llu)\n",
+            ko_path, (unsigned long long)ko_version_sec->sh_size);
+        close_elf(&ko_elf);
+        close_elf(&vmlinux);
+        return 1;
+    }
+
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
     char *ko_strtab =
         (char *)ko_elf.data + ko_elf.shdr[ko_symtab->sh_link].sh_offset;
     char *vmlinux_strtab =

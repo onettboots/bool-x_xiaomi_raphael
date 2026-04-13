@@ -3,6 +3,10 @@
 #include <linux/version.h>
 #include <linux/binfmts.h>
 #include <linux/err.h>
+<<<<<<< HEAD
+=======
+#include <linux/atomic.h>
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 #include "klog.h" // IWYU pragma: keep
 #include "ksud.h"
@@ -30,8 +34,21 @@ static int ksu_key_permission(key_ref_t key_ref, const struct cred *cred,
 }
 #endif
 
+<<<<<<< HEAD
 static int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
 			    struct inode *new_inode, struct dentry *new_dentry)
+=======
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+static int ksu_inode_rename(struct mnt_idmap *idmap, struct inode *old_dir, struct dentry *old_dentry,
+			    struct inode *new_dir, struct dentry *new_dentry)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+static int ksu_inode_rename(struct user_namespace *mnt_userns, struct inode *old_dir, struct dentry *old_dentry,
+			    struct inode *new_dir, struct dentry *new_dentry)
+#else
+static int ksu_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
+			    struct inode *new_dir, struct dentry *new_dentry)
+#endif
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 {
 	// skip kernel threads
 	if (!current->mm) {
@@ -47,8 +64,14 @@ static int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
 		return 0;
 	}
 
+<<<<<<< HEAD
 	// /data/system/packages.list.tmp -> /data/system/packages.list
 	if (strcmp(new_dentry->d_iname, "packages.list")) {
+=======
+	// Use d_name.name instead of the dangerous d_iname 
+	// which can cause OOPS when the dentry is in an inconsistent state during rename
+	if (strcmp(new_dentry->d_name.name, "packages.list")) {
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		return 0;
 	}
 
@@ -63,6 +86,7 @@ static int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
 		return 0;
 	}
 
+<<<<<<< HEAD
 	pr_info("renameat: %s -> %s, new path: %s\n", old_dentry->d_iname,
 		new_dentry->d_iname, buf);
 
@@ -80,6 +104,28 @@ static int ksu_inode_rename(struct inode *old_inode, struct dentry *old_dentry,
 	}
 
 	track_throne(false);
+=======
+	// Do not track anything until the system has fully booted.
+	// Parsing files during early boot from an LSM hook can causes VFS deadlocks
+	if (!ksu_boot_completed) {
+		return 0;
+	}
+
+	pr_debug("renameat: %s -> %s, new path: %s\n", old_dentry->d_name.name,
+		new_dentry->d_name.name, buf);
+
+	// Thread-safe execution using atomic operations to prevent race conditions
+	// if system_server threads execute this hook concurrently.
+	static atomic_t first_time = ATOMIC_INIT(1);
+
+	// atomic_xchg swaps the value to 0 and returns the old value.
+	// If the old value was 1, we are the first thread to reach here.
+	if (atomic_xchg(&first_time, 0) == 1) {
+		track_throne(true);
+	} else {
+		track_throne(false);
+	}
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 	return 0;
 }
@@ -100,6 +146,7 @@ static int ksu_task_fix_setuid(struct cred *new, const struct cred *old,
 
 extern int __ksu_handle_devpts(struct inode *inode); // sucompat.c
 
+<<<<<<< HEAD
 #ifdef CONFIG_COMPAT
 bool ksu_is_compat __read_mostly = false;
 #endif
@@ -109,6 +156,17 @@ int ksu_inode_permission(struct inode *inode, int mask)
 	if (inode && inode->i_sb 
 		&& unlikely(inode->i_sb->s_magic == DEVPTS_SUPER_MAGIC)) {
 		//pr_info("%s: handling devpts for: %s \n", __func__, current->comm);
+=======
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
+int ksu_inode_permission(struct mnt_idmap *idmap, struct inode *inode, int mask)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
+int ksu_inode_permission(struct user_namespace *mnt_userns, struct inode *inode, int mask)
+#else
+int ksu_inode_permission(struct inode *inode, int mask)
+#endif
+{
+	if (unlikely(inode && inode->i_sb && inode->i_sb->s_magic == DEVPTS_SUPER_MAGIC)) {
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		__ksu_handle_devpts(inode);
 	}
 	return 0;
@@ -119,11 +177,17 @@ static struct security_hook_list ksu_hooks[] = {
 	defined(CONFIG_IS_HW_HISI) || defined(CONFIG_KSU_ALLOWLIST_WORKAROUND)
 	LSM_HOOK_INIT(key_permission, ksu_key_permission),
 #endif
+<<<<<<< HEAD
 #ifndef KSU_KPROBES_HOOK
 	LSM_HOOK_INIT(inode_permission, ksu_inode_permission),
 	LSM_HOOK_INIT(inode_rename, ksu_inode_rename),
 	LSM_HOOK_INIT(task_fix_setuid, ksu_task_fix_setuid)
 #endif
+=======
+	LSM_HOOK_INIT(inode_permission, ksu_inode_permission),
+	LSM_HOOK_INIT(inode_rename, ksu_inode_rename),
+	LSM_HOOK_INIT(task_fix_setuid, ksu_task_fix_setuid)
+>>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 8, 0)
