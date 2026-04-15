@@ -2020,7 +2020,7 @@ int dirty_writeback_centisecs_handler(struct ctl_table *table, int write,
 	 */
 	if (!ret && write && dirty_writeback_interval &&
 		dirty_writeback_interval != old_interval)
-		wakeup_flusher_threads(WB_REASON_PERIODIC);
+		wakeup_flusher_threads(0, WB_REASON_PERIODIC);
 
 	return ret;
 }
