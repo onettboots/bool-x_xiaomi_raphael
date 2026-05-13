@@ -8293,8 +8293,7 @@ out:
 
 	trace_sched_task_util(p, next_cpu, backup_cpu, target_cpu, sync,
 			fbt_env.need_idle, fbt_env.fastpath, placement_boost,
-			start_t, boosted, is_rtg, get_rtg_status(p),
-			start_cpu);
+			start_t, boosted, is_rtg, get_rtg_status(p));
 	return target_cpu;
 }
 
