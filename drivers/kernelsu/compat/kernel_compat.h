@@ -47,11 +47,7 @@ extern long ksu_copy_from_user_nofault(void *dst, const void __user *src, size_t
  * paramters are the same as copy_from_user
  * 0 = success
  */
-<<<<<<< HEAD
-static long ksu_copy_from_user_retry(void *to, 
-=======
 static inline long ksu_copy_from_user_retry(void *to, 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		const void __user *from, unsigned long count)
 {
 	long ret = ksu_copy_from_user_nofault(to, from, count);
@@ -67,8 +63,6 @@ extern void *ksu_compat_kvrealloc(const void *p, size_t oldsize, size_t newsize,
 				  gfp_t flags);
 #endif
 
-<<<<<<< HEAD
-=======
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 12, 0)
 static inline void *ksu_kvmalloc(size_t size, gfp_t flags)
@@ -91,9 +85,6 @@ static inline void ksu_kvfree(void *buf)
 #define kvfree ksu_kvfree
 #endif
 
-<<<<<<< HEAD:drivers/kernelsu/kernel_compat.h
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
 // https://elixir.bootlin.com/linux/v4.14.222/source/lib/string.c#L282
 static inline ssize_t __strscpy_pad(char *dest, const char *src, size_t count)
 {
@@ -115,7 +106,6 @@ static inline ssize_t __strscpy_pad(char *dest, const char *src, size_t count)
 #endif
 }
 
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/compat/kernel_compat.h
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
 #define ksu_access_ok(addr, size) access_ok(addr, size)
 #else

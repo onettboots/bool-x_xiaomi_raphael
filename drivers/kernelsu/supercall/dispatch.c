@@ -4,33 +4,16 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
-<<<<<<< HEAD:drivers/kernelsu/supercalls.c
-<<<<<<< HEAD
-#include <linux/utsname.h> // utsname() and uts_sem
-=======
-#include <linux/pid.h>
-#include <linux/utsname.h> // utsname() and uts_sem
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/supercall/dispatch.c
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/namei.h>
 #include <linux/susfs.h>
 #include "objsec.h"
 #endif // #ifdef CONFIG_KSU_SUSFS
-<<<<<<< HEAD:drivers/kernelsu/supercalls.c
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-
-#include "supercalls.h"
-#include "arch.h"
-#include "allowlist.h"
-#include "feature.h"
-=======
 #include "uapi/supercall.h"
 #include "supercall/internal.h"
 #include "arch.h" // IWYU pragma: keep
 #include "policy/allowlist.h"
 #include "policy/feature.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/supercall/dispatch.c
 #include "klog.h" // IWYU pragma: keep
 #include "ksu.h"
 #include "runtime/ksud_boot.h"
@@ -42,45 +25,7 @@
 #include "policy/app_profile.h"
 #include "supercall/supercall.h"
 
-<<<<<<< HEAD:drivers/kernelsu/supercalls.c
-<<<<<<< HEAD
-=======
-#ifdef CONFIG_KSU_SUSFS
-bool susfs_is_boot_completed_triggered __read_mostly = false;
-#endif // #ifdef CONFIG_KSU_SUSFS
-
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-#include "tiny_sulog.c"
-
-// Permission check functions
-bool only_manager(void)
-{
-	return is_manager();
-}
-
-bool only_root(void)
-{
-	return current_uid().val == 0;
-}
-
-bool manager_or_root(void)
-{
-	return current_uid().val == 0 || is_manager();
-}
-
-bool always_allow(void)
-{
-	return true; // No permission check
-}
-
-bool allowed_for_su(void)
-{
-	bool is_allowed = is_manager() || ksu_is_allow_uid_for_current(current_uid().val);
-	return is_allowed;
-}
-=======
 #include "tiny_sulog.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/supercall/dispatch.c
 
 static int do_grant_root(void __user *arg)
 {
@@ -103,13 +48,6 @@ static int do_get_info(void __user *arg)
 	}
 	
 #ifdef MODULE
-<<<<<<< HEAD
-	cmd.flags |= 0x1;
-#endif
-
-	if (is_manager()) {
-		cmd.flags |= 0x2;
-=======
 	cmd.flags |= KSU_GET_INFO_FLAG_LKM;
 #endif
 
@@ -118,7 +56,6 @@ static int do_get_info(void __user *arg)
 	}
 	if (ksu_late_loaded) {
 		cmd.flags |= KSU_GET_INFO_FLAG_LATE_LOAD;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	}
 	cmd.features = KSU_FEATURE_MAX;
 
@@ -143,17 +80,12 @@ static int do_report_event(void __user *arg)
 		static bool post_fs_data_lock = false;
 		if (!post_fs_data_lock) {
 			post_fs_data_lock = true;
-<<<<<<< HEAD
-			pr_info("post-fs-data triggered\n");
-			on_post_fs_data();
-=======
 			if (ksu_late_loaded) {
 				pr_info("post-fs-data skipped (late load)\n");
 			} else {
 				pr_info("post-fs-data triggered\n");
 				on_post_fs_data();
 			}
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		}
 		break;
 	}
@@ -161,10 +93,6 @@ static int do_report_event(void __user *arg)
 		static bool boot_complete_lock = false;
 		if (!boot_complete_lock) {
 			boot_complete_lock = true;
-<<<<<<< HEAD
-			pr_info("boot_complete triggered\n");
-			on_boot_completed();
-=======
 			if (ksu_late_loaded) {
 				pr_info("boot_complete skipped (late load)\n");
 			} else {
@@ -174,7 +102,6 @@ static int do_report_event(void __user *arg)
             	susfs_start_sdcard_monitor_fn();
 #endif // #ifdef CONFIG_KSU_SUSFS
 			}
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		}
 		break;
 	}
@@ -198,11 +125,7 @@ static int do_set_sepolicy(void __user *arg)
 		return -EFAULT;
 	}
 
-<<<<<<< HEAD
-	return handle_sepolicy(cmd.cmd, (void __user *)cmd.arg);
-=======
 	return handle_sepolicy((void __user *)cmd.data, cmd.data_len);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 static int do_check_safemode(void __user *arg)
@@ -234,12 +157,8 @@ static int do_new_get_allow_list_common(void __user *arg, bool allow)
 	}
 
     if (cmd.count) {
-<<<<<<< HEAD
-        arr = kmalloc(sizeof(int) * cmd.count, GFP_KERNEL);
-=======
         // kmalloc_array safely checks for mathematical overflows before allocating
 		arr = kmalloc_array(cmd.count, sizeof(int), GFP_KERNEL);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
         if (!arr) {
             return -ENOMEM;
         }
@@ -497,10 +416,6 @@ static int do_get_wrapper_fd(void __user *arg) {
 
 static int do_manage_mark(void __user *arg)
 {
-<<<<<<< HEAD
-#ifdef KSU_KPROBES_HOOK
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	struct ksu_manage_mark_cmd cmd;
 	int ret = 0;
 
@@ -511,10 +426,7 @@ static int do_manage_mark(void __user *arg)
 
 	switch (cmd.operation) {
 	case KSU_MARK_GET: {
-<<<<<<< HEAD
-=======
 #ifndef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		// Get task mark status
 		ret = ksu_get_task_mark(cmd.pid);
 		if (ret < 0) {
@@ -523,10 +435,6 @@ static int do_manage_mark(void __user *arg)
 		}
 		cmd.result = (u32)ret;
 		break;
-<<<<<<< HEAD
-	}
-	case KSU_MARK_MARK: {
-=======
 #else
         if (susfs_is_current_proc_umounted()) {
             ret = 0; // SYSCALL_TRACEPOINT is NOT flagged
@@ -540,7 +448,6 @@ static int do_manage_mark(void __user *arg)
 	}
 	case KSU_MARK_MARK: {
 #ifndef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		if (cmd.pid == 0) {
 			ksu_mark_all_process();
 		} else {
@@ -551,11 +458,6 @@ static int do_manage_mark(void __user *arg)
 				return ret;
 			}
 		}
-<<<<<<< HEAD
-		break;
-	}
-	case KSU_MARK_UNMARK: {
-=======
 #else
         if (cmd.pid != 0) {
             return ret;
@@ -565,7 +467,6 @@ static int do_manage_mark(void __user *arg)
 	}
 	case KSU_MARK_UNMARK: {
 #ifndef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		if (cmd.pid == 0) {
 			ksu_unmark_all_process();
 		} else {
@@ -576,13 +477,6 @@ static int do_manage_mark(void __user *arg)
 				return ret;
 			}
 		}
-<<<<<<< HEAD
-		break;
-	}
-	case KSU_MARK_REFRESH: {
-		ksu_mark_running_process();
-		pr_info("manage_mark: refreshed running processes\n");
-=======
 #else
         if (cmd.pid != 0) {
             return ret;
@@ -596,7 +490,6 @@ static int do_manage_mark(void __user *arg)
 #else
         pr_info("susfs: cmd: KSU_MARK_REFRESH: do nothing\n");
 #endif // #ifndef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		break;
 	}
 	default: {
@@ -610,14 +503,6 @@ static int do_manage_mark(void __user *arg)
 	}
 
 	return 0;
-<<<<<<< HEAD
-#else
-	// We don't care, just return -ENOTSUPP
-	pr_warn("manage_mark: this supercalls is not implemented for manual hook.\n");
-	return -ENOTSUPP;
-#endif
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 static int do_get_hook_mode(void __user *arg)
@@ -828,11 +713,7 @@ static int add_try_umount(void __user *arg)
 				}
 				
 				// walk it! +1 for null terminator
-<<<<<<< HEAD
-				user_buf = user_buf + strlen(entry->umountable) + 1;
-=======
 				user_buf = (char *)user_buf + strlen(entry->umountable) + 1;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			}
 			up_read(&mount_list_lock);
 
@@ -849,8 +730,6 @@ static int add_try_umount(void __user *arg)
     return 0;
 }
 
-<<<<<<< HEAD
-=======
 static int do_set_init_pgrp(void __user *arg)
 {
 	int err = -EPERM;
@@ -886,108 +765,9 @@ out:
 	return err;
 }
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 // IOCTL handlers mapping table
 // clang-format off
 static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
-<<<<<<< HEAD:drivers/kernelsu/supercalls.c
-    { .cmd = KSU_IOCTL_GRANT_ROOT,
-      .name = "GRANT_ROOT",
-      .handler = do_grant_root,
-      .perm_check = allowed_for_su },
-    { .cmd = KSU_IOCTL_GET_INFO,
-      .name = "GET_INFO",
-      .handler = do_get_info,
-      .perm_check = always_allow },
-    { .cmd = KSU_IOCTL_REPORT_EVENT,
-      .name = "REPORT_EVENT",
-      .handler = do_report_event,
-      .perm_check = only_root },
-    { .cmd = KSU_IOCTL_SET_SEPOLICY,
-      .name = "SET_SEPOLICY",
-      .handler = do_set_sepolicy,
-      .perm_check = only_root },
-    { .cmd = KSU_IOCTL_CHECK_SAFEMODE,
-      .name = "CHECK_SAFEMODE",
-      .handler = do_check_safemode,
-      .perm_check = always_allow },
-    { .cmd = KSU_IOCTL_GET_ALLOW_LIST,
-      .name = "GET_ALLOW_LIST",
-      .handler = do_get_allow_list,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_GET_DENY_LIST,
-      .name = "GET_DENY_LIST",
-      .handler = do_get_deny_list,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_NEW_GET_ALLOW_LIST,
-      .name = "NEW_GET_ALLOW_LIST",
-      .handler = do_new_get_allow_list,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_NEW_GET_DENY_LIST,
-      .name = "NEW_GET_DENY_LIST",
-      .handler = do_new_get_deny_list,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_UID_GRANTED_ROOT,
-      .name = "UID_GRANTED_ROOT",
-      .handler = do_uid_granted_root,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_UID_SHOULD_UMOUNT,
-      .name = "UID_SHOULD_UMOUNT",
-      .handler = do_uid_should_umount,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_GET_MANAGER_APPID,
-      .name = "GET_MANAGER_APPID",
-      .handler = do_get_manager_appid,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_GET_APP_PROFILE,
-      .name = "GET_APP_PROFILE",
-      .handler = do_get_app_profile,
-      .perm_check = only_manager },
-    { .cmd = KSU_IOCTL_SET_APP_PROFILE,
-      .name = "SET_APP_PROFILE",
-      .handler = do_set_app_profile,
-      .perm_check = only_manager },
-    { .cmd = KSU_IOCTL_GET_FEATURE,
-      .name = "GET_FEATURE",
-      .handler = do_get_feature,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_SET_FEATURE,
-      .name = "SET_FEATURE",
-      .handler = do_set_feature,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_GET_WRAPPER_FD,
-      .name = "GET_WRAPPER_FD",
-      .handler = do_get_wrapper_fd,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_MANAGE_MARK,
-      .name = "MANAGE_MARK",
-      .handler = do_manage_mark,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_NUKE_EXT4_SYSFS,
-      .name = "NUKE_EXT4_SYSFS",
-      .handler = do_nuke_ext4_sysfs,
-      .perm_check = manager_or_root },
-    { .cmd = KSU_IOCTL_ADD_TRY_UMOUNT,
-      .name = "ADD_TRY_UMOUNT",
-      .handler = add_try_umount,
-      .perm_check = manager_or_root },
-<<<<<<< HEAD
-=======
-	{ .cmd = KSU_IOCTL_SET_INIT_PGRP,
-      .name = "SET_INIT_PGRP",
-      .handler = do_set_init_pgrp,
-      .perm_check = only_root },
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-	{ .cmd = KSU_IOCTL_GET_HOOK_MODE,
-	  .name = "GET_HOOK_MODE",
-	  .handler = do_get_hook_mode,
-	  .perm_check = manager_or_root },
-	{ .cmd = KSU_IOCTL_GET_VERSION_TAG,
-	  .name = "GET_VERSION_TAG",
-	  .handler = do_get_version_tag,
-	  .perm_check = manager_or_root },
-    { .cmd = 0, .name = NULL, .handler = NULL, .perm_check = NULL } // Sentinel
-=======
     {
         .cmd = KSU_IOCTL_GRANT_ROOT,
         .name = "GRANT_ROOT",
@@ -1132,346 +912,11 @@ static const struct ksu_ioctl_cmd_map ksu_ioctl_handlers[] = {
         .handler = NULL,
         .perm_check = NULL
     } // Sentinel
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/supercall/dispatch.c
 };
 // clang-format on
 
 long ksu_supercall_handle_ioctl(unsigned int cmd, void __user *argp)
 {
-<<<<<<< HEAD:drivers/kernelsu/supercalls.c
-	if (magic1 != KSU_INSTALL_MAGIC1)
-		return 0;
-
-#ifdef CONFIG_KSU_DEBUG
-	pr_info("sys_reboot: intercepted call! magic: 0x%x id: %d\n", magic1,
-		magic2);
-#endif
-
-<<<<<<< HEAD
-=======
-#ifdef CONFIG_KSU_SUSFS
-    // If magic2 is susfs and current process is root
-    if (magic2 == SUSFS_MAGIC && current_uid().val == 0) {
-#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-        if (cmd == CMD_SUSFS_ADD_SUS_PATH) {
-            susfs_add_sus_path(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_ADD_SUS_PATH_LOOP) {
-            susfs_add_sus_path_loop(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-        if (cmd == CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS) {
-            susfs_set_hide_sus_mnts_for_non_su_procs(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-        if (cmd == CMD_SUSFS_ADD_SUS_KSTAT) {
-            susfs_add_sus_kstat(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_UPDATE_SUS_KSTAT) {
-            susfs_update_sus_kstat(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_ADD_SUS_KSTAT_STATICALLY) {
-            susfs_add_sus_kstat(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-        if (cmd == CMD_SUSFS_ADD_TRY_UMOUNT) {
-            susfs_add_try_umount(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-        if (cmd == CMD_SUSFS_SET_UNAME) {
-            susfs_set_uname(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-        if (cmd == CMD_SUSFS_ENABLE_LOG) {
-            susfs_enable_log(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-        if (cmd == CMD_SUSFS_SET_CMDLINE_OR_BOOTCONFIG) {
-            susfs_set_cmdline_or_bootconfig(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
-#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-        if (cmd == CMD_SUSFS_ADD_OPEN_REDIRECT) {
-            susfs_add_open_redirect(arg);
-            return 0;
-        }
-#endif //#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-#ifdef CONFIG_KSU_SUSFS_SUS_MAP
-        if (cmd == CMD_SUSFS_ADD_SUS_MAP) {
-            susfs_add_sus_map(arg);
-            return 0;
-        }
-#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MAP
-        if (cmd == CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING) {
-            susfs_set_avc_log_spoofing(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_SHOW_ENABLED_FEATURES) {
-            susfs_get_enabled_features(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_SHOW_VARIANT) {
-            susfs_show_variant(arg);
-            return 0;
-        }
-        if (cmd == CMD_SUSFS_SHOW_VERSION) {
-            susfs_show_version(arg);
-            return 0;
-        }
-        return 0;
-    }
-#endif // #ifdef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-	// Check if this is a request to install KSU fd
-	if (magic2 == KSU_INSTALL_MAGIC2) {
-		int fd = ksu_install_fd();
-		// downstream: dereference all arg usage!
-		if (copy_to_user((void __user *)*arg, &fd, sizeof(fd))) {
-			pr_err("install ksu fd reply err\n");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-		close_fd(fd);
-#else
-		__close_fd(current->files, fd);
-#endif
-		}
-		return 0;
-	}
-
-	// extensions 
-	u64 reply = (u64)*arg;
-
-	if (magic2 == CHANGE_MANAGER_UID) {
-		// only root is allowed for this command
-		if (current_uid().val != 0)
-			return 0;
-
-		pr_info("sys_reboot: ksu_set_manager_appid to: %d\n", cmd);
-		ksu_set_manager_appid(cmd);
-
-		if (cmd == ksu_get_manager_appid()) {
-			if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
-				pr_info("sys_reboot: reply fail\n");
-		}
-
-		return 0;
-	}
-	
-	if (magic2 == GET_SULOG_DUMP_V2) {
-		// only root is allowed for this command
-		if (current_uid().val != 0)
-			return 0;
-
-		int ret = send_sulog_dump(*arg);
-		if (ret)
-			return 0;
-
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
-			return 0;
-	}
-
-	if (magic2 == CHANGE_KSUVER) {
-		// only root is allowed for this command
-		if (current_uid().val != 0)
-			return 0;
-
-		pr_info("sys_reboot: ksu_change_ksuver to: %d\n", cmd);
-		ksuver_override = cmd;
-
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply) ))
-			return 0;
-	}
-
-	// WARNING!!! triple ptr zone! ***
-	// https://wiki.c2.com/?ThreeStarProgrammer
-	if (magic2 == CHANGE_SPOOF_UNAME) {
-		// only root is allowed for this command 
-		if (current_uid().val != 0)
-			return 0;
-
-		char release_buf[65];
-		char version_buf[65];
-		static char original_release_buf[65] = {0};
-		static char original_version_buf[65] = {0};
-
-		// basically void * void __user * void __user *arg
-		void ***ppptr = (uintptr_t)arg;
-
-		// user pointer storage
-		// init this as zero so this works on 32-on-64 compat (LE)
-		uint64_t u_pptr = 0;
-		uint64_t u_ptr = 0;
-
-		pr_info("sys_reboot: ppptr: 0x%lx \n", ppptr);
-
-		// arg here is ***, dereference to pull out **
-		if (copy_from_user(&u_pptr, (void __user *)*ppptr, sizeof(u_pptr)))
-			return 0;
-
-		pr_info("sys_reboot: u_pptr: 0x%lx \n", u_pptr);
-
-		// now we got the __user **
-		// we cannot dereference this as this is __user
-		// we just do another copy_from_user to get it
-		if (copy_from_user(&u_ptr, (void __user *)u_pptr, sizeof(u_ptr)))
-			return 0;
-
-		pr_info("sys_reboot: u_ptr: 0x%lx \n", u_ptr);
-
-		// for release
-		if (strncpy_from_user(release_buf, (char __user *)u_ptr, sizeof(release_buf)) < 0)
-			return 0;
-		release_buf[sizeof(release_buf) - 1] = '\0'; 
-
-		// for version
-		if (strncpy_from_user(version_buf, (char __user *)(u_ptr + strlen(release_buf) + 1), sizeof(version_buf)) < 0)
-			return 0;
-		version_buf[sizeof(version_buf) - 1] = '\0'; 
-
-		if (original_release_buf[0] == '\0') {
-			struct new_utsname *u_curr = utsname();
-			// we save current version as the original before modifying
-			strncpy(original_release_buf, u_curr->release, sizeof(original_release_buf));
-			strncpy(original_version_buf, u_curr->version, sizeof(original_version_buf));
-			pr_info("sys_reboot: original uname saved: %s %s\n", original_release_buf, original_version_buf);
-		}
-
-		// so user can reset
-		if (!strcmp(release_buf, "default") || !strcmp(version_buf, "default") ) {
-			memcpy(release_buf, original_release_buf, sizeof(release_buf));
-			memcpy(version_buf, original_version_buf, sizeof(version_buf));
-		}
-
-		pr_info("sys_reboot: spoofing kernel to: %s - %s\n", release_buf, version_buf);
-
-		struct new_utsname *u = utsname();
-
-		down_write(&uts_sem);
-		strncpy(u->release, release_buf, sizeof(u->release));
-		strncpy(u->version, version_buf, sizeof(u->version));
-		up_write(&uts_sem);
-
-		// we write our confirmation on **
-		if (copy_to_user((void __user *)*arg, &reply, sizeof(reply)))
-			return 0;
-	}
-
-	return 0;
-}
-
-#ifdef KSU_KPROBES_HOOK
-<<<<<<< HEAD
-struct ksu_install_fd_tw {
-	struct callback_head cb;
-	int __user *outp;
-};
-
-static void ksu_install_fd_tw_func(struct callback_head *cb)
-{
-	struct ksu_install_fd_tw *tw = container_of(cb, struct ksu_install_fd_tw, cb);
-	int fd = ksu_install_fd();
-	pr_info("[%d] install ksu fd: %d\n", current->pid, fd);
-
-	if (copy_to_user(tw->outp, &fd, sizeof(fd))) {
-		pr_err("install ksu fd reply err\n");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
-		close_fd(fd);
-#else
-		__close_fd(current->files, fd);
-#endif
-	}
-
-	kfree(tw);
-}
-
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-static int reboot_handler_pre(struct kprobe *p, struct pt_regs *regs)
-{
-	struct pt_regs *real_regs = PT_REAL_REGS(regs);
-	int magic1 = (int)PT_REGS_PARM1(real_regs);
-	int magic2 = (int)PT_REGS_PARM2(real_regs);
-	unsigned int cmd = (unsigned int)PT_REGS_PARM3(real_regs);
-	unsigned long arg4 = (unsigned long)PT_REGS_SYSCALL_PARM4(real_regs);
-	unsigned long reply = (unsigned long)arg4;
-
-	return ksu_handle_sys_reboot(magic1, magic2, cmd, (void __user **)&arg4);
-}
-
-static struct kprobe reboot_kp = {
-	.symbol_name = REBOOT_SYMBOL,
-	.pre_handler = reboot_handler_pre,
-};
-#endif
-
-void ksu_supercalls_init(void)
-{
-	int i;
-
-	pr_info("KernelSU IOCTL Commands:\n");
-	for (i = 0; ksu_ioctl_handlers[i].handler; i++) {
-		pr_info("  %-18s = 0x%08x\n", ksu_ioctl_handlers[i].name, ksu_ioctl_handlers[i].cmd);
-	}
-
-<<<<<<< HEAD
-#ifdef KSU_KPROBES_HOOK
-=======
-#if defined(KSU_KPROBES_HOOK) && !defined(CONFIG_KSU_SUSFS)
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-	int rc = register_kprobe(&reboot_kp);
-	if (rc) {
-		pr_err("reboot kprobe failed: %d\n", rc);
-	} else {
-		pr_info("reboot kprobe registered successfully\n");
-	}
-#endif
-
-	sulog_init_heap(); // grab heap memory
-}
-
-void ksu_supercalls_exit(void){
-<<<<<<< HEAD
-#ifdef KSU_KPROBES_HOOK
-	unregister_kprobe(&reboot_kp);
-#endif
-=======
-	struct mount_entry *entry, *tmp;
-
-#ifdef KSU_KPROBES_HOOK
-	unregister_kprobe(&reboot_kp);
-#endif
-
-    down_write(&mount_list_lock);
-    list_for_each_entry_safe (entry, tmp, &mount_list, list) {
-        list_del(&entry->list);
-        kfree(entry->umountable);
-        kfree(entry);
-    }
-    up_write(&mount_list_lock);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-}
-
-// IOCTL dispatcher
-static long anon_ksu_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
-{
-	void __user *argp = (void __user *)arg;
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/supercall/dispatch.c
 	int i;
 
 #ifdef CONFIG_KSU_DEBUG

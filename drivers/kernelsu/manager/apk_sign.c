@@ -132,8 +132,6 @@ struct zip_entry_header {
 	uint16_t extra_field_length;
 } __attribute__((packed));
 
-<<<<<<< HEAD
-=======
 struct ksu_buf_reader {
 	struct file *fp;
 	loff_t file_pos;
@@ -170,18 +168,11 @@ static inline ssize_t ksu_bread(struct ksu_buf_reader *br, void *dst,
 	return 0;
 }
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 // This is a necessary but not sufficient condition, but it is enough for us
 static bool has_v1_signature_file(struct file *fp)
 {
 	struct zip_entry_header header;
 	const char MANIFEST[] = "META-INF/MANIFEST.MF";
-<<<<<<< HEAD
-
-	loff_t pos = 0;
-
-	while (ksu_kernel_read_compat(fp, &header,
-=======
 	bool found = false;
 	loff_t pos = 0;
 
@@ -196,30 +187,15 @@ static bool has_v1_signature_file(struct file *fp)
 	br->file_pos = 0;
 	br->buf_len = 0;
 	while (ksu_bread(br, &header,
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 					sizeof(struct zip_entry_header), &pos) ==
 		sizeof(struct zip_entry_header)) {
 		if (header.signature != 0x04034b50) {
 			// ZIP magic: 'PK'
-<<<<<<< HEAD
-			return false;
-=======
 			break;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 		}
 		// Read the entry file name
 		if (header.file_name_length == sizeof(MANIFEST) - 1) {
 			char fileName[sizeof(MANIFEST)];
-<<<<<<< HEAD
-			ksu_kernel_read_compat(fp, fileName,
-						header.file_name_length, &pos);
-			fileName[header.file_name_length] = '\0';
-
-			// Check if the entry matches META-INF/MANIFEST.MF
-			if (strncmp(MANIFEST, fileName, sizeof(MANIFEST) - 1) ==
-				0) {
-				return true;
-=======
 			if (ksu_bread(br, fileName, header.file_name_length,
 				      &pos) == header.file_name_length) {
 				fileName[header.file_name_length] = '\0';
@@ -231,7 +207,6 @@ static bool has_v1_signature_file(struct file *fp)
 				}
 			} else {
 				break;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			}
 		} else {
 			// Skip the entry file name
@@ -242,12 +217,8 @@ static bool has_v1_signature_file(struct file *fp)
 		pos += header.extra_field_length + header.compressed_size;
 	}
 
-<<<<<<< HEAD
-	return false;
-=======
 	kfree(br);
 	return found;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 static __always_inline bool check_v2_signature(char *path,
@@ -276,20 +247,6 @@ static __always_inline bool check_v2_signature(char *path,
 	fp->f_mode |= FMODE_NONOTIFY;
 
 	// https://en.wikipedia.org/wiki/Zip_(file_format)#End_of_central_directory_record_(EOCD)
-<<<<<<< HEAD
-	for (i = 0;; ++i) {
-		unsigned short n;
-		pos = generic_file_llseek(fp, -i - 2, SEEK_END);
-		ksu_kernel_read_compat(fp, &n, 2, &pos);
-		if (n == i) {
-			pos -= 22;
-			ksu_kernel_read_compat(fp, &size4, 4, &pos);
-			if ((size4 ^ 0xcafebabeu) == 0xccfbf1eeu) {
-				break;
-			}
-		}
-		if (i == 0xffff) {
-=======
 	{
 		unsigned char *eocd_buffer;
 		loff_t file_size;
@@ -334,17 +291,12 @@ static __always_inline bool check_v2_signature(char *path,
 		kvfree(eocd_buffer);
 
 		if (!eocd_found) {
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			pr_info("error: cannot find eocd\n");
 			goto clean;
 		}
 	}
 
-<<<<<<< HEAD
-	pos += 12;
-=======
 	pos += 16; // skip 4 bytes signature + 12 bytes
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	// offset
 	ksu_kernel_read_compat(fp, &size4, 0x4, &pos);
 	pos = size4 - 0x18;

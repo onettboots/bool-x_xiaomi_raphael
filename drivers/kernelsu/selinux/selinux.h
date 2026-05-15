@@ -57,12 +57,6 @@ bool is_init(const struct cred* cred);
 
 void apply_kernelsu_rules();
 
-<<<<<<< HEAD
-int handle_sepolicy(unsigned long arg3, void __user *arg4);
-
-void setup_ksu_cred();
-
-=======
 int handle_sepolicy(void __user *user_data, u64 data_len);
 
 void setup_ksu_cred();
@@ -82,5 +76,4 @@ bool susfs_is_current_init_domain(void);
 void susfs_set_priv_app_sid(void);
 #endif // #ifdef CONFIG_KSU_SUSFS
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #endif

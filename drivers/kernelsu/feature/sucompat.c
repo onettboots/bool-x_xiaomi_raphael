@@ -29,19 +29,9 @@
 #include "runtime/ksud.h"
 #include "compat/kernel_compat.h"
 #include "sucompat.h"
-<<<<<<< HEAD:drivers/kernelsu/sucompat.c
-#include "app_profile.h"
-<<<<<<< HEAD
-#include "util.h"
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-
-extern void write_sulog(uint8_t sym);
-=======
 #include "policy/app_profile.h"
 #include "selinux/selinux.h"
 #include "tiny_sulog.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/feature/sucompat.c
 
 #define SU_PATH "/system/bin/su"
 #define SH_PATH "/system/bin/sh"
@@ -71,11 +61,6 @@ static const struct ksu_feature_handler su_compat_handler = {
 
 static void __user *userspace_stack_buffer(const void *d, size_t len)
 {
-<<<<<<< HEAD
-	// To avoid having to mmap a page in userspace, just write below the stack
-	// pointer.
-	char __user *p = (void __user *)current_user_stack_pointer() - len;
-=======
 	// Stack Pointer must be 16-byte aligned.
 	// We also subtract a safe margin (256 bytes) 
 	// to avoid corrupting local variables or smth
@@ -83,7 +68,6 @@ static void __user *userspace_stack_buffer(const void *d, size_t len)
 	sp = (sp - len - 256) & ~0xFUL; // Align downwards to nearest 16 bytes
 
 	char __user *p = (char __user *)sp;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 	return copy_to_user(p, d, len) ? NULL : p;
 }
@@ -167,25 +151,6 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
 	addr = untagged_addr((unsigned long)*filename_user);
 	fn = (const char __user *)addr;
 	memset(path, 0, sizeof(path));
-<<<<<<< HEAD
-	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
-
-	if (ret < 0 && try_set_access_flag(addr)) {
-		ret = strncpy_from_user_nofault(path, fn, sizeof(path));
-	}
-
-	if (ret < 0 && preempt_count()) {
-		/* This is crazy, but we know what we are doing:
-			* Temporarily exit atomic context to handle page faults, then restore it */
-		pr_info("Access filename failed, try rescue..\n");
-		preempt_enable_no_resched_notrace();
-		ret = strncpy_from_user(path, fn, sizeof(path));
-		preempt_disable_notrace();
-	}
-
-	if (ret < 0) {
-		pr_warn("Access filename when execve failed: %ld", ret);
-=======
 
 	ret = strncpy_from_user_nofault(path, fn, sizeof(path));
 	if (ret < 0 && preempt_count()) {
@@ -195,13 +160,7 @@ long ksu_handle_execve_sucompat(const char __user **filename_user, int orig_nr, 
 	}
 
 	if (ret < 0) {
-<<<<<<< HEAD:drivers/kernelsu/sucompat.c
-		// Memory is protected by ION/DMA or invalid. We gracefully back off.
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-		return 0;
-=======
 		goto do_orig_execve;
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/feature/sucompat.c
 	}
 
 	if (likely(memcmp(path, su, sizeof(su))))

@@ -1,12 +1,9 @@
-<<<<<<< HEAD
-=======
 #include "ss/avtab.h"
 #include "ss/constraint.h"
 #include "ss/ebitmap.h"
 #include "ss/hashtab.h"
 #include "ss/policydb.h"
 #include "ss/services.h"
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #include <linux/gfp.h>
 #include <linux/printk.h>
 #include <linux/slab.h>
@@ -1032,9 +1029,6 @@ bool ksu_genfscon(struct policydb *db, const char *fs_name, const char *path,
                   const char *ctx)
 {
     return add_genfscon(db, fs_name, path, ctx);
-<<<<<<< HEAD
-}
-=======
 }
 
 #ifdef SELINUX_POLICY_INSTEAD_SELINUX_SS
@@ -1503,4 +1497,3 @@ out:
     return NULL;
 }
 #endif // SELINUX_POLICY_INSTEAD_SELINUX_SS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)

@@ -59,8 +59,6 @@ config KSU_KPROBES_HOOK
 	  Enable KPROBES, KRETPROBES and TRACEPOINT hook for KernelSU core.
 	  This should not be used on kernel below 5.10.
 
-<<<<<<< HEAD
-=======
 menu "KernelSU - SUSFS"
 config KSU_SUSFS
     bool "KernelSU addon - SUSFS"
@@ -159,5 +157,4 @@ config KSU_SUSFS_SUS_MAP
 
 endmenu
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 endmenu

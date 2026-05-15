@@ -400,13 +400,10 @@ void ksu_get_root_profile(uid_t uid, struct root_profile *profile)
         goto use_default;
     }
 
-<<<<<<< HEAD
-=======
     if (!__ksu_is_allow_uid(uid)) {
         goto use_default;
     }
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
     rcu_read_lock();
     list_for_each_entry_rcu (p, &allow_list, list) {
         if (uid == p->profile.current_uid && p->profile.allow_su) {
@@ -453,14 +450,9 @@ bool ksu_get_allow_list(int *array, u16 length, u16 *out_length, u16 *out_total,
 	return true;
 }
 
-<<<<<<< HEAD
-// TODO: move to kernel thread or work queue
-static void do_persistent_allow_list(struct callback_head *_cb)
-=======
 static struct work_struct ksu_save_allow_list_work;
 
 static void do_persistent_allow_list(struct work_struct *work)
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 {
     u32 magic = FILE_MAGIC;
     u32 version = FILE_FORMAT_VERSION;
@@ -469,11 +461,7 @@ static void do_persistent_allow_list(struct work_struct *work)
 
     const struct cred *saved = override_creds(ksu_cred);
     struct file *fp =
-<<<<<<< HEAD
-        filp_open(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-=======
         ksu_filp_open_compat(KERNEL_SU_ALLOWLIST, O_WRONLY | O_CREAT | O_TRUNC, 0644);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
     if (IS_ERR(fp)) {
         pr_err("save_allow_list create file failed: %ld\n", PTR_ERR(fp));
         goto out;
@@ -503,41 +491,11 @@ close_file:
     filp_close(fp, 0);
 out:
     revert_creds(saved);
-<<<<<<< HEAD
-    kfree(_cb);
-}
-
-void ksu_persistent_allow_list()
-{
-	struct task_struct *tsk;
-
-	tsk = get_pid_task(find_vpid(1), PIDTYPE_PID);
-	if (!tsk) {
-		pr_err("save_allow_list find init task err\n");
-		return;
-	}
-
-	struct callback_head *cb =
-		kzalloc(sizeof(struct callback_head), GFP_KERNEL);
-	if (!cb) {
-		pr_err("save_allow_list alloc cb err\b");
-		goto put_task;
-	}
-	cb->func = do_persistent_allow_list;
-	if (task_work_add(tsk, cb, TWA_RESUME)) {
-		kfree(cb);
-		pr_warn("save_allow_list add task_work failed\n");
-	}
-
-put_task:
-	put_task_struct(tsk);
-=======
 }
 
 void ksu_persistent_allow_list(void)
 {
     schedule_work(&ksu_save_allow_list_work);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 void ksu_load_allow_list()
@@ -648,11 +606,8 @@ void __init ksu_allowlist_init(void)
 
 	INIT_LIST_HEAD(&allow_list);
 
-<<<<<<< HEAD
-=======
     INIT_WORK(&ksu_save_allow_list_work, do_persistent_allow_list);
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	init_default_profiles();
 }
 
@@ -661,11 +616,8 @@ void __exit ksu_allowlist_exit(void)
 	struct perm_data *np = NULL;
 	struct perm_data *n = NULL;
 
-<<<<<<< HEAD
-=======
     cancel_work_sync(&ksu_save_allow_list_work);
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	// free allowlist
 	mutex_lock(&allowlist_mutex);
 	list_for_each_entry_safe (np, n, &allow_list, list) {

@@ -8,15 +8,10 @@
 void ksu_kernel_umount_init(void);
 void ksu_kernel_umount_exit(void);
 
-<<<<<<< HEAD
-// Handler function to be called from setresuid hook
-int ksu_handle_umount(uid_t old_uid, uid_t new_uid);
-=======
 #if !defined(CONFIG_KSU_SUSFS) || !defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
  // Handler function to be called from setresuid hook
  int ksu_handle_umount(uid_t old_uid, uid_t new_uid);
 #endif
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 // for the umount list
 struct mount_entry {

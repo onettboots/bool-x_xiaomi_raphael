@@ -33,17 +33,9 @@
 
 #include "arch.h"
 #include "klog.h" // IWYU pragma: keep
-<<<<<<< HEAD
-#include "ksud.h"
-#include "util.h"
-=======
 #include "ksu.h"
 #include "ksud.h"
-<<<<<<< HEAD:drivers/kernelsu/ksud.c
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
 #include "ksud_boot.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/runtime/ksud_integration.c
 #include "selinux/selinux.h"
 #include "compat/kernel_compat.h"
 
@@ -162,11 +154,7 @@ static struct callback_head on_post_fs_data_cb = { .func =
 							on_post_fs_data_cbfun };
 
 static bool check_argv(struct user_arg_ptr argv, int index,
-<<<<<<< HEAD
-		       const char *expected, char *buf, size_t buf_len)
-=======
 			const char *expected, char *buf, size_t buf_len)
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 {
 	const char __user *p;
 	int argc;
@@ -186,12 +174,6 @@ static bool check_argv(struct user_arg_ptr argv, int index,
 	return !strcmp(buf, expected);
 }
 
-<<<<<<< HEAD
-// IMPORTANT NOTE: the call from execve_handler_pre WON'T provided correct value for envp and flags in GKI version
-int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
-				struct user_arg_ptr *argv,
-				struct user_arg_ptr *envp, int *flags)
-=======
 static void ksu_initialize_selinux_tw_func(struct callback_head *cb)
 {
 	apply_kernelsu_rules();
@@ -204,7 +186,6 @@ static void ksu_initialize_selinux_tw_func(struct callback_head *cb)
 int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
                              struct user_arg_ptr *argv,
                              struct user_arg_ptr *envp, int *flags)
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 {
 #ifndef KSU_KPROBES_HOOK
 	if (!ksu_execveat_hook) {
@@ -237,11 +218,6 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 		if (!init_second_stage_executed &&
 		    check_argv(*argv, 1, "second_stage", buf, sizeof(buf))) {
 			pr_info("/system/bin/init second_stage executed\n");
-<<<<<<< HEAD
-			apply_kernelsu_rules();
-			cache_sid();
-			setup_ksu_cred();
-=======
 			struct callback_head *cb = kzalloc(sizeof(*cb), GFP_ATOMIC);
 			if (cb) {
 				cb->func = ksu_initialize_selinux_tw_func;
@@ -253,7 +229,6 @@ int ksu_handle_execveat_ksud(int *fd, struct filename **filename_ptr,
 				pr_warn(
 					"ksu_initialize_selinux failed to allocate task work\n");
 			}
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 			init_second_stage_executed = true;
 		}
 	} else if (unlikely(!memcmp(filename->name, old_system_init,
@@ -538,13 +513,10 @@ bool ksu_is_safe_mode()
 		return true;
 	}
 
-<<<<<<< HEAD
-=======
 	if (ksu_late_loaded) {
 		return false;
 	}
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	// stop hook first!
 	stop_input_hook();
 
@@ -583,21 +555,12 @@ static int sys_execve_handler_pre(struct kprobe *p, struct pt_regs *regs)
 
 	memset(path, 0, sizeof(path));
 	ret = strncpy_from_user_nofault(path, fn, 32);
-<<<<<<< HEAD:drivers/kernelsu/ksud.c
-<<<<<<< HEAD
-	if (ret < 0 && try_set_access_flag(addr)) {
-		ret = strncpy_from_user_nofault(path, fn, 32);
-	}
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
 	if (ret < 0 && preempt_count()) {
 		preempt_enable_no_resched_notrace();
 		ret = strncpy_from_user(path, fn, 32);
 		preempt_disable_notrace();
 	}
 
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/runtime/ksud_integration.c
 	if (ret < 0) {
 		pr_err("Access filename failed for execve_handler_pre\n");
 		return 0;
@@ -622,11 +585,7 @@ static int sys_fstat_handler_pre(struct kretprobe_instance *p,
 {
 	struct pt_regs *real_regs = PT_REAL_REGS(regs);
 	unsigned int fd = PT_REGS_PARM1(real_regs);
-<<<<<<< HEAD
-	void *statbuf = PT_REGS_PARM2(real_regs);
-=======
 	void *statbuf = (void *)PT_REGS_PARM2(real_regs);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	*(void **)&p->data = NULL;
 
 	struct file *file = fget(fd);
@@ -646,25 +605,6 @@ static int sys_fstat_handler_post(struct kretprobe_instance *p,
 					struct pt_regs *regs)
 {
 	void __user *statbuf = *(void **)&p->data;
-<<<<<<< HEAD
-	if (statbuf) {
-		void __user *st_size_ptr = statbuf + offsetof(struct stat, st_size);
-		long size, new_size;
-		if (!ksu_copy_from_user_nofault(&size, st_size_ptr, sizeof(long))) {
-			new_size = size + ksu_rc_len;
-			pr_info("adding ksu_rc_len: %ld -> %ld", size, new_size);
-			if (!copy_to_user(st_size_ptr, &new_size, sizeof(long))) {
-				pr_info("added ksu_rc_len");
-			} else {
-				pr_err("add ksu_rc_len failed: statbuf 0x%lx",
-					(unsigned long)st_size_ptr);
-			}
-		} else {
-			pr_err("read statbuf 0x%lx failed", (unsigned long)st_size_ptr);
-		}
-	}
-
-=======
 	size_t size_offset;
 	size_t size_bytes;
 	long size = 0;
@@ -706,7 +646,6 @@ static int sys_fstat_handler_post(struct kretprobe_instance *p,
 
 	pagefault_enable();
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	return 0;
 }
 

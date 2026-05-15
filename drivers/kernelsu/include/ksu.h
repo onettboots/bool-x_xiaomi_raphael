@@ -27,9 +27,6 @@ static inline int endswith(const char *s, const char *t)
 }
 
 extern struct cred* ksu_cred;
-<<<<<<< HEAD
-=======
 extern bool ksu_late_loaded;
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 #endif

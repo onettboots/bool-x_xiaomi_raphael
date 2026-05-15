@@ -21,31 +21,11 @@
 #include "klog.h" // IWYU pragma: keep
 #include "manager/manager_identity.h"
 #include "selinux/selinux.h"
-<<<<<<< HEAD:drivers/kernelsu/setuid_hook.c
-#include "seccomp_cache.h"
-#include "supercalls.h"
-#include "syscall_hook_manager.h"
-#include "kernel_umount.h"
-<<<<<<< HEAD
-
-// force_sig kcompat, TODO: move it out of core_hook.c
-// https://elixir.bootlin.com/linux/v5.3-rc1/source/kernel/signal.c#L1613
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0)
-#define send_sigkill() force_sig(SIGKILL)
-#else
-#define send_sigkill() force_sig(SIGKILL, current)
-#endif
-
-extern void disable_seccomp(struct task_struct *tsk);
-
-=======
-=======
 #include "infra/seccomp_cache.h"
 #include "supercall/supercall.h"
 #include "hook_manager.h"
 #include "feature/kernel_umount.h"
 #include "compat/kernel_compat.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/hook/setuid_hook.c
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs_def.h>
 #endif // #ifdef CONFIG_KSU_SUSFS
@@ -111,7 +91,6 @@ extern void susfs_try_umount(uid_t uid);
 #endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 #endif // #ifdef CONFIG_KSU_SUSFS
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 static void ksu_install_manager_fd_tw_func(struct callback_head *cb)
 {
     ksu_install_fd();
@@ -124,17 +103,6 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
     uid_t new_uid = ruid;
     uid_t old_uid = current_uid().val;
 
-<<<<<<< HEAD
-    pr_info("handle_setresuid from %d to %d\n", old_uid, new_uid);
-
-    if (likely(ksu_is_manager_appid_valid()) &&
-        unlikely(ksu_get_manager_appid() == new_uid % PER_USER_RANGE)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-        ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
-#ifdef KSU_KPROBES_HOOK
-		ksu_set_task_tracepoint_flag(current);
-#endif
-=======
     // We only interest in process spwaned by zygote
     if (!susfs_is_sid_equal(current_cred(), susfs_zygote_sid)) {
         return 0;
@@ -155,18 +123,14 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
         if (current->seccomp.mode == SECCOMP_MODE_FILTER && current->seccomp.filter) {
             ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
         }
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #else
 		disable_seccomp(current);
 #endif
 
-<<<<<<< HEAD
-=======
 #ifdef KSU_KPROBES_HOOK
         ksu_set_task_tracepoint_flag(current);
 #endif
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
         pr_info("install fd for manager: %d\n", new_uid);
         struct callback_head *cb = kzalloc(sizeof(*cb), GFP_ATOMIC);
         if (!cb)
@@ -179,28 +143,6 @@ int ksu_handle_setresuid(uid_t ruid, uid_t euid, uid_t suid)
         return 0;
     }
 
-<<<<<<< HEAD
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
-    if (ksu_is_allow_uid_for_current(new_uid)) {
-        if (current->seccomp.mode == SECCOMP_MODE_FILTER &&
-            current->seccomp.filter) {
-            ksu_seccomp_allow_cache(current->seccomp.filter, __NR_reboot);
-        }
-#ifdef KSU_KPROBES_HOOK
-		ksu_set_task_tracepoint_flag(current);
-	} else {
-		ksu_clear_task_tracepoint_flag_if_needed(current);
-#endif
-    }
-#else
-	if (ksu_is_allow_uid_for_current(new_uid)) {
-		disable_seccomp(current);
-	}
-#endif
-
-    // Handle kernel umount
-    ksu_handle_umount(old_uid, new_uid);
-=======
 // Check if spawned process is normal user app and needs to be umounted
     if (likely(is_zygote_normal_app_uid(new_uid) && ksu_uid_should_umount(new_uid))) {
         goto do_umount;
@@ -244,7 +186,6 @@ do_umount:
     ksu_handle_extra_susfs_work();
 
     susfs_set_current_proc_umounted();
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
     return 0;
 }
@@ -252,20 +193,11 @@ do_umount:
 extern void ksu_lsm_hook_init(void);
 void __init ksu_setuid_hook_init(void)
 {
-<<<<<<< HEAD
-    ksu_kernel_umount_init();
-=======
 	ksu_kernel_umount_init();
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }
 
 void __exit ksu_setuid_hook_exit(void)
 {
-<<<<<<< HEAD
-    pr_info("ksu_core_exit\n");
-    ksu_kernel_umount_exit();
-=======
 	pr_info("ksu_core_exit\n");
 	ksu_kernel_umount_exit();
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 }

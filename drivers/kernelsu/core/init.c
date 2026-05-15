@@ -2,13 +2,6 @@
 #include <linux/fs.h>
 #include <linux/kobject.h>
 #include <linux/module.h>
-<<<<<<< HEAD
-#include <linux/workqueue.h>
-
-#include "allowlist.h"
-#include "feature.h"
-#include "klog.h" // IWYU pragma: keep
-=======
 #include <linux/rcupdate.h>
 #include <linux/sched.h>
 #include <linux/workqueue.h>
@@ -17,20 +10,6 @@
 #include "policy/app_profile.h"
 #include "policy/feature.h"
 #include "klog.h" // IWYU pragma: keep
-<<<<<<< HEAD:drivers/kernelsu/ksu.c
-#include "manager.h"
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-#include "throne_tracker.h"
-#include "syscall_hook_manager.h"
-#include "ksud.h"
-#include "supercalls.h"
-#include "ksu.h"
-#include "file_wrapper.h"
-<<<<<<< HEAD
-
-struct cred* ksu_cred;
-=======
-=======
 #include "manager/manager_observer.h"
 #include "manager/throne_tracker.h"
 #include "hook/hook_manager.h"
@@ -39,12 +18,10 @@ struct cred* ksu_cred;
 #include "supercall/supercall.h"
 #include "ksu.h"
 #include "infra/file_wrapper.h"
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2):drivers/kernelsu/core/init.c
 #ifdef CONFIG_KSU_SUSFS
 #include <linux/susfs.h>
 #endif // #ifdef CONFIG_KSU_SUSFS
 #include "selinux/selinux.h"
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 extern void __init ksu_lsm_hook_init(void);
 extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
@@ -59,10 +36,6 @@ int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
 					    flags);
 }
 
-<<<<<<< HEAD
-int __init kernelsu_init(void)
-{
-=======
 // workaround for A12-5.10 kernel
 // Some third-party kernel (e.g. linegaeOS) uses wrong toolchain, which supports
 // CC_HAVE_STACKPROTECTOR_SYSREG while gki's toolchain doesn't.
@@ -111,7 +84,6 @@ int __init kernelsu_init(void)
 	ksu_late_loaded = false;
 #endif
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 #ifdef CONFIG_KSU_DEBUG
 	pr_alert("*************************************************************");
 	pr_alert("**     NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE NOTICE    **");
@@ -131,19 +103,6 @@ int __init kernelsu_init(void)
 
 	ksu_supercalls_init();
 
-<<<<<<< HEAD
-	ksu_syscall_hook_manager_init();
-
-	ksu_lsm_hook_init();
-
-	ksu_allowlist_init();
-
-	ksu_throne_tracker_init();
-
-	ksu_ksud_init();
-
-	ksu_file_wrapper_init();
-=======
 	
 
 	if (ksu_late_loaded) {
@@ -192,7 +151,6 @@ int __init kernelsu_init(void)
 
 		ksu_file_wrapper_init();
 	}
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 
 #ifdef MODULE
 #ifndef CONFIG_KSU_DEBUG
@@ -204,24 +162,11 @@ int __init kernelsu_init(void)
 
 void __exit kernelsu_exit(void)
 {
-<<<<<<< HEAD
-	ksu_allowlist_exit();
-
-	ksu_throne_tracker_exit();
-
-	ksu_observer_exit();
-
-	ksu_ksud_exit();
-
-=======
 	// Phase 1: Stop all hooks first to prevent new callbacks
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	ksu_syscall_hook_manager_exit();
 
 	ksu_supercalls_exit();
 
-<<<<<<< HEAD
-=======
 	if (!ksu_late_loaded)
 		ksu_ksud_exit();
 
@@ -235,7 +180,6 @@ void __exit kernelsu_exit(void)
 
 	ksu_allowlist_exit();
 
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 	ksu_feature_exit();
 
 	if (ksu_cred) {
@@ -243,15 +187,11 @@ void __exit kernelsu_exit(void)
 	}
 }
 
-<<<<<<< HEAD
-module_init(kernelsu_init);
-=======
 #if NEED_OWN_STACKPROTECTOR
 module_init(kernelsu_init_early);
 #else
 module_init(kernelsu_init);
 #endif
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
 module_exit(kernelsu_exit);
 
 MODULE_LICENSE("GPL");

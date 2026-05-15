@@ -50,10 +50,6 @@ static int transive_to_domain(const char *domain, struct cred *cred)
     return error;
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 19, 0)
 bool __maybe_unused
 is_ksu_transition(const struct task_security_struct *old_tsec,
@@ -77,11 +73,6 @@ is_ksu_transition(const struct task_security_struct *old_tsec,
 }
 #endif
 
-<<<<<<< HEAD
-=======
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
 void setup_selinux(const char *domain, struct cred *cred)
 {
     if (transive_to_domain(domain, cred)) {
@@ -209,72 +200,28 @@ static bool is_sid_match(const struct cred *cred, u32 cached_sid,
     if (!cred) {
         return false;
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
     const struct task_security_struct *tsec = selinux_cred(cred);
 #else
     const struct cred_security_struct *tsec = selinux_cred(cred);
 #endif
-<<<<<<< HEAD
-=======
-
-    // Cast pointer dynamically to avoid struct cred_security_struct 
-    // vs task_security_struct mismatch
-    struct task_security_struct *tsec = selinux_cred(cred);
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
     if (!tsec) {
         return false;
     }
     
-<<<<<<< HEAD
-<<<<<<< HEAD
     // Fast path: use cached SID if available
-=======
-    // use cached SID if available
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
-    // Fast path: use cached SID if available
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
     if (likely(cached_sid != 0)) {
         return tsec->sid == cached_sid;
     }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     // Slow path fallback: string comparison (only before cache is initialized)
-=======
-    // fallback: string comparison (only before cache is initialized)
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
-    // Slow path fallback: string comparison (only before cache is initialized)
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
     struct lsm_context ctx;
     bool result;
     if (__security_secid_to_secctx(tsec->sid, &ctx)) {
         return false;
     }
-<<<<<<< HEAD
-<<<<<<< HEAD
     result = strncmp(fallback_context, ctx.context, ctx.len) == 0;
     __security_release_secctx(&ctx);
-=======
-    
-    // Contexts from security_secid_to_secctx are null terminated. 
-    // Using strncmp with ctx.len is dangerous because ctx.len 
-    // might include the null byte.
-    result = strcmp(fallback_context, ctx.context) == 0;
-    __security_release_secctx(&ctx);
-
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
-=======
-    result = strncmp(fallback_context, ctx.context, ctx.len) == 0;
-    __security_release_secctx(&ctx);
->>>>>>> 164c87c081c7 (drivers: Switch KernelSU to legacy-susfs-v2)
     return result;
 }
 
@@ -297,8 +244,6 @@ bool is_init(const struct cred *cred)
 {
     return is_sid_match(cred, cached_init_sid, INIT_CONTEXT);
 }
-<<<<<<< HEAD
-=======
 
 #ifdef CONFIG_KSU_SUSFS
 #define KERNEL_INIT_DOMAIN "u:r:init:s0"
@@ -395,4 +340,3 @@ void susfs_set_priv_app_sid(void)
     susfs_set_sid(KERNEL_PRIV_APP_DOMAIN, &susfs_priv_app_sid);
 }
 #endif // #ifdef CONFIG_KSU_SUSFS
->>>>>>> 7b9651e4bd9e (drivers: Import KernelSU-Next v3.1.0 legacy susfs)
