@@ -43,6 +43,7 @@
 #include "sde_core_perf.h"
 #include "sde_trace.h"
 #include "dsi_display.h"
+#include <linux/devfreq_boost.h>
 
 #define SDE_PSTATES_MAX (SDE_STAGE_MAX * 4)
 #define SDE_MULTIRECT_PLANE_MAX (SDE_STAGE_MAX * 2)
