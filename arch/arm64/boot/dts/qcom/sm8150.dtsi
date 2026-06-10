@@ -541,7 +541,7 @@
 	};
 
 	chosen {
-		bootargs = "quiet rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket noirqdebug nodebugmon kpti=off cgroup_disable=pressure";
+		bootargs = "quiet rcu_nocbs=0-7 cgroup.memory=nokmem,nosocket noirqdebug nodebugmon kpti=off cgroup_disable=pressure printk.always_kmsg_dump=1";
 	};
 
 	soc: soc { };
@@ -750,6 +750,17 @@
 			alignment = <0x0 0x400000>;
 			size = <0x0 0x8000000>;
 			linux,cma-default;
+		};
+
+		/* reserve for pstore */
+		ramoops_mem: ramoops@9d800000 {
+			compatible = "ramoops";
+			reg = <0x0 0x9d800000 0x0 0x00600000>;
+
+			ecc-size = <16>;
+			record-size = <0x200000>;
+			console-size = <0x200000>;
+			pmsg-size = <0x200000>;
 		};
 	};
 
