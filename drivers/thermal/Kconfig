@@ -135,6 +135,11 @@ config THERMAL_GOV_USER_SPACE
 	help
 	  Enable this to let the user space manage the platform thermals.
 
+config MI_THERMAL_LIMIT
+        bool "mi thermal limits"
+        help
+          Enable this to enable cpu freq limits.
+
 config THERMAL_GOV_LOW_LIMITS
 	bool "Low limits mitigation governor"
 	help

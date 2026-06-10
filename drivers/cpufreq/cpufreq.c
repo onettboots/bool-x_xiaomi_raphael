@@ -2267,7 +2267,7 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_INCOMPATIBLE, new_policy);
 
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 	/* the adjusted frequency should not exceed thermal limit */
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 			CPUFREQ_THERMAL, new_policy);

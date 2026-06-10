@@ -300,7 +300,7 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 	unsigned long clipped_freq = ULONG_MAX, floor_freq = 0;
 	struct cpufreq_cooling_device *cpufreq_cdev;
 
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 	if (event != CPUFREQ_THERMAL)
 #else
 	if (event != CPUFREQ_INCOMPATIBLE)
@@ -335,7 +335,7 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 	 * Similarly, if policy minimum set by the user is less than
 	 * the floor_frequency, then adjust the policy->min.
 	 */
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 	cpufreq_verify_within_limits(policy, floor_freq, clipped_freq);
 #else
 	if (policy->max > clipped_freq || policy->min < floor_freq)
@@ -346,7 +346,7 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
 	return NOTIFY_OK;
 }
 
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq)
 {
 	struct cpufreq_cooling_device *cpufreq_cdev;
@@ -708,7 +708,7 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
 
 	/* Request state should be less than max_level */
 	if (WARN_ON(state > cpufreq_cdev->max_level))
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 		state = cpufreq_cdev->max_level;
 #else
 		return -EINVAL;
@@ -758,7 +758,7 @@ update_frequency:
 	cpufreq_cdev->cpufreq_state = state;
 	cpufreq_cdev->clipped_freq = clip_freq;
 
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 	get_online_cpus();
 	cpufreq_update_policy(cpu);
 	put_online_cpus();
@@ -1131,7 +1131,7 @@ __cpufreq_cooling_register(struct device_node *np,
 	list_add(&cpufreq_cdev->node, &cpufreq_cdev_list);
 	mutex_unlock(&cooling_list_lock);
 
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 	if (first)
 #else
 	if (first && !cpufreq_cdev->plat_ops)
@@ -1328,7 +1328,7 @@ void cpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
 
 	if (last) {
 		unregister_pm_notifier(&cpufreq_cooling_pm_nb);
-#ifdef CONFIG_MACH_XIAOMI_SM8150
+#ifdef CONFIG_MI_THERMAL_LIMIT
 		cpufreq_unregister_notifier(
 				&thermal_cpufreq_notifier_block,
 				CPUFREQ_POLICY_NOTIFIER);
