@@ -607,8 +607,6 @@ static int enter_state(suspend_state_t state)
 	return error;
 }
 
-bool pm_in_action;
-
 /**
  * pm_suspend - Externally visible function for suspending the system.
  * @state: System sleep state to enter.
@@ -623,7 +621,6 @@ int pm_suspend(suspend_state_t state)
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
 
-	pm_in_action = true;
 	pr_debug("suspend entry (%s)\n", mem_sleep_labels[state]);
 	qcom_smem_state_update_bits(smem_state, AWAKE_BIT, 0);
 	error = enter_state(state);
@@ -634,7 +631,6 @@ int pm_suspend(suspend_state_t state)
 		suspend_stats.success++;
 	}
 	pr_debug("suspend exit\n");
-	pm_in_action = false;
 	measure_wake_up_time();
 	return error;
 }
