@@ -2192,14 +2192,6 @@ static size_t ZSTD_resetCCtx_internal(ZSTD_CCtx* zc,
         zc->seqStore.mlCode = ZSTD_cwksp_reserve_buffer(ws, maxNbSeq * sizeof(BYTE));
         zc->seqStore.ofCode = ZSTD_cwksp_reserve_buffer(ws, maxNbSeq * sizeof(BYTE));
 
-        /* reserve space for block-level external sequences */
-        if (params->useSequenceProducer) {
-            size_t const maxNbExternalSeq = ZSTD_sequenceBound(blockSize);
-            zc->externalMatchCtx.seqBufferCapacity = maxNbExternalSeq;
-            zc->externalMatchCtx.seqBuffer =
-                (ZSTD_Sequence*)ZSTD_cwksp_reserve_aligned(ws, maxNbExternalSeq * sizeof(ZSTD_Sequence));
-        }
-
         DEBUGLOG(3, "wksp: finished allocating, %zd bytes remain available", ZSTD_cwksp_available_space(ws));
         assert(ZSTD_cwksp_estimated_space_within_bounds(ws, neededSpace));
 
